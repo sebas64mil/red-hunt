@@ -72,7 +72,6 @@ public class Client : MonoBehaviour, IClient
     {
         if (!isConnected)
         {
-            Debug.Log("[Client] The client is not connected");
             return;
         }
 

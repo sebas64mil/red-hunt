@@ -6,11 +6,13 @@ public class PlayerBootstrap : MonoBehaviour
     [SerializeField] private Server server;
     [SerializeField] private Client client;
     [SerializeField] private LobbyUI lobbyUI;
+    [SerializeField] private SpawnUI spawnUI;
 
     private ISerializer serializer;
     private PacketDispatcher dispatcher;
     private PlayerHandler playerHandler;
     private LobbyController lobbyController;
+
 
     private void Awake()
     {
@@ -36,7 +38,8 @@ public class PlayerBootstrap : MonoBehaviour
             server,
             client,
             serializer,
-            builder
+            builder,
+            spawnUI
         );
 
         Debug.Log("[PlayerBootstrap] Player system initialized");
