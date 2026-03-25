@@ -88,7 +88,53 @@ Regla: consume estado/casos de uso; no debe contener reglas de negocio complejas
 
 ## Estado actual del repositorio
 
-La estructura de carpetas de `Scripts` ya existe, pero actualmente no hay scripts `.cs` implementados dentro de esas capas.
+La estructura de carpetas de `Scripts` ya tiene implementaciones activas.
+
+Scripts detectados en la revision:
+
+- `Application/Services/LobbyController.cs`
+- `Network/Bootstrap/PlayerBootstrap.cs`
+- `Network/Dispatching/PacketDispatcher.cs`
+- `Network/Handlers/PlayerHandler.cs`
+- `Network/Interfaces/IGameConnection.cs`
+- `Network/Interfaces/IClient.cs`
+- `Network/Interfaces/ISerializer.cs`
+- `Network/Interfaces/IServer.cs`
+- `Network/Packets/BasePacket.cs`
+- `Network/Packets/PacketBuilder.cs`
+- `Network/Packets/PlayerPacket.cs`
+- `Network/Serialization/JsonSerializer.cs`
+- `Network/Transport/Client/Client.cs`
+- `Network/Transport/Server/Server.cs`
+- `Presentation/UI/Lobby/LobbyUI.cs`
+
+## Actualizacion del proyecto 2
+
+En esta etapa ya se encuentra montada una base funcional para multiplayer y flujo de lobby:
+
+- Contratos de red (`IGameConnection`, `IClient`, `IServer`, `ISerializer`).
+- Transporte UDP cliente/servidor con recepcion asincrona.
+- Serializacion JSON de paquetes.
+- Sistema de paquetes (`BasePacket`, `PlayerPacket`, `PacketBuilder`).
+- Dispatching por tipo de paquete y handler dedicado de jugador.
+- Bootstrap de dependencias para inicializar red + dispatcher + handler.
+- Servicio de aplicacion para crear/unirse a lobby.
+- UI de lobby conectada al flujo de seleccion de rol.
+
+Esto confirma que el proyecto ya paso de una fase solo estructural a una fase de implementacion base ejecutable.
+
+## Recomendaciones de mejora (para despues)
+
+1. Validar y sanear payloads antes de deserializar para evitar errores y datos malformados.
+2. Definir un protocolo minimo de confiabilidad sobre UDP (ACK, reintentos y timeout).
+3. Evitar valores hardcodeados en UI (IP/puerto) y moverlos a configuracion editable.
+4. Persistir estado de sesion de jugadores (mapa de cliente, rol, estado en lobby).
+5. Implementar reconexion y heartbeat para detectar desconexiones de forma robusta.
+6. Reemplazar `Debug.Log` critico por logging estructurado con niveles.
+7. Agregar pruebas unitarias para `PacketDispatcher`, `PlayerHandler` y `LobbyController`.
+8. Documentar el flujo host/guest con un diagrama simple de mensajes en el README.
+9. Revisar el desacoplamiento entre `Presentation` y `Network` para reducir acoplamiento futuro.
+10. Definir convencion de versionado de paquetes para compatibilidad hacia adelante.
 
 Cuando empieces a crear clases, intenta mantener esta regla de dependencias:
 
