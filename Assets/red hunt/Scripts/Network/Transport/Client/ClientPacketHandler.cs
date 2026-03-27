@@ -33,8 +33,19 @@ public class ClientPacketHandler
 
         Debug.Log($"[Client] Mi ID asignado es: {packet.id}");
 
-        var readyPacket = builder.CreatePlayerReady(packet.id);
-
-        await client.SendMessageAsync(readyPacket);
+        // Si el cliente tenía un tipo pendiente (lo solicitó al hacer Join), enviar PLAYER con tipo + id
+        var pendingType = state.PendingPlayerType;
+        if (!string.IsNullOrEmpty(pendingType))
+        {
+            var playerPacket = builder.CreatePlayer(packet.id, pendingType);
+            await client.SendMessageAsync(playerPacket);
+            state.ClearPendingPlayerType();
+        }
+        else
+        {
+            // Como fallback enviar ready (flujo anterior)
+            var readyPacket = builder.CreatePlayerReady(packet.id);
+            await client.SendMessageAsync(readyPacket);
+        }
     }
 }

@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Linq;
+
 public class PacketBuilder
 {
     private readonly ISerializer serializer;
@@ -6,27 +9,25 @@ public class PacketBuilder
     {
         this.serializer = serializer;
     }
-
+    public ISerializer Serializer => serializer;
     public string CreateAssignPlayer(int id)
     {
-        AssignPlayerPacket packet = new AssignPlayerPacket
+        var packet = new AssignPlayerPacket
         {
             type = "ASSIGN_PLAYER",
             id = id
         };
-
         return serializer.Serialize(packet);
     }
 
     public string CreatePlayer(int id, string playerType)
     {
-        PlayerPacket packet = new PlayerPacket
+        var packet = new PlayerPacket
         {
             type = "PLAYER",
             id = id,
             playerType = playerType
         };
-
         return serializer.Serialize(packet);
     }
 
@@ -37,7 +38,35 @@ public class PacketBuilder
             type = "PLAYER_READY",
             id = id
         };
-
         return serializer.Serialize(packet);
+    }
+
+    public string CreateLobbyState(IEnumerable<PlayerSession> players, int hostId)
+    {
+        var packet = new LobbyStatePacket
+        {
+            type = "LOBBY_STATE",
+            Players = players.Select(p => new PlayerInfoLobby
+            {
+                Id = p.Id,
+                Name = p.PlayerType.ToString(),
+                IsHost = p.Id == hostId
+            }).ToList()
+        };
+        return serializer.Serialize(packet);
+    }
+
+    public string GetPacketType(string json)
+    {
+        if (string.IsNullOrEmpty(json)) return string.Empty;
+
+        // JsonUtility no soporta Dictionary<string,string>, deserializamos a BasePacket
+        var basePacket = serializer.Deserialize<BasePacket>(json);
+        return basePacket?.type ?? string.Empty;
+    }
+
+    public LobbyStatePacket DeserializeLobbyState(string json)
+    {
+        return serializer.Deserialize<LobbyStatePacket>(json);
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 public class LobbyManager
 {
@@ -71,6 +72,12 @@ public class LobbyManager
 
         OnPlayerLeft?.Invoke(id);
         UpdateState();
+    }
+
+
+    public IEnumerable<PlayerSession> GetAllPlayers()
+    {
+        return playerRegistry.GetAllPlayers();
     }
 
     // ------------------ STATE ------------------

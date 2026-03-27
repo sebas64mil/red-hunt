@@ -3,7 +3,7 @@ using System.Net;
 
 public class ClientConnectionManager
 {
-    private int nextId = 1;
+    private int nextId = 2;
 
     private readonly Dictionary<IPEndPoint, ClientConnection> clients = new();
 
@@ -13,8 +13,10 @@ public class ClientConnectionManager
         {
             int id = nextId++;
 
-            var connection = new ClientConnection(endpoint, id); 
+            var connection = new ClientConnection(endpoint, id);
             clients[endpoint] = connection;
+
+            UnityEngine.Debug.Log($"[ConnectionManager] Nuevo cliente {endpoint} -> id {id}");
         }
 
         return clients[endpoint].ClientId;

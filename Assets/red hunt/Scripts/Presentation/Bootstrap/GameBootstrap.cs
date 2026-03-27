@@ -27,25 +27,21 @@ public class GameBootstrap : MonoBehaviour
             var applicationInstaller = new ApplicationInstaller();
             applicationServices = applicationInstaller.Install();
 
-            // ==================== FASE 2: NETWORK ====================
-            Debug.Log("[GameBootstrap] Fase 2: Instalando Network...");
-            networkServices = new NetworkInstaller()
-                .Install(server, client, applicationServices.LobbyManager);
+            // ==================== FASE 2: LOBBY NETWORK SERVICE ====================
+            Debug.Log("[GameBootstrap] Fase 2: Inicializando LobbyNetworkService...");
+            lobbyNetworkService = gameObject.AddComponent<LobbyNetworkService>();
 
-            // ==================== FASE 3: PRESENTATION ====================
-            Debug.Log("[GameBootstrap] Fase 3: Instalando Presentation...");
+            // ==================== FASE 3: NETWORK ====================
+            Debug.Log("[GameBootstrap] Fase 3: Instalando Network...");
+            networkServices = new NetworkInstaller()
+                .Install(server, client, applicationServices.LobbyManager, lobbyNetworkService, false);
+
+            // ==================== FASE 4: PRESENTATION ====================
+            Debug.Log("[GameBootstrap] Fase 4: Instalando Presentation...");
             presentationServices = new PresentationInstaller()
                 .Install(lobbyUI, spawnUI);
 
-            // ==================== FASE 4: LOBBY NETWORK SERVICE ====================
-            Debug.Log("[GameBootstrap] Fase 4: Inicializando LobbyNetworkService...");
-            lobbyNetworkService = gameObject.AddComponent<LobbyNetworkService>();
-            lobbyNetworkService.Init(
-                applicationServices.LobbyManager,
-                networkServices.BroadcastService,
-                networkServices.Builder,
-                false
-            );
+            lobbyNetworkService.SpawnManagerInstance = presentationServices.SpawnUI.GetSpawnManager();
 
             // ==================== FASE 5: CONEXIÓN DE CAPAS ====================
             Debug.Log("[GameBootstrap] Fase 5: Conectando capas...");
@@ -69,7 +65,16 @@ public class GameBootstrap : MonoBehaviour
 
             await networkServices.Server.StartServer(port);
 
+            if (lobbyNetworkService == null)
+            {
+                Debug.LogError("[Bootstrap] LobbyNetworkService no inicializado. Abortando JoinLobby.");
+                return;
+            }
+
             lobbyNetworkService.SetIsHost(true);
+
+            lobbyNetworkService.SpawnManagerInstance = presentationServices.SpawnUI.GetSpawnManager();
+
             lobbyNetworkService.JoinLobby();
         };
 
@@ -79,7 +84,16 @@ public class GameBootstrap : MonoBehaviour
 
             await networkServices.Client.ConnectToServer(ip, port);
 
+            if (lobbyNetworkService == null)
+            {
+                Debug.LogError("[Bootstrap] LobbyNetworkService no inicializado. Abortando JoinLobby.");
+                return;
+            }
+
             lobbyNetworkService.SetIsHost(false);
+
+            lobbyNetworkService.SpawnManagerInstance = presentationServices.SpawnUI.GetSpawnManager();
+
             lobbyNetworkService.JoinLobby();
         };
 

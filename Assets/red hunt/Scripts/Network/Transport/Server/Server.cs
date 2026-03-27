@@ -25,7 +25,7 @@ public class Server : MonoBehaviour, IServer
         transport.OnMessageReceived += HandleMessage;
     }
 
-    private void HandleMessage(string msg, IPEndPoint sender)
+    public void HandleMessage(string msg, IPEndPoint sender)
     {
         Debug.Log($"[Server] Recibido: {msg}");
 
@@ -34,6 +34,7 @@ public class Server : MonoBehaviour, IServer
 
         dispatcher.Dispatch(msg, sender);
     }
+
 
     public async Task StartServer(int port)
     {

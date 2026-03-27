@@ -9,22 +9,24 @@ public class SpawnUI : MonoBehaviour
 
     private SpawnManager spawnManager;
 
+    // Exponer los prefabs
+    public GameObject KillerPrefab => killerPrefab;
+    public GameObject EscapistPrefab => escapistPrefab;
+
     private void Awake()
     {
-        spawnManager = new SpawnManager(spawnParent);
+        spawnManager = new SpawnManager(spawnParent, killerPrefab, escapistPrefab);
     }
 
     public void OnPlayerAssigned(int id, string playerType)
     {
-        if (!System.Enum.TryParse<PlayerType>(playerType, true, out var type))
+        if (!Enum.TryParse<PlayerType>(playerType, true, out var type))
         {
             Debug.LogWarning($"[SpawnUI] Tipo de jugador inválido: {playerType}. Usando Escapist por defecto.");
             type = PlayerType.Escapist;
         }
 
-        GameObject prefab = type == PlayerType.Killer ? killerPrefab : escapistPrefab;
-
-        spawnManager.AddPlayer(id, type, prefab);
+        spawnManager.AddPlayer(id, type);
     }
 
     public void HandlePlayerDisconnected(int id)
@@ -36,4 +38,6 @@ public class SpawnUI : MonoBehaviour
     {
         return spawnParent;
     }
+
+    public SpawnManager GetSpawnManager() => spawnManager;
 }
