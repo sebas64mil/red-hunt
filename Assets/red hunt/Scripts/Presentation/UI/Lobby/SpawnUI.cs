@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 
 public class SpawnUI : MonoBehaviour
 {
@@ -15,8 +16,13 @@ public class SpawnUI : MonoBehaviour
 
     public void OnPlayerAssigned(int id, string playerType)
     {
-        GameObject prefab = playerType == "KILLER" ? killerPrefab : escapistPrefab;
-        PlayerType type = playerType == "KILLER" ? PlayerType.Killer : PlayerType.Escapist;
+        if (!System.Enum.TryParse<PlayerType>(playerType, true, out var type))
+        {
+            Debug.LogWarning($"[SpawnUI] Tipo de jugador inválido: {playerType}. Usando Escapist por defecto.");
+            type = PlayerType.Escapist;
+        }
+
+        GameObject prefab = type == PlayerType.Killer ? killerPrefab : escapistPrefab;
 
         spawnManager.AddPlayer(id, type, prefab);
     }
@@ -24,5 +30,10 @@ public class SpawnUI : MonoBehaviour
     public void HandlePlayerDisconnected(int id)
     {
         spawnManager.RemovePlayer(id);
+    }
+
+    public Transform GetSpawnParent()
+    {
+        return spawnParent;
     }
 }

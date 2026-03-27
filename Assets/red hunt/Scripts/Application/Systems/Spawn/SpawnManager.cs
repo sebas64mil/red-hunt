@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class SpawnManager
 {
-    private Dictionary<int, Player> players = new Dictionary<int, Player>();
+    private Dictionary<int, GameObject> players = new();
     private readonly Transform spawnParent;
 
     public SpawnManager(Transform spawnParent)
@@ -15,28 +15,27 @@ public class SpawnManager
     {
         if (players.ContainsKey(id)) return;
 
-        players[id] = new Player(id, type);
-
         Vector3 spawnPos = GetSpawnPosition(id, type);
+
         GameObject playerGO = GameObject.Instantiate(prefab, spawnPos, Quaternion.identity, spawnParent);
         playerGO.name = $"{type}_{id}";
-    }
 
-    private Vector3 GetSpawnPosition(int id, PlayerType type)
-    {
-        if (type == PlayerType.Killer)
-            return new Vector3(0, 0, 0);
-        else
-            return new Vector3(id * 2f, 0, 5f);
+        players[id] = playerGO;
     }
 
     public void RemovePlayer(int id)
     {
         if (!players.ContainsKey(id)) return;
 
-        GameObject go = GameObject.Find($"{players[id].Type}_{id}");
-        if (go != null) GameObject.Destroy(go);
-
+        GameObject.Destroy(players[id]);
         players.Remove(id);
+    }
+
+    private Vector3 GetSpawnPosition(int id, PlayerType type)
+    {
+        if (type == PlayerType.Killer)
+            return new Vector3(0, 0, 0);
+
+        return new Vector3(id * 2f, 0, 5f);
     }
 }

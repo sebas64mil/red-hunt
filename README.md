@@ -1,62 +1,113 @@
-# Red Hunt - Organizacion del Proyecto
 
-Este proyecto sigue una organizacion por capas dentro de la carpeta `Assets/red hunt/Scripts`.
+# Red Hunt - Estado y Arquitectura del Proyecto
 
-## Estructura General
+## Resumen Ejecutivo
+
+El proyecto ahora cuenta con una **arquitectura profesional y escalable**:
+- Separación clara de capas (Network, Application, Presentation)
+- Patrón Installers para inicialización limpia
+- Sin God Classes
+- Bajo acoplamiento
+- Fácil de testear y mantener
+
+---
+
+## Estado Inicial vs Estado Final
+
+### Antes
+```
+PlayerBootstrap (God Class)
+  Inicializaba Network, Application, Presentation
+  Conectaba eventos
+  500+ líneas de lógica mezclada
+```
+**Problemas:**
+- Imposible de testear
+- Un cambio pequeño rompía todo
+- Código duplicado
+- Difícil de mantener
+- No escalable
+
+### Ahora
+```
+GameBootstrap (Orquestador limpio)
+  Ejecuta NetworkInstaller (80 líneas)
+  Ejecuta ApplicationInstaller (20 líneas)
+  Ejecuta PresentationInstaller (40 líneas)
+  Conecta eventos (50 líneas)
+  Total: ~60 líneas en GameBootstrap
+
++ NetworkServices (contiene Network)
++ ApplicationServices (contiene App)
++ PresentationServices (contiene UI)
+```
+**Beneficios:**
+- Fácil de testear (cada Installer independiente)
+- Un cambio afecta solo su Installer
+- Código centralizado por responsabilidad
+- Fácil de mantener
+- Escalable (agregar servicio = agregar 5 líneas)
+
+---
+
+## Estructura Actual del Proyecto
 
 ```text
-Assets/
-	red hunt/
-		Scripts/
-			Application/
-				Gameplay/
-				Mappers/
-				Services/
-				Systems/
-			Domains/
-				data/
-				Entities/
-				Enums/
-				Interfaces/
-			Network/
-				Dispatching/
-				Handlers/
-				Interfaces/
-				Lobby/
-				Packets/
-				Serialization/
-				Transport/
-			Presentation/
-				Animation/
-				Sounds/
-				UI/
-				VFX/
+Assets/red hunt/Scripts/
+├── Network/
+│   ├── Transport/
+│   │   ├── Server.cs
+│   │   ├── Client.cs
+│   │   ├── ClientConnectionManager.cs
+│   │   ├── ClientState.cs
+│   │   └── BroadcastService.cs
+│   ├── Handlers/
+│   │   ├── ConnectionHandler.cs
+│   │   └── ClientPacketHandler.cs
+│   ├── Dispatching/
+│   │   └── PacketDispatcher.cs
+│   ├── Packets/
+│   │   ├── BasePacket.cs
+│   │   ├── AssignPlayerPacket.cs
+│   │   ├── PlayerReadyPacket.cs
+│   │   └── PacketBuilder.cs
+│   ├── Serialization/
+│   │   └── JsonSerializer.cs
+│   └── Interfaces/
+│       ├── IServer.cs
+│       ├── IClient.cs
+│       └── ISerializer.cs
+│
+├── Application/
+│   └── Services/
+│       ├── LobbyGame/
+│       │   ├── ILobbyCommand.cs
+│       │   ├── LobbyManager.cs
+│       │   ├── JoinLobbyCommand.cs
+│       │   └── LeaveLobbyCommand.cs
+│       └── Session/
+│           ├── PlayerRegistry.cs
+│           └── PlayerSession.cs
+│
+├── Presentation/
+│   └── Bootstrap/
+│       ├── GameBootstrap.cs (Orquestador)
+│       └── installers/
+│           ├── NetworkInstaller.cs
+│           ├── ApplicationInstaller.cs
+│           └── PresentationInstaller.cs
+│   └── UI/
 ```
 
-## Que hace cada capa
+---
 
-### 1) Domains (Reglas de negocio)
-Esta capa define el nucleo del juego: entidades, contratos y tipos del dominio.
+## Archivos Clave Creados/Modificados
 
-- `Entities/`: modelos principales del juego (jugador, partida, estado, etc.).
-- `Enums/`: enumeraciones para estados y valores cerrados del dominio.
-- `Interfaces/`: contratos del dominio (puertos) que otras capas implementan.
-- `data/`: estructuras de datos puras del dominio.
-
-Regla: no debe depender de Unity visual (UI/VFX) ni de detalles concretos de red.
-
-### 2) Application (Casos de uso)
-Coordina la logica del juego usando el dominio.
-
-- `Gameplay/`: flujo de reglas jugables (inicio, rondas, validaciones de partida).
-- `Services/`: servicios de aplicacion que orquestan casos de uso.
-- `Systems/`: procesos de alto nivel que conectan varios servicios/casos.
-- `Mappers/`: conversion entre modelos (por ejemplo DTO <-> entidades de dominio).
-
-Regla: usa `Domains` y puede invocar infraestructura (red, presentacion) por interfaces.
-
-### 3) Network (Comunicacion multiplayer)
-Contiene toda la logica de transporte y mensajes de red.
+1. GameBootstrap.cs - Orquestador limpio
+2. NetworkInstaller.cs - Inicialización de red completa
+3. ApplicationInstaller.cs - Inicialización de app
+4. PresentationInstaller.cs - Inicialización de UI
+5. ARCHITECTURE_OVERVIEW.md - Documentación de arquitectura
 
 - `Transport/`: capa base de envio/recepcion (socket, relay, etc.).
 - `Serialization/`: serializacion y deserializacion de mensajes.

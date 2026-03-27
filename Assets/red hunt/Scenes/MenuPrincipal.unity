@@ -1476,9 +1476,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 1602522630}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5a1647b482f842849bde70054ad27fbd, type: 3}
+  m_Script: {fileID: 11500000, guid: 27c691fee94883c4eb26ae3ccd54da21, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerBootstrap
+  m_EditorClassIdentifier: Assembly-CSharp::GameBootstrap
   server: {fileID: 1961046595}
   client: {fileID: 924343746}
   lobbyUI: {fileID: 1174263334}
