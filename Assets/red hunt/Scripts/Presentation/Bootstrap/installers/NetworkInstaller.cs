@@ -25,8 +25,8 @@ public class NetworkInstaller
         client.Init(transportClient, dispatcher);
 
         // --- Connection Manager y Handler ---
-        var connectionManager = new ClientConnectionManager();
-        var connectionHandler = new ConnectionHandler(connectionManager, server, builder);
+        var connectionManager = new ClientConnectionManager(3);
+        var connectionHandler = new ConnectionHandler(connectionManager, server, builder, lobbyManager);
 
         dispatcher.Register("CONNECT", (json, sender) =>
             connectionHandler.HandleConnect(sender));
@@ -82,7 +82,6 @@ public class NetworkInstaller
             try
             {
                 Debug.Log("[NetworkInstaller] REMOVE_PLAYER recibido");
-                // Delegar al LobbyNetworkService para que elimine el jugador y actualice el spawn/UI
                 lobbyNetworkService?.HandlePacketReceived(json);
             }
             catch (Exception e)

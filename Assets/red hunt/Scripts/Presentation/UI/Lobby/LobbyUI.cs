@@ -1,5 +1,6 @@
-using UnityEngine;
 using System;
+using System.Runtime.CompilerServices;
+using UnityEngine;
 
 public class LobbyUI : MonoBehaviour
 {
@@ -10,6 +11,9 @@ public class LobbyUI : MonoBehaviour
     public event Action<string, int> OnJoinLobby;
 
     public event Action OnLeaveLobby;
+
+    private bool isHost;
+    private bool isConnected;
 
     [SerializeField] private GameObject leaveButton;
 
@@ -29,10 +33,22 @@ public class LobbyUI : MonoBehaviour
         OnLeaveLobby?.Invoke();
     }
 
-
     public void SetIsHost(bool isHost)
     {
+        this.isHost = isHost;
+        UpdateLeaveButton();
+    }
+
+
+    public void SetConnected(bool connected)
+    {
+        this.isConnected = connected;
+        UpdateLeaveButton();
+    }
+
+    private void UpdateLeaveButton()
+    {
         if (leaveButton != null)
-            leaveButton.SetActive(!isHost);
+            leaveButton.SetActive(isConnected && !isHost);
     }
 }

@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 public class LobbyManager
 {
     private readonly PlayerRegistry playerRegistry;
+    private readonly int maxPlayers;
 
     public LobbyState CurrentState { get; private set; }
 
@@ -11,13 +13,22 @@ public class LobbyManager
     public event Action<int> OnPlayerLeft;
     public event Action<int> OnPlayerReady;
 
-    public LobbyManager(PlayerRegistry playerRegistry)
+    public LobbyManager(PlayerRegistry playerRegistry, int maxPlayers = 4)
     {
         this.playerRegistry = playerRegistry;
+        this.maxPlayers = maxPlayers;
         CurrentState = LobbyState.Waiting;
     }
 
-    // ------------------ COMMAND ENTRY ------------------
+    public int MaxPlayers => maxPlayers;
+
+    public bool IsFull()
+    {
+        var count = playerRegistry.GetAllPlayers().Count();
+        return count >= maxPlayers;
+    }
+
+
     public void ExecuteCommand(ILobbyCommand command)
     {
         command.Execute(this);
@@ -40,11 +51,18 @@ public class LobbyManager
 
         OnPlayerLeft?.Invoke(id);
         UpdateState();
+
     }
 
 
     public PlayerSession AddPlayerRemote(int id, string playerType)
     {
+        if (IsFull())
+        {
+            UnityEngine.Debug.LogWarning("[Lobby] Lobby lleno, ignorando player remoto");
+            return null;
+        }
+
         var player = playerRegistry.AddPlayerWithId(id, playerType);
 
         OnPlayerJoined?.Invoke(player);
@@ -72,6 +90,7 @@ public class LobbyManager
 
         OnPlayerLeft?.Invoke(id);
         UpdateState();
+
     }
 
 
@@ -80,7 +99,9 @@ public class LobbyManager
         return playerRegistry.GetAllPlayers();
     }
 
+
     // ------------------ STATE ------------------
+
     private void UpdateState()
     {
         int count = 0;
@@ -90,9 +111,10 @@ public class LobbyManager
 
         if (count == 0)
             CurrentState = LobbyState.Waiting;
-        else if (count >= 4)
+        else if (count >= maxPlayers)
             CurrentState = LobbyState.Full;
         else
             CurrentState = LobbyState.Waiting;
     }
+
 }

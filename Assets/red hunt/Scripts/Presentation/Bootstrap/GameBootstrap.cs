@@ -65,6 +65,13 @@ public class GameBootstrap : MonoBehaviour
 
     private void ConnectLayers()
     {
+
+        networkServices.Client.OnDisconnected += () =>
+        {
+            Debug.Log("[Bootstrap] Cliente desconectado - ocultando botón Leave");
+            presentationServices?.LobbyUI?.SetConnected(false);
+        };
+
         // ==================== UI -> NETWORK ====================
 
         presentationServices.LobbyUI.OnCreateLobby += async (ip, port) =>
@@ -75,6 +82,8 @@ public class GameBootstrap : MonoBehaviour
 
             lobbyNetworkService.SetIsHost(true);
             presentationServices.LobbyUI.SetIsHost(true);
+
+            presentationServices.LobbyUI.SetConnected(true);
 
             lobbyNetworkService.JoinLobby();
         };
@@ -88,12 +97,16 @@ public class GameBootstrap : MonoBehaviour
             lobbyNetworkService.SetIsHost(false);
             presentationServices.LobbyUI.SetIsHost(false);
 
+            presentationServices.LobbyUI.SetConnected(true);
+
             lobbyNetworkService.JoinLobby();
         };
 
         presentationServices.LobbyUI.OnLeaveLobby += async () =>
         {
             await lobbyNetworkService.LeaveLobby();
+
+            presentationServices.LobbyUI.SetConnected(false);
         };
 
         // ==================== APPLICATION -> PRESENTATION ====================
@@ -111,6 +124,7 @@ public class GameBootstrap : MonoBehaviour
 
             presentationServices.SpawnUI.HandlePlayerDisconnected(playerId);
         };
+
 
         Debug.Log("[GameBootstrap] Capas conectadas");
     }

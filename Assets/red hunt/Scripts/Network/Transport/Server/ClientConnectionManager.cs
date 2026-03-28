@@ -1,27 +1,41 @@
 using System.Collections.Generic;
 using System.Net;
-
+using UnityEngine;
 public class ClientConnectionManager
 {
     private int nextId = 2;
+    private readonly int maxClients;
 
     private readonly Dictionary<IPEndPoint, ClientConnection> clients = new();
 
-    public int AddClient(IPEndPoint endpoint)
+
+    public ClientConnectionManager(int maxClients = 3)
     {
-        if (!clients.ContainsKey(endpoint))
-        {
-            int id = nextId++;
-
-            var connection = new ClientConnection(endpoint, id);
-            clients[endpoint] = connection;
-
-            UnityEngine.Debug.Log($"[ConnectionManager] Nuevo cliente {endpoint} -> id {id}");
-        }
-
-        return clients[endpoint].ClientId;
+        this.maxClients = maxClients;
     }
 
+    public int AddClient(IPEndPoint endpoint)
+    {
+        if (clients.ContainsKey(endpoint))
+        {
+            Debug.Log($"[ConnectionManager] Cliente {endpoint} ya registrado con id {clients[endpoint].ClientId}");
+            return clients[endpoint].ClientId;
+        }
+
+        if (clients.Count >= maxClients)
+        {
+            Debug.LogWarning($"[ConnectionManager] Límite de clientes alcanzado ({maxClients}). Rechazando {endpoint}");
+            return -1;
+        }
+
+        int id = nextId++;
+
+        var connection = new ClientConnection(endpoint, id);
+        clients[endpoint] = connection;
+
+        Debug.Log($"[ConnectionManager] Nuevo cliente {endpoint} -> id {id}. Total clientes: {clients.Count}");
+        return clients[endpoint].ClientId;
+    }
     public void RemoveClient(IPEndPoint endpoint)
     {
         clients.Remove(endpoint);
@@ -41,4 +55,8 @@ public class ClientConnectionManager
     {
         return clients[endpoint].ClientId;
     }
+
+    public int GetClientCount() => clients.Count;
+
+    public int MaxClients => maxClients;
 }
