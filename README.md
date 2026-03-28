@@ -129,13 +129,27 @@ Responsable de mostrar el estado del juego al jugador.
 
 Regla: consume estado/casos de uso; no debe contener reglas de negocio complejas.
 
+
+## Funcionalidades recientes integradas
+
+- **Visualización en tiempo real de jugadores conectados y desconectados:**
+  - Cuando un jugador se conecta, su avatar aparece visualmente en la escena de Unity.
+  - Al desconectarse, el avatar desaparece automáticamente.
+  - La UI refleja el estado de conexión de todos los jugadores en el lobby.
+- **Límite de jugadores:**
+  - El sistema impide que se unan más jugadores que el máximo configurado (por defecto: 4).
+  - El lobby muestra visualmente si está lleno.
+- **Reutilización de IDs:**
+  - Cuando un jugador se desconecta, su ID queda disponible para futuros jugadores.
+  - Esto optimiza la gestión de recursos y evita el crecimiento indefinido de IDs.
+
 ## Flujo recomendado entre capas
 
-1. `Presentation` captura input/acciones del jugador.
-2. `Application` ejecuta casos de uso.
+1. `Presentation` captura input/acciones del jugador y muestra visualmente los cambios (conexión/desconexión, nuevos avatares, etc).
+2. `Application` ejecuta casos de uso, valida el límite de jugadores y gestiona la asignación/reutilización de IDs.
 3. `Application` consulta/actualiza `Domains`.
-4. Si hay multiplayer, `Application` interactua con `Network` por interfaces.
-5. `Presentation` refresca la vista con el nuevo estado.
+4. Si hay multiplayer, `Application` interactúa con `Network` por interfaces.
+5. `Presentation` refresca la vista con el nuevo estado, asegurando que la UI y la escena de Unity estén sincronizadas con el estado real del lobby y los jugadores.
 
 ## Estado actual del repositorio
 
