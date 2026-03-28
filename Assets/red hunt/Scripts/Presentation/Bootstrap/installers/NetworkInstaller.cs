@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 public class NetworkInstaller
@@ -33,14 +34,12 @@ public class NetworkInstaller
         var clientState = new ClientState();
         var clientPacketHandler = new ClientPacketHandler(serializer, clientState, client, builder);
 
-        // Crear broadcastService antes de registrar handlers que necesiten reenviar
         var broadcastService = new BroadcastService(server, connectionManager);
 
         dispatcher.Register("ASSIGN_PLAYER", (json, sender) =>
         {
             clientPacketHandler.HandleAssignPlayer(json);
 
-            // Notificar al LobbyNetworkService en caso de que exista (cliente local)
             lobbyNetworkService?.HandlePacketReceived(json);
         });
 
@@ -51,10 +50,8 @@ public class NetworkInstaller
                 var packet = serializer.Deserialize<PlayerPacket>(json);
                 if (packet == null) return;
 
-                // El servidor registra el jugador y reenvía a todos (broadcast)
                 lobbyManager?.AddPlayerRemote(packet.id, packet.playerType);
 
-                // Reenviar a todos los clientes para que se creen las instancias
                 broadcastService?.SendToAll(json).ConfigureAwait(false);
             }
             catch (System.Exception e)
@@ -72,7 +69,6 @@ public class NetworkInstaller
 
                 Debug.Log($"[NetworkInstaller] PLAYER_READY recibido id:{packet.id}");
 
-                // Notifica al LobbyNetworkService
                 lobbyNetworkService?.HandlePacketReceived(json);
             }
             catch (System.Exception e)
@@ -81,10 +77,51 @@ public class NetworkInstaller
             }
         });
 
+        dispatcher.Register("REMOVE_PLAYER", (json, sender) =>
+        {
+            try
+            {
+                Debug.Log("[NetworkInstaller] REMOVE_PLAYER recibido");
+                // Delegar al LobbyNetworkService para que elimine el jugador y actualice el spawn/UI
+                lobbyNetworkService?.HandlePacketReceived(json);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[NetworkInstaller] Error procesando REMOVE_PLAYER: {e.Message}");
+            }
+        });
+
+        dispatcher.Register("DISCONNECT", async (json, sender) =>
+        {
+            try
+            {
+                Debug.Log("[NetworkInstaller] DISCONNECT recibido");
+
+                var clientId = connectionManager.GetClientId(sender);
+
+                if (clientId <= 0)
+                {
+                    Debug.LogWarning("ClientId inválido en DISCONNECT");
+                    return;
+                }
+
+                connectionManager.RemoveClient(sender);
+
+                lobbyManager.RemovePlayerRemote(clientId);
+
+                var removePacket = builder.CreateRemovePlayer(clientId);
+                await broadcastService.SendToAll(removePacket);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[NetworkInstaller] Error en DISCONNECT: {e.Message}");
+            }
+        });
+
         Debug.Log("[NetworkInstaller] Network inicializado");
 
         // Inicializar LobbyNetworkService con sus dependencias (incluyendo clientState)
-        lobbyNetworkService?.Init(lobbyManager, broadcastService, builder, isHost, clientState);
+        lobbyNetworkService?.Init(lobbyManager, broadcastService, builder, isHost, clientState, clientPacketHandler);
 
         // --- Retornar servicios ---
         return new NetworkServices

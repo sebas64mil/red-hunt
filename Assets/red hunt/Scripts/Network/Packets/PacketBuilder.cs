@@ -56,6 +56,27 @@ public class PacketBuilder
         return serializer.Serialize(packet);
     }
 
+    public string CreateDisconnect()
+    {
+        var packet = new DisconnectPacket
+        {
+            type = "DISCONNECT"
+        };
+
+        return serializer.Serialize(packet);
+    }
+
+    public string CreateRemovePlayer(int id)
+    {
+        var packet = new RemovePlayerPacket
+        {
+            type = "REMOVE_PLAYER",
+            id = id
+        };
+
+        return serializer.Serialize(packet);
+    }
+
     public string GetPacketType(string json)
     {
         if (string.IsNullOrEmpty(json)) return string.Empty;

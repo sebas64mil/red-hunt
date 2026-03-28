@@ -23,27 +23,34 @@ public class GameBootstrap : MonoBehaviour
         try
         {
             // ==================== FASE 1: APPLICATION ====================
-            Debug.Log("[GameBootstrap] Fase 1: Instalando Application...");
+            Debug.Log("[GameBootstrap] Fase 1: Application...");
             var applicationInstaller = new ApplicationInstaller();
             applicationServices = applicationInstaller.Install();
 
-            // ==================== FASE 2: LOBBY NETWORK SERVICE ====================
-            Debug.Log("[GameBootstrap] Fase 2: Inicializando LobbyNetworkService...");
+            // ==================== FASE 2: LOBBY NETWORK ====================
+            Debug.Log("[GameBootstrap] Fase 2: LobbyNetworkService...");
             lobbyNetworkService = gameObject.AddComponent<LobbyNetworkService>();
 
             // ==================== FASE 3: NETWORK ====================
-            Debug.Log("[GameBootstrap] Fase 3: Instalando Network...");
+            Debug.Log("[GameBootstrap] Fase 3: Network...");
             networkServices = new NetworkInstaller()
                 .Install(server, client, applicationServices.LobbyManager, lobbyNetworkService, false);
 
             // ==================== FASE 4: PRESENTATION ====================
-            Debug.Log("[GameBootstrap] Fase 4: Instalando Presentation...");
+            Debug.Log("[GameBootstrap] Fase 4: Presentation...");
             presentationServices = new PresentationInstaller()
-                .Install(lobbyUI, spawnUI);
+                .Install(lobbyUI, spawnUI, -1); 
 
-            lobbyNetworkService.SpawnManagerInstance = presentationServices.SpawnUI.GetSpawnManager();
+            lobbyNetworkService.SpawnManagerInstance = presentationServices.SpawnManager;
 
-            // ==================== FASE 5: CONEXIÓN DE CAPAS ====================
+            networkServices.ClientState.OnPlayerIdAssigned += (id) =>
+            {
+                Debug.Log($"[Bootstrap] PlayerId asignado: {id}");
+
+                presentationServices.SpawnManager.SetLocalPlayerId(id);
+            };
+
+            // ==================== FASE 5: CONEXIONES ====================
             Debug.Log("[GameBootstrap] Fase 5: Conectando capas...");
             ConnectLayers();
 
@@ -58,22 +65,16 @@ public class GameBootstrap : MonoBehaviour
 
     private void ConnectLayers()
     {
-        // UI -> NETWORK
+        // ==================== UI -> NETWORK ====================
+
         presentationServices.LobbyUI.OnCreateLobby += async (ip, port) =>
         {
             Debug.Log($"[Bootstrap] Crear Lobby {ip}:{port}");
 
             await networkServices.Server.StartServer(port);
 
-            if (lobbyNetworkService == null)
-            {
-                Debug.LogError("[Bootstrap] LobbyNetworkService no inicializado. Abortando JoinLobby.");
-                return;
-            }
-
             lobbyNetworkService.SetIsHost(true);
-
-            lobbyNetworkService.SpawnManagerInstance = presentationServices.SpawnUI.GetSpawnManager();
+            presentationServices.LobbyUI.SetIsHost(true);
 
             lobbyNetworkService.JoinLobby();
         };
@@ -84,29 +85,30 @@ public class GameBootstrap : MonoBehaviour
 
             await networkServices.Client.ConnectToServer(ip, port);
 
-            if (lobbyNetworkService == null)
-            {
-                Debug.LogError("[Bootstrap] LobbyNetworkService no inicializado. Abortando JoinLobby.");
-                return;
-            }
-
             lobbyNetworkService.SetIsHost(false);
-
-            lobbyNetworkService.SpawnManagerInstance = presentationServices.SpawnUI.GetSpawnManager();
+            presentationServices.LobbyUI.SetIsHost(false);
 
             lobbyNetworkService.JoinLobby();
         };
 
-        // APPLICATION -> PRESENTATION
+        presentationServices.LobbyUI.OnLeaveLobby += async () =>
+        {
+            await lobbyNetworkService.LeaveLobby();
+        };
+
+        // ==================== APPLICATION -> PRESENTATION ====================
+
         applicationServices.LobbyManager.OnPlayerJoined += (player) =>
         {
             Debug.Log($"[Bootstrap] Player Joined: {player.Id}");
+
             presentationServices.SpawnUI.OnPlayerAssigned(player.Id, player.PlayerType);
         };
 
         applicationServices.LobbyManager.OnPlayerLeft += (playerId) =>
         {
             Debug.Log($"[Bootstrap] Player Left: {playerId}");
+
             presentationServices.SpawnUI.HandlePlayerDisconnected(playerId);
         };
 

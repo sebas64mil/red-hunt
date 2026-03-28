@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Threading.Tasks;
 
 public class ClientPacketHandler
 {
@@ -33,7 +34,6 @@ public class ClientPacketHandler
 
         Debug.Log($"[Client] Mi ID asignado es: {packet.id}");
 
-        // Si el cliente tenía un tipo pendiente (lo solicitó al hacer Join), enviar PLAYER con tipo + id
         var pendingType = state.PendingPlayerType;
         if (!string.IsNullOrEmpty(pendingType))
         {
@@ -43,9 +43,16 @@ public class ClientPacketHandler
         }
         else
         {
-            // Como fallback enviar ready (flujo anterior)
             var readyPacket = builder.CreatePlayerReady(packet.id);
             await client.SendMessageAsync(readyPacket);
         }
+    }
+
+    public async Task SendDisconnect()
+    {
+        Debug.Log("[Client] Sending DISCONNECT");
+
+        var packet = builder.CreateDisconnect();
+        await client.SendMessageAsync(packet);
     }
 }

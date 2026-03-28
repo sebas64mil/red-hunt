@@ -4,15 +4,29 @@ using UnityEngine;
 public class SpawnManager
 {
     private Dictionary<int, GameObject> players = new();
+
     private readonly Transform spawnParent;
     private readonly GameObject killerPrefab;
     private readonly GameObject escapistPrefab;
 
-    public SpawnManager(Transform spawnParent, GameObject killerPrefab, GameObject escapistPrefab)
+    private int localPlayerId;
+
+    public SpawnManager(
+        Transform spawnParent,
+        GameObject killerPrefab,
+        GameObject escapistPrefab,
+        int localPlayerId)
     {
         this.spawnParent = spawnParent;
         this.killerPrefab = killerPrefab;
         this.escapistPrefab = escapistPrefab;
+        this.localPlayerId = localPlayerId;
+    }
+
+
+    public void SetLocalPlayerId(int id)
+    {
+        localPlayerId = id;
     }
 
     public void AddPlayer(int id, PlayerType type)
@@ -24,6 +38,17 @@ public class SpawnManager
 
         GameObject playerGO = GameObject.Instantiate(prefab, spawnPos, Quaternion.identity, spawnParent);
         playerGO.name = $"{type}_{id}";
+
+        var view = playerGO.GetComponent<PlayerView>();
+        if (view != null)
+        {
+            bool isLocal = id == localPlayerId;
+            view.Init(id, isLocal);
+        }
+        else
+        {
+            Debug.LogWarning($"[SpawnManager] PlayerView no encontrado en {playerGO.name}");
+        }
 
         players[id] = playerGO;
     }
@@ -44,10 +69,10 @@ public class SpawnManager
         return new Vector3(id * 2f, 0, 5f);
     }
 
-    public void SpawnRemotePlayer(int id)
+    public void SpawnRemotePlayer(int id, PlayerType type)
     {
-        var player = GameObject.Find($"Escapist_{id}");
-        if (player == null)
-            AddPlayer(id, PlayerType.Escapist);
+        if (players.ContainsKey(id)) return;
+
+        AddPlayer(id, type);
     }
 }

@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class PresentationInstaller
 {
-    public PresentationServices Install(LobbyUI lobbyUI, SpawnUI spawnUI)
+    public PresentationServices Install(LobbyUI lobbyUI, SpawnUI spawnUI, int localPlayerId)
     {
         Debug.Log("[PresentationInstaller] Iniciando instalación...");
 
@@ -17,7 +17,9 @@ public class PresentationInstaller
         if (spawnParent == null)
             throw new System.Exception("SpawnParent no configurado");
 
-        var spawnManager = new SpawnManager(spawnParent, spawnUI.KillerPrefab, spawnUI.EscapistPrefab);
+        var spawnManager = new SpawnManager(spawnParent, spawnUI.KillerPrefab, spawnUI.EscapistPrefab, localPlayerId);
+
+        spawnUI.Init(spawnManager);
 
         return new PresentationServices
         {
