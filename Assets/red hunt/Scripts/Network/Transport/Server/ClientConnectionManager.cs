@@ -7,6 +7,7 @@ public class ClientConnectionManager
     private readonly int maxClients;
 
     private readonly Dictionary<IPEndPoint, ClientConnection> clients = new();
+    private readonly Queue<int> availableIds = new();
 
 
     public ClientConnectionManager(int maxClients = 3)
@@ -28,7 +29,16 @@ public class ClientConnectionManager
             return -1;
         }
 
-        int id = nextId++;
+        int id;
+        if (availableIds.Count > 0)
+        {
+            id = availableIds.Dequeue();
+        }
+        else
+        {
+            id = nextId++;
+        }
+
 
         var connection = new ClientConnection(endpoint, id);
         clients[endpoint] = connection;
@@ -38,7 +48,12 @@ public class ClientConnectionManager
     }
     public void RemoveClient(IPEndPoint endpoint)
     {
+        if (!clients.TryGetValue(endpoint, out var connection)) return;
+
         clients.Remove(endpoint);
+
+        if (connection.ClientId > 0)
+            availableIds.Enqueue(connection.ClientId);
     }
 
     public List<IPEndPoint> GetAllClients()
