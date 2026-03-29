@@ -17,7 +17,7 @@ public class PresentationInstaller
         if (spawnParent == null)
             throw new System.Exception("SpawnParent no configurado");
 
-        var spawnManager = new SpawnManager(spawnParent, spawnUI.KillerPrefab, spawnUI.EscapistPrefab, localPlayerId);
+        var spawnManager = new SpawnManager(spawnParent, spawnUI.KillerPrefab, spawnUI.EscapistPrefab, localPlayerId, spawnUI.HostSpawnPosition, spawnUI.ClientBasePosition, spawnUI.ClientSpacing);
 
         spawnUI.Init(spawnManager);
 
