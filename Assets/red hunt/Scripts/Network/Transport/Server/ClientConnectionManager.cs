@@ -46,7 +46,7 @@ public class ClientConnectionManager
         Debug.Log($"[ConnectionManager] Nuevo cliente {endpoint} -> id {id}. Total clientes: {clients.Count}");
         return clients[endpoint].ClientId;
     }
-    public void RemoveClient(IPEndPoint endpoint)
+    public void RemoveClient( IPEndPoint endpoint)
     {
         if (!clients.TryGetValue(endpoint, out var connection)) return;
 
@@ -82,5 +82,20 @@ public class ClientConnectionManager
         availableIds.Clear();
         nextId = 2;
         Debug.Log("[ConnectionManager] Clear: conexiones reseteadas");
+    }
+
+    public bool TryGetEndpointById(int clientId, out IPEndPoint endpoint)
+    {
+        foreach (var kvp in clients)
+        {
+            if (kvp.Value.ClientId == clientId)
+            {
+                endpoint = kvp.Key;
+                return true;
+            }
+        }
+
+        endpoint = null;
+        return false;
     }
 }

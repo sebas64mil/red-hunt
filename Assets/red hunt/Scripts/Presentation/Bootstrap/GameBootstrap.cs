@@ -9,6 +9,7 @@ public class GameBootstrap : MonoBehaviour
     [Header("Presentation")]
     [SerializeField] private LobbyUI lobbyUI;
     [SerializeField] private SpawnUI spawnUI;
+    [SerializeField] private AdminUI adminUI;
 
     private NetworkServices networkServices;
     private ApplicationServices applicationServices;
@@ -39,14 +40,13 @@ public class GameBootstrap : MonoBehaviour
             // ==================== FASE 4: PRESENTATION ====================
             Debug.Log("[GameBootstrap] Fase 4: Presentation...");
             presentationServices = new PresentationInstaller()
-                .Install(lobbyUI, spawnUI, -1); 
+                .Install(lobbyUI, spawnUI, -1);
 
             lobbyNetworkService.SpawnManagerInstance = presentationServices.SpawnManager;
 
             networkServices.ClientState.OnPlayerIdAssigned += (id) =>
             {
                 Debug.Log($"[Bootstrap] PlayerId asignado: {id}");
-
                 presentationServices.SpawnManager.SetLocalPlayerId(id);
             };
 
@@ -65,6 +65,7 @@ public class GameBootstrap : MonoBehaviour
 
     private void ConnectLayers()
     {
+        // ==================== CLIENT EVENTS ====================
 
         networkServices.Client.OnDisconnected += () =>
         {
@@ -82,6 +83,9 @@ public class GameBootstrap : MonoBehaviour
 
             lobbyNetworkService.SetIsHost(true);
             presentationServices.LobbyUI.SetIsHost(true);
+            adminUI.SetIsHost(true);
+
+            networkServices.AdminService.SetIsHost(true);
 
             presentationServices.LobbyUI.SetConnected(true);
 
@@ -96,14 +100,15 @@ public class GameBootstrap : MonoBehaviour
 
             await networkServices.Client.ConnectToServer(ip, port);
 
-
-            networkServices.SwitchToClient(applicationServices.LobbyManager);
-
-
             lobbyNetworkService.SetIsHost(false);
             presentationServices.LobbyUI.SetIsHost(false);
+            adminUI.SetIsHost(false);
+
+            networkServices.AdminService.SetIsHost(false);
 
             presentationServices.LobbyUI.SetConnected(true);
+
+            networkServices.SwitchToClient(applicationServices.LobbyManager);
 
             lobbyNetworkService.JoinLobby();
         };
@@ -113,8 +118,8 @@ public class GameBootstrap : MonoBehaviour
             await lobbyNetworkService.LeaveLobby();
 
             presentationServices.LobbyUI.SetConnected(false);
+            adminUI.ClearAll();
         };
-
 
         presentationServices.LobbyUI.OnShutdownServer += async () =>
         {
@@ -126,10 +131,9 @@ public class GameBootstrap : MonoBehaviour
 
             presentationServices.LobbyUI.SetConnected(false);
             presentationServices.LobbyUI.SetIsHost(false);
+            adminUI.SetIsHost(false);
+            adminUI.ClearAll();
         };
-
-
-
 
         // ==================== APPLICATION -> PRESENTATION ====================
 
@@ -138,6 +142,8 @@ public class GameBootstrap : MonoBehaviour
             Debug.Log($"[Bootstrap] Player Joined: {player.Id}");
 
             presentationServices.SpawnUI.OnPlayerAssigned(player.Id, player.PlayerType);
+
+            adminUI.AddPlayerEntry(player.Id);
         };
 
         applicationServices.LobbyManager.OnPlayerLeft += (playerId) =>
@@ -145,8 +151,23 @@ public class GameBootstrap : MonoBehaviour
             Debug.Log($"[Bootstrap] Player Left: {playerId}");
 
             presentationServices.SpawnUI.HandlePlayerDisconnected(playerId);
+
+            adminUI.RemovePlayerEntry(playerId);
         };
 
+        // ==================== ADMIN UI ====================
+
+        adminUI.SetIsHost(false);
+
+        adminUI.OnKickRequested += async (targetId) =>
+        {
+            Debug.Log($"[Bootstrap] Kick solicitado para player {targetId}");
+
+            if (networkServices.AdminService != null)
+            {
+                await networkServices.AdminService.KickPlayer(targetId);
+            }
+        };
 
         Debug.Log("[GameBootstrap] Capas conectadas");
     }

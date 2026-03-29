@@ -65,7 +65,6 @@ public class LobbyNetworkService : MonoBehaviour
         var command = new JoinLobbyCommand(playerType);
         lobbyManager.ExecuteCommand(command);
     }
-
     public async Task LeaveLobby()
     {
         Debug.Log("[LobbyNetworkService] Leaving lobby...");
@@ -78,10 +77,17 @@ public class LobbyNetworkService : MonoBehaviour
                 await Task.Delay(100);
             }
 
-            int id = clientState != null ? clientState.PlayerId : -1;
-            if (id > 0)
+            try
             {
-                lobbyManager.RemovePlayerRemote(id);
+                var players = lobbyManager.GetAllPlayers().ToList();
+                foreach (var p in players)
+                {
+                    lobbyManager.RemovePlayerRemote(p.Id);
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[LobbyNetworkService] Error limpiando estado local en LeaveLobby: {e.Message}");
             }
 
             return;
@@ -235,7 +241,6 @@ public class LobbyNetworkService : MonoBehaviour
         lobbyManager.RemovePlayerRemote(packet.id);
     }
 
-    // ==================== MÉTODOS DE AYUDA ====================
 
     public void AddRemotePlayer(int id, string type)
     {

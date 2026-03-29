@@ -1,4 +1,37 @@
 
+
+# Registro de cambios — 2026-03-29
+
+**Resumen breve**
+- Corrección del flujo de expulsión y desconexión para asegurar que el cliente expulsado (o el que se desconecta voluntariamente) también limpie su estado local y deje de ver las instancias de otros jugadores.
+
+**Cambios principales**
+- Se reordenó la lógica de expulsión en `Assets/red hunt/Scripts/Application/Services/Admin/AdminNetworkService.cs`:
+  - Ahora el servidor crea y envía el paquete `REMOVE_PLAYER` a todos los clientes antes de eliminar la conexión del `ClientConnectionManager`.
+  - Después de hacer el broadcast del `REMOVE_PLAYER`, se elimina la conexión del manager y se envía el paquete `ADMIN_KICK` al cliente objetivo para forzar su desconexión local.
+- En el cliente se añadió limpieza explícita del estado local cuando recibe `ADMIN_KICK` (handler en `Assets/red hunt/Scripts/Network/Handlers/AdminPacketHandler.cs`): primero se remueven todos los players del `LobbyManager` y del `SpawnManager` local y luego se desconecta el `Client`.
+- En la salida voluntaria (`LeaveLobby`) el cliente envía `DISCONNECT` y limpia su estado local (ahora `LobbyNetworkService.LeaveLobby()` remueve todos los players locales).
+- Se actualizó el flujo de cierre del host (`ShutdownServer`) para enviar `DISCONNECT` a todos, esperar un breve margen y luego limpiar conexiones y spawns en el servidor.
+
+**Por qué se hizo**
+- UDP puede perder o reordenar paquetes críticos; si el cliente expulsado no recibe `REMOVE_PLAYER` pero sí recibe `ADMIN_KICK`, su vista puede quedar inconsistente (sigue viendo avatares de otros aunque esté desconectado). La nueva secuencia evita ese caso y garantiza que el cliente expulsado limpie su propio estado antes de desconectarse.
+
+**Qué comprobar (pruebas recomendadas)**
+1. Host expulsa player X:
+  - Todos los clientes (incluido X) reciben `REMOVE_PLAYER` y eliminan la instancia de X.
+  - El cliente X recibe `ADMIN_KICK` y se desconecta limpiamente (no quedan avatares visibles desde su perspectiva).
+2. Cliente X hace leave voluntario:
+  - X envía `DISCONNECT`, limpia su estado local y no ve más instancias.
+  - El servidor rebroadcast `REMOVE_PLAYER` y los demás clientes eliminan la instancia de X.
+3. Logs:
+  - Ver en los logs la secuencia: `CREATE_REMOVE_PLAYER` -> `SEND REMOVE_PLAYER` -> `REMOVE FROM MANAGER` -> `ADMIN_KICK` (target) -> `CLIENT DISCONNECT`.
+
+**Recomendaciones futuras**
+- Implementar ACKs para mensajes críticos (`REMOVE_PLAYER`, `DISCONNECT`, `ADMIN_KICK`) o usar un canal fiable para control.
+- Centralizar la limpieza de estado local en una función reutilizable (`LocalState.CleanupOnDisconnect()`).
+- Añadir trazas (debug) con timestamps para depurar reordenamientos y pérdidas en entornos con NAT/firewall.
+- Añadir tests de integración para los flujos join/leave/kick.
+
 # Red Hunt - Estado y Arquitectura del Proyecto
 
 ## Resumen Ejecutivo

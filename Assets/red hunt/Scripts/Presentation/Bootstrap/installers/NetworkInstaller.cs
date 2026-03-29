@@ -38,6 +38,8 @@ public class NetworkInstaller
 
         var broadcastService = new BroadcastService(server, connectionManager);
 
+        var adminService = AdminInstaller.Install(dispatcher,serializer,server,client,builder,broadcastService,connectionManager,lobbyManager,lobbyNetworkService?.SpawnManagerInstance,lobbyNetworkService,isHost,clientState);
+
         dispatcher.Register("ASSIGN_PLAYER", (json, sender) =>
         {
             clientPacketHandler.HandleAssignPlayer(json);
@@ -157,7 +159,8 @@ public class NetworkInstaller
             Serializer = serializer,
             ConnectionManager = connectionManager,
             ClientState = clientState,
-            BroadcastService = broadcastService
+            BroadcastService = broadcastService,
+            AdminService = adminService
 
         };
     }
@@ -173,6 +176,7 @@ public class NetworkServices
     public ClientConnectionManager ConnectionManager { get; set; }
     public ClientState ClientState { get; set; }
     public BroadcastService BroadcastService { get; set; }
+    public AdminNetworkService AdminService { get; set; }
 
 
     private Action<string, IPEndPoint> CreateDisconnectHandler(bool isHost, LobbyManager lobbyManager)
