@@ -15,13 +15,18 @@ public class LobbyNetworkService : MonoBehaviour
 
     public SpawnManager SpawnManagerInstance { get; set; }
 
+    private IServer server;
+    private ClientConnectionManager connectionManager;
+
     public void Init(
         LobbyManager lobbyManager,
         BroadcastService broadcastService,
         PacketBuilder packetBuilder,
         bool isHost,
         ClientState clientState = null,
-        ClientPacketHandler clientPacketHandler = null)
+        ClientPacketHandler clientPacketHandler = null,
+        IServer server = null,
+        ClientConnectionManager connectionManager = null)
     {
         this.lobbyManager = lobbyManager;
         this.broadcastService = broadcastService;
@@ -29,6 +34,10 @@ public class LobbyNetworkService : MonoBehaviour
         this.isHost = isHost;
         this.clientState = clientState;
         this.clientPacketHandler = clientPacketHandler;
+
+        this.server = server;
+        this.connectionManager = connectionManager;
+
 
         lobbyManager.OnPlayerJoined += async (player) => await HandlePlayerJoined(player);
         lobbyManager.OnPlayerReady += async (id) => await HandlePlayerReady(id);
@@ -79,6 +88,37 @@ public class LobbyNetworkService : MonoBehaviour
         }
 
         Debug.Log("[LobbyNetworkService] Host leave requested - implementar cierre del host si es necesario");
+        await ShutdownServer();
+    }
+
+
+    public async Task ShutdownServer()
+    {
+        Debug.Log("[LobbyNetworkService] ShutdownServer: enviando DISCONNECT a todos los clientes");
+
+        try
+        {
+            var packet = packetBuilder.CreateDisconnect();
+            await broadcastService.SendToAll(packet);
+
+            await Task.Delay(100);
+
+            server?.Disconnect();
+            connectionManager?.Clear();
+
+            var players = lobbyManager.GetAllPlayers().ToList();
+            foreach (var p in players)
+            {
+                lobbyManager.RemovePlayerRemote(p.Id);
+                SpawnManagerInstance?.RemovePlayer(p.Id);
+            }
+
+            Debug.Log("[LobbyNetworkService] DISCONNECT enviado, el Server debe desconectarse ahora.");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LobbyNetworkService] Error en ShutdownServer: {e.Message}");
+        }
     }
 
 

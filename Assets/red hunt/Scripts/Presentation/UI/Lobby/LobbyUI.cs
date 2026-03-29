@@ -11,11 +11,14 @@ public class LobbyUI : MonoBehaviour
     public event Action<string, int> OnJoinLobby;
 
     public event Action OnLeaveLobby;
+    public event Action OnShutdownServer;
+
 
     private bool isHost;
     private bool isConnected;
 
     [SerializeField] private GameObject leaveButton;
+    [SerializeField] private GameObject shutdownButton;
 
 
     public void OnSelectKiller()
@@ -31,6 +34,11 @@ public class LobbyUI : MonoBehaviour
     public void OnLeaveButton()
     {
         OnLeaveLobby?.Invoke();
+    }
+
+    public void OnShutdownButton()
+    {
+        OnShutdownServer?.Invoke();
     }
 
     public void SetIsHost(bool isHost)
@@ -50,5 +58,8 @@ public class LobbyUI : MonoBehaviour
     {
         if (leaveButton != null)
             leaveButton.SetActive(isConnected && !isHost);
+
+        if (shutdownButton != null)
+            shutdownButton.SetActive(isConnected && isHost);
     }
 }

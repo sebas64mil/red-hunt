@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using System.Net;
 using UnityEngine;
 
 public class NetworkInstaller
@@ -90,39 +92,62 @@ public class NetworkInstaller
             }
         });
 
-        dispatcher.Register("DISCONNECT", async (json, sender) =>
+        if (isHost)
         {
-            try
+            dispatcher.Register("DISCONNECT", async (json, sender) =>
             {
-                Debug.Log("[NetworkInstaller] DISCONNECT recibido");
-
-                var clientId = connectionManager.GetClientId(sender);
-
-                if (clientId <= 0)
+                try
                 {
-                    Debug.LogWarning("ClientId inválido en DISCONNECT");
-                    return;
+                    Debug.Log("[NetworkInstaller] DISCONNECT recibido (servidor)");
+
+                    var clientId = connectionManager.GetClientId(sender);
+
+                    if (clientId <= 0)
+                    {
+                        Debug.LogWarning("ClientId inválido en DISCONNECT");
+                        return;
+                    }
+
+                    connectionManager.RemoveClient(sender);
+
+                    lobbyManager.RemovePlayerRemote(clientId);
+
+                    var removePacket = builder.CreateRemovePlayer(clientId);
+                    await broadcastService.SendToAll(removePacket);
                 }
-
-                connectionManager.RemoveClient(sender);
-
-                lobbyManager.RemovePlayerRemote(clientId);
-
-                var removePacket = builder.CreateRemovePlayer(clientId);
-                await broadcastService.SendToAll(removePacket);
-            }
-            catch (Exception e)
+                catch (Exception e)
+                {
+                    Debug.LogError($"[NetworkInstaller] Error en DISCONNECT (servidor): {e.Message}");
+                }
+            });
+        }
+        else
+        {
+            dispatcher.Register("DISCONNECT", (json, sender) =>
             {
-                Debug.LogError($"[NetworkInstaller] Error en DISCONNECT: {e.Message}");
-            }
-        });
+                try
+                {
+                    Debug.Log("[NetworkInstaller] DISCONNECT recibido (cliente) - servidor se está cerrando");
+
+                    var players = lobbyManager.GetAllPlayers().ToList();
+                    foreach (var p in players)
+                    {
+                        lobbyManager.RemovePlayerRemote(p.Id);
+                    }
+
+                    client.Disconnect();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"[NetworkInstaller] Error en DISCONNECT (cliente): {e.Message}");
+                }
+            });
+        }
 
         Debug.Log("[NetworkInstaller] Network inicializado");
 
-        // Inicializar LobbyNetworkService con sus dependencias (incluyendo clientState)
-        lobbyNetworkService?.Init(lobbyManager, broadcastService, builder, isHost, clientState, clientPacketHandler);
+        lobbyNetworkService?.Init(lobbyManager, broadcastService, builder, isHost, clientState, clientPacketHandler, server, connectionManager);
 
-        // --- Retornar servicios ---
         return new NetworkServices
         {
             Server = server,
@@ -133,6 +158,7 @@ public class NetworkInstaller
             ConnectionManager = connectionManager,
             ClientState = clientState,
             BroadcastService = broadcastService
+
         };
     }
 }
@@ -147,4 +173,84 @@ public class NetworkServices
     public ClientConnectionManager ConnectionManager { get; set; }
     public ClientState ClientState { get; set; }
     public BroadcastService BroadcastService { get; set; }
+
+
+    private Action<string, IPEndPoint> CreateDisconnectHandler(bool isHost, LobbyManager lobbyManager)
+    {
+        if (isHost)
+        {
+            return async (json, sender) =>
+            {
+                try
+                {
+                    Debug.Log("[NetworkServices] DISCONNECT recibido (servidor)");
+
+                    var clientId = ConnectionManager.GetClientId(sender);
+                    if (clientId <= 0)
+                    {
+                        Debug.LogWarning("ClientId inválido en DISCONNECT");
+                        return;
+                    }
+
+                    ConnectionManager.RemoveClient(sender);
+                    lobbyManager.RemovePlayerRemote(clientId);
+
+                    var packet = Builder.CreateRemovePlayer(clientId);
+                    await BroadcastService.SendToAll(packet);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"[NetworkServices] Error en DISCONNECT (servidor): {e.Message}");
+                }
+            };
+        }
+        else
+        {
+            return (json, sender) =>
+            {
+                try
+                {
+                    Debug.Log("[NetworkServices] DISCONNECT recibido (cliente) - servidor se está cerrando");
+
+                    var players = lobbyManager.GetAllPlayers().ToList();
+                    foreach (var p in players)
+                        lobbyManager.RemovePlayerRemote(p.Id);
+
+                    Client?.Disconnect();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"[NetworkServices] Error en DISCONNECT (cliente): {e.Message}");
+                }
+            };
+        }
+    }
+
+    public void SwitchToHost(LobbyManager lobbyManager)
+    {
+        try
+        {
+            Dispatcher.Unregister("DISCONNECT");
+            Dispatcher.Register("DISCONNECT",
+                CreateDisconnectHandler(true, lobbyManager));
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[NetworkServices] SwitchToHost error: {e.Message}");
+        }
+    }
+
+    public void SwitchToClient(LobbyManager lobbyManager)
+    {
+        try
+        {
+            Dispatcher.Unregister("DISCONNECT");
+            Dispatcher.Register("DISCONNECT",
+                CreateDisconnectHandler(false, lobbyManager));
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[NetworkServices] SwitchToClient error: {e.Message}");
+        }
+    }
 }

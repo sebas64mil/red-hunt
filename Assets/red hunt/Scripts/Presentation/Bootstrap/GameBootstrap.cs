@@ -85,6 +85,8 @@ public class GameBootstrap : MonoBehaviour
 
             presentationServices.LobbyUI.SetConnected(true);
 
+            networkServices.SwitchToHost(applicationServices.LobbyManager);
+
             lobbyNetworkService.JoinLobby();
         };
 
@@ -93,6 +95,10 @@ public class GameBootstrap : MonoBehaviour
             Debug.Log($"[Bootstrap] Unirse a Lobby {ip}:{port}");
 
             await networkServices.Client.ConnectToServer(ip, port);
+
+
+            networkServices.SwitchToClient(applicationServices.LobbyManager);
+
 
             lobbyNetworkService.SetIsHost(false);
             presentationServices.LobbyUI.SetIsHost(false);
@@ -108,6 +114,22 @@ public class GameBootstrap : MonoBehaviour
 
             presentationServices.LobbyUI.SetConnected(false);
         };
+
+
+        presentationServices.LobbyUI.OnShutdownServer += async () =>
+        {
+            Debug.Log("[Bootstrap] Host solicitó apagar el servidor desde la UI");
+
+            await lobbyNetworkService.LeaveLobby();
+
+            networkServices.Server?.Disconnect();
+
+            presentationServices.LobbyUI.SetConnected(false);
+            presentationServices.LobbyUI.SetIsHost(false);
+        };
+
+
+
 
         // ==================== APPLICATION -> PRESENTATION ====================
 

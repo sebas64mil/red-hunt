@@ -74,4 +74,13 @@ public class ClientConnectionManager
     public int GetClientCount() => clients.Count;
 
     public int MaxClients => maxClients;
+
+
+    public void Clear()
+    {
+        clients.Clear();
+        availableIds.Clear();
+        nextId = 2;
+        Debug.Log("[ConnectionManager] Clear: conexiones reseteadas");
+    }
 }
