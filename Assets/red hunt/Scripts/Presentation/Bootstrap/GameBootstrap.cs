@@ -293,7 +293,7 @@ public class GameBootstrap : MonoBehaviour
             {
                 Debug.Log("[Bootstrap] ConnectToServer solicitado pero clientConnected ya es true; ignorando");
             }
-        }; 
+        };
 
         presentationServices.LobbyUI.OnStartGame += async () =>
         {
