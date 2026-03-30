@@ -87,6 +87,18 @@ public class PacketBuilder
     }
 
 
+    public string CreateAssignReject(int id, string reason)
+    {
+        var packet = new AssignRejectPacket
+        {
+            type = "ASSIGN_REJECT",
+            id = id,
+            reason = reason
+        };
+        return serializer.Serialize(packet);
+    }
+
+
     public string GetPacketType(string json)
     {
         if (string.IsNullOrEmpty(json)) return string.Empty;

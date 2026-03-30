@@ -29,12 +29,20 @@ public class Client : MonoBehaviour, IClient
     {
         Debug.Log("[Client] Recibido: " + msg);
 
+        if (!isServerConnected && msg != null && msg.Contains("CONNECT_ACK"))
+        {
+            Debug.Log("[Client] Conexión confirmada por el server");
+            isServerConnected = true;
+
+            isConnected = true;
+        }
+
         OnMessageReceived?.Invoke(msg, sender);
 
         dispatcher.Dispatch(msg, sender);
     }
 
-    public async Task ConnectToServer(string ipAddress, int port)
+    public async Task<bool> ConnectToServer(string ipAddress, int port)
     {
         serverEndPoint = new IPEndPoint(IPAddress.Parse(ipAddress), port);
 
@@ -47,10 +55,11 @@ public class Client : MonoBehaviour, IClient
             Debug.LogError("[Client] Error al iniciar transporte: " + ex.Message);
             try { transport.Stop(); } catch { }
             isConnected = false;
-            throw;
+            return false;
         }
 
-        isConnected = true;
+        isConnected = false;
+        isServerConnected = false;
 
         try
         {
@@ -60,15 +69,45 @@ public class Client : MonoBehaviour, IClient
         {
             Debug.LogError("[Client] Error enviando CONNECT: " + ex.Message);
             Disconnect();
-            throw;
+            return false;
         }
-    }
 
+        int timeoutMs = 3000;
+        int elapsed = 0;
+        int step = 100;
+
+        while (!isServerConnected && elapsed < timeoutMs)
+        {
+            await Task.Delay(step);
+            elapsed += step;
+        }
+
+        if (!isServerConnected)
+        {
+            Debug.LogWarning("[Client] Timeout: server no responde al CONNECT");
+
+            try
+            {
+                await SendMessageAsync("{\"type\":\"DISCONNECT\"}");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[Client] Error enviando DISCONNECT tras timeout: " + ex.Message);
+            }
+
+            Disconnect();
+            return false;
+        }
+
+        isConnected = true;
+        Debug.Log("[Client] Conectado correctamente al server");
+        return true;
+    }
     public async Task SendMessageAsync(string message)
     {
-        if (!isConnected)
+        if (transport == null || serverEndPoint == null)
         {
-            Debug.Log("[Client] Not connected");
+            Debug.Log("[Client] Transport o serverEndPoint no inicializado");
             return;
         }
 

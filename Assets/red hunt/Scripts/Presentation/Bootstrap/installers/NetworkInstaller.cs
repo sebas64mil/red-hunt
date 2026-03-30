@@ -47,6 +47,21 @@ public class NetworkInstaller
             lobbyNetworkService?.HandlePacketReceived(json);
         });
 
+
+        dispatcher.Register("ASSIGN_REJECT", (json, sender) =>
+        {
+            try
+            {
+                clientPacketHandler.HandleAssignReject(json);
+                lobbyNetworkService?.HandlePacketReceived(json);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[NetworkInstaller] Error procesando ASSIGN_REJECT: {e.Message}");
+            }
+        });
+
+
         dispatcher.Register("PLAYER", async (json, sender) =>
         {
             try
@@ -54,12 +69,46 @@ public class NetworkInstaller
                 var packet = serializer.Deserialize<PlayerPacket>(json);
                 if (packet == null) return;
 
+                if (lobbyNetworkService != null && lobbyNetworkService.IsHost)
+                {
+                    var allPlayers = lobbyManager?.GetAllPlayers() ?? Enumerable.Empty<PlayerSession>();
+
+                    int existingKillers = allPlayers.Count(p =>
+                        p.PlayerType == PlayerType.Killer.ToString() && p.Id != packet.id);
+
+                    if (packet.playerType == PlayerType.Killer.ToString() && existingKillers >= 1)
+                    {
+                        var rejectJson = builder.CreateAssignReject(packet.id, "Ya existe un Killer en el lobby");
+                        try
+                        {
+                            if (server != null)
+                                await server.SendToClientAsync(rejectJson, sender);
+                        }
+                        catch (Exception sendEx)
+                        {
+                            Debug.LogWarning($"[NetworkInstaller] Error enviando ASSIGN_REJECT al emisor: {sendEx.Message}");
+                        }
+
+                        try
+                        {
+                            connectionManager?.RemoveClient(sender);
+                            Debug.Log($"[NetworkInstaller] ConnectionManager: cliente {sender} removido tras ASSIGN_REJECT (id liberado)");
+                        }
+                        catch (Exception rmEx)
+                        {
+                            Debug.LogWarning($"[NetworkInstaller] Error liberando id en ConnectionManager tras ASSIGN_REJECT: {rmEx.Message}");
+                        }
+
+                        return;
+                    }
+                }
+
                 var added = lobbyManager?.AddPlayerRemote(packet.id, packet.playerType);
 
                 string authoritativeJson;
                 if (added != null)
                 {
-                    authoritativeJson = builder.CreatePlayer(added.Id, added.PlayerType);
+                    authoritativeJson = builder.CreatePlayer(packet.id, packet.playerType);
                 }
                 else
                 {
@@ -89,6 +138,8 @@ public class NetworkInstaller
                 Debug.LogError($"[NetworkInstaller] Error procesando PLAYER: {e.Message}");
             }
         });
+
+
 
 
         dispatcher.Register("PLAYER_READY", (json, sender) =>

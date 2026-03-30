@@ -19,9 +19,9 @@ public class LobbyNetworkService : MonoBehaviour
     private IServer server;
     private ClientConnectionManager connectionManager;
 
-    private AdminNetworkService adminService; 
 
     public event Action OnStartGameReceived;
+    public event Action<int> OnLocalJoinAccepted;
 
 
     public void Init(
@@ -56,11 +56,6 @@ public class LobbyNetworkService : MonoBehaviour
         this.isHost = value;
     }
 
-    public void SetAdminService(AdminNetworkService service)
-    {
-        this.adminService = service;
-    }
-
     public void JoinLobby(string playerType = null)
     {
         string resolvedType = playerType;
@@ -77,6 +72,33 @@ public class LobbyNetworkService : MonoBehaviour
         if (!isHost)
         {
             clientState?.SetPendingPlayerType(resolvedType);
+            return;
+        }
+
+        try
+        {
+            clientState?.SetPlayerId(1);
+            clientState?.SetConnected(true);
+        }
+        catch { }
+
+        var added = lobbyManager.AddPlayerRemote(1, resolvedType);
+        if (added != null)
+        {
+            SpawnManagerInstance?.SpawnRemotePlayer(added.Id, ParsePlayerType(added.PlayerType));
+
+            if (clientState != null && clientState.PlayerId == added.Id)
+            {
+                try
+                {
+                    OnLocalJoinAccepted?.Invoke(added.Id);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"[LobbyNetworkService] Error invocando OnLocalJoinAccepted: {e.Message}");
+                }
+            }
+
             return;
         }
 
@@ -215,6 +237,10 @@ public class LobbyNetworkService : MonoBehaviour
                 HandleRemovePlayerPacket(packetJson);
                 break;
 
+            case "ASSIGN_REJECT":
+                Debug.Log("[LobbyNetworkService] ASSIGN_REJECT recibido");
+                break;
+
             case "START_GAME":
                 HandleStartGamePacket(packetJson);
                 break;
@@ -230,19 +256,52 @@ public class LobbyNetworkService : MonoBehaviour
         var playerPacket = packetBuilder.Serializer.Deserialize<PlayerPacket>(json);
         if (playerPacket == null) return;
 
+        string requestedType = playerPacket.playerType;
+
+        if (isHost)
+        {
+            var currentPlayers = lobbyManager.GetAllPlayers().ToList();
+            bool anyKiller = currentPlayers.Any(p => p.PlayerType == PlayerType.Killer.ToString());
+
+            int hostId = currentPlayers.Any() ? currentPlayers.Min(p => p.Id) : -1;
+            bool hostIsEscapist = false;
+            if (hostId != -1)
+            {
+                var hostPlayer = currentPlayers.FirstOrDefault(p => p.Id == hostId);
+                hostIsEscapist = hostPlayer != null && hostPlayer.PlayerType == PlayerType.Escapist.ToString();
+            }
+
+            if (hostIsEscapist && !anyKiller)
+            {
+                if (requestedType != PlayerType.Killer.ToString())
+                {
+                    Debug.Log("[LobbyNetworkService] Host es Escapist y no hay Killer; promoviendo este cliente a Killer");
+                    requestedType = PlayerType.Killer.ToString();
+                }
+            }
+            else
+            {
+                if (requestedType == PlayerType.Killer.ToString() && anyKiller)
+                {
+                    Debug.Log("[LobbyNetworkService] Ya existe un Killer; asignando Escapist en su lugar");
+                    requestedType = PlayerType.Escapist.ToString();
+                }
+            }
+        }
+
         var existing = lobbyManager.GetAllPlayers().FirstOrDefault(p => p.Id == playerPacket.id);
         if (existing != null)
         {
-            if (existing.PlayerType != playerPacket.playerType)
+            if (existing.PlayerType != requestedType)
             {
-                Debug.Log($"[LobbyNetworkService] Actualizando tipo player {playerPacket.id} -> {playerPacket.playerType}");
-                var updated = lobbyManager.UpdatePlayerTypeRemote(playerPacket.id, playerPacket.playerType);
+                Debug.Log($"[LobbyNetworkService] Actualizando tipo player {playerPacket.id} -> {requestedType}");
+                var updated = lobbyManager.UpdatePlayerTypeRemote(playerPacket.id, requestedType);
                 if (updated)
                 {
                     SpawnManagerInstance?.RemovePlayer(playerPacket.id);
                     SpawnManagerInstance?.SpawnRemotePlayer(
                         playerPacket.id,
-                        ParsePlayerType(playerPacket.playerType)
+                        ParsePlayerType(requestedType)
                     );
                 }
             }
@@ -250,7 +309,7 @@ public class LobbyNetworkService : MonoBehaviour
             return;
         }
 
-        var added = lobbyManager.AddPlayerRemote(playerPacket.id, playerPacket.playerType);
+        var added = lobbyManager.AddPlayerRemote(playerPacket.id, requestedType);
         if (added == null)
         {
             Debug.LogWarning($"[LobbyNetworkService] Player {playerPacket.id} no pudo ser añadido (lobby lleno u error)");
@@ -261,6 +320,18 @@ public class LobbyNetworkService : MonoBehaviour
             added.Id,
             ParsePlayerType(added.PlayerType)
         );
+
+        if (clientState != null && clientState.PlayerId == added.Id)
+        {
+            try
+            {
+                OnLocalJoinAccepted?.Invoke(added.Id);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[LobbyNetworkService] Error invocando OnLocalJoinAccepted: {e.Message}");
+            }
+        }
     }
 
     private void HandlePlayerReadyPacket(string json)

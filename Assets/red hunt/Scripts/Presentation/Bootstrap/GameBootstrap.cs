@@ -1,4 +1,5 @@
-using System;
+ï»¿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -58,7 +59,15 @@ public class GameBootstrap : MonoBehaviour
 
                 presentationServices.LobbyUI.ResetReadyState();
 
+                TryShowLobbyForLocal(id);
             };
+
+            lobbyNetworkService.OnLocalJoinAccepted += (id) =>
+            {
+                Debug.Log($"[Bootstrap] Join confirmado por server para id: {id}");
+                TryShowLobbyForLocal(id);
+            };
+
 
             // ==================== FASE 5: CONEXIONES ====================
             Debug.Log("[GameBootstrap] Fase 5: Conectando capas...");
@@ -73,6 +82,31 @@ public class GameBootstrap : MonoBehaviour
         }
     }
 
+    private void TryShowLobbyForLocal(int id)
+    {
+        try
+        {
+            if (lastSelectionIsHost) return;
+
+            if (networkServices?.ClientState == null) return;
+            if (networkServices.ClientState.PlayerId != id) return;
+
+            var exists = applicationServices?.LobbyManager?.GetAllPlayers()?.Any(p => p.Id == id) ?? false;
+            if (!exists)
+            {
+                Debug.Log($"[Bootstrap] TryShowLobbyForLocal: player {id} no estÃ¡ aÃºn en LobbyManager, esperando broadcast");
+                return;
+            }
+
+            presentationServices.LobbyUI.ShowLobbyPanel();
+            presentationServices.LobbyUI.SetConnected(true);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[Bootstrap] Error en TryShowLobbyForLocal: {e.Message}");
+        }
+    }
+
     private void ConnectLayers()
     {
         // ==================== CLIENT EVENTS ====================
@@ -81,10 +115,8 @@ public class GameBootstrap : MonoBehaviour
         {
             Debug.Log("[Bootstrap] Cliente desconectado - limpiando UI y estado local");
 
-            // Usar el nuevo helper en LobbyUI para restablecer la UI al main panel
             presentationServices?.LobbyUI?.ResetAllToMain();
 
-            // Limpiar admin UI y spawns locales (mantener comportamiento existente)
             adminUI.ClearAll();
 
             try
@@ -110,14 +142,14 @@ public class GameBootstrap : MonoBehaviour
 
         presentationServices.LobbyUI.OnHostChosen += () =>
         {
-            Debug.Log("[Bootstrap] OnHostChosen recibido (intención host)");
+            Debug.Log("[Bootstrap] OnHostChosen recibido (intenciÃ³n host)");
             lastSelectionIsHost = true;
         };
 
 
         presentationServices.LobbyUI.OnJoinChosen += () =>
         {
-            Debug.Log("[Bootstrap] OnJoinChosen recibido (intención join)");
+            Debug.Log("[Bootstrap] OnJoinChosen recibido (intenciÃ³n join)");
             lastSelectionIsHost = false;
         };
 
@@ -125,18 +157,29 @@ public class GameBootstrap : MonoBehaviour
         {
             Debug.Log($"[Bootstrap] Role confirmado: {role}");
 
-            presentationServices.LobbyUI.ShowLobbyPanel();
-
             if (lastSelectionIsHost)
             {
                 if (!serverStarted)
                 {
                     Debug.Log("[Bootstrap] Iniciando host (StartServer) desde OnConfirmRole");
-                    await StartHostFlow();
+                    try
+                    {
+                        await StartHostFlow();
+                        presentationServices.LobbyUI.ShowLobbyPanel();
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"[Bootstrap] Error iniciando host desde OnConfirmRole: {ex.Message}");
+                        presentationServices?.LobbyUI?.ResetAllToMain();
+                        adminUI.ClearAll();
+                        serverStarted = false;
+                        return;
+                    }
                 }
                 else
                 {
                     Debug.Log("[Bootstrap] Host ya iniciado, no reiniciando server");
+                    presentationServices.LobbyUI.ShowLobbyPanel();
                 }
             }
             else
@@ -144,16 +187,36 @@ public class GameBootstrap : MonoBehaviour
                 if (!clientConnected)
                 {
                     Debug.Log("[Bootstrap] Conectando cliente (ConnectToServer) desde OnConfirmRole");
-                    await StartClientFlow();
+                    try
+                    {
+                        await StartClientFlow();
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"[Bootstrap] Error conectando cliente desde OnConfirmRole: {ex.Message}");
+                        presentationServices?.LobbyUI?.ResetAllToMain();
+                        adminUI.ClearAll();
+                        clientConnected = false;
+                        return;
+                    }
                 }
                 else
                 {
-                    Debug.Log("[Bootstrap] Cliente ya conectado, usando conexión existente");
+                    Debug.Log("[Bootstrap] Cliente ya conectado, usando conexiï¿½n existente");
                 }
             }
 
-            lobbyNetworkService.JoinLobby(role.ToString());
+            try
+            {
+                lobbyNetworkService.JoinLobby(role.ToString());
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[Bootstrap] Error en JoinLobby: {ex.Message}");
+            }
         };
+
+
         presentationServices.LobbyUI.OnCreateLobby += async (ip, port) =>
         {
             Debug.Log($"[Bootstrap] Crear Lobby {ip}:{port}");
@@ -185,34 +248,53 @@ public class GameBootstrap : MonoBehaviour
 
             if (!clientConnected)
             {
-                await networkServices.Client.ConnectToServer(ip, port);
-                clientConnected = true;
+                try
+                {
+                    bool success = await networkServices.Client.ConnectToServer(ip, port);
+                    if (!success)
+                    {
+                        Debug.LogWarning("[Bootstrap] ConexiÃ³n al servidor fallida en OnJoinLobby");
+                        presentationServices?.LobbyUI?.ResetAllToMain();
+                        adminUI.ClearAll();
+                        clientConnected = false;
+                        return;
+                    }
 
-                lobbyNetworkService.SetIsHost(false);
-                presentationServices.LobbyUI.SetIsHost(false);
-                adminUI.SetIsHost(false);
+                    clientConnected = true;
 
-                networkServices.AdminService.SetIsHost(false);
+                    lobbyNetworkService.SetIsHost(false);
+                    presentationServices.LobbyUI.SetIsHost(false);
+                    adminUI.SetIsHost(false);
 
-                presentationServices.LobbyUI.SetConnected(true);
+                    networkServices.AdminService.SetIsHost(false);
 
-                networkServices.SwitchToClient(applicationServices.LobbyManager);
+                    presentationServices.LobbyUI.SetConnected(true);
+
+                    networkServices.SwitchToClient(applicationServices.LobbyManager);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[Bootstrap] Error al conectar cliente en OnJoinLobby: {ex.Message}");
+                    presentationServices?.LobbyUI?.ResetAllToMain();
+                    adminUI.ClearAll();
+                    clientConnected = false;
+                }
             }
             else
             {
                 Debug.Log("[Bootstrap] ConnectToServer solicitado pero clientConnected ya es true; ignorando");
             }
-        }; ;
+        }; 
 
         presentationServices.LobbyUI.OnStartGame += async () =>
         {
-            Debug.Log("[Bootstrap] Host solicitó START_GAME desde UI");
+            Debug.Log("[Bootstrap] Host solicitÃ³ START_GAME desde UI");
             await lobbyNetworkService.StartGame();
         };
 
         presentationServices.LobbyUI.OnLeaveLobby += async () =>
         {
-            Debug.Log("[Bootstrap] Usuario solicitó abandonar el lobby (voluntario)");
+            Debug.Log("[Bootstrap] Usuario solicitÃ³ abandonar el lobby (voluntario)");
 
             await lobbyNetworkService.LeaveLobby();
 
@@ -242,7 +324,7 @@ public class GameBootstrap : MonoBehaviour
 
         presentationServices.LobbyUI.OnShutdownServer += async () =>
         {
-            Debug.Log("[Bootstrap] Host solicitó apagar el servidor desde la UI");
+            Debug.Log("[Bootstrap] Host solicitÃ³ apagar el servidor desde la UI");
 
             await lobbyNetworkService.LeaveLobby();
 
@@ -284,6 +366,9 @@ public class GameBootstrap : MonoBehaviour
             presentationServices.SpawnUI.OnPlayerAssigned(player.Id, player.PlayerType);
 
             adminUI.AddPlayerEntry(player.Id);
+
+            TryShowLobbyForLocal(player.Id);
+
         };
 
         applicationServices.LobbyManager.OnPlayerLeft += (playerId) =>
@@ -328,9 +413,16 @@ public class GameBootstrap : MonoBehaviour
         networkServices.SwitchToHost(applicationServices.LobbyManager);
     }
 
-    private async Task StartClientFlow()
+    private async Task<bool> StartClientFlow()
     {
-        await networkServices.Client.ConnectToServer(lobbyUI.IpAddress, lobbyUI.Port);
+        bool success = await networkServices.Client.ConnectToServer(lobbyUI.IpAddress, lobbyUI.Port);
+
+        if (!success)
+        {
+            clientConnected = false;
+            return false;
+        }
+
         clientConnected = true;
 
         lobbyNetworkService.SetIsHost(false);
@@ -342,6 +434,8 @@ public class GameBootstrap : MonoBehaviour
         presentationServices.LobbyUI.SetConnected(true);
 
         networkServices.SwitchToClient(applicationServices.LobbyManager);
+
+        return true;
     }
 
 }

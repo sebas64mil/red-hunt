@@ -23,15 +23,6 @@ public static class AdminInstaller
             var adminService = new AdminNetworkService(server, broadcastService, packetBuilder, adminBuilder, connectionManager, lobbyManager, spawnManager, isHost);
             var adminHandler = new AdminPacketHandler(packetBuilder, adminService, clientState, lobbyManager, client, spawnManager);
 
-            try
-            {
-                lobbyNetworkService?.SetAdminService(adminService);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning($"[AdminInstaller] No se pudo setear adminService en LobbyNetworkService: {ex.Message}");
-            }
-
             dispatcher.Register("ADMIN_KICK", (json, sender) =>
             {
                 try

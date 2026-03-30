@@ -1,38 +1,42 @@
 
 
-# Registro de cambios — 2026-03-29
+# Red Hunt — Estado y Arquitectura del Proyecto (Actualizado 30/03/2026)
 
-**Resumen breve**
-- Corrección del flujo de expulsión y desconexión para asegurar que el cliente expulsado (o el que se desconecta voluntariamente) también limpie su estado local y deje de ver las instancias de otros jugadores.
+## Resumen de cambios recientes (commit lobby)
 
-**Cambios principales**
-- Se reordenó la lógica de expulsión en `Assets/red hunt/Scripts/Application/Services/Admin/AdminNetworkService.cs`:
-  - Ahora el servidor crea y envía el paquete `REMOVE_PLAYER` a todos los clientes antes de eliminar la conexión del `ClientConnectionManager`.
-  - Después de hacer el broadcast del `REMOVE_PLAYER`, se elimina la conexión del manager y se envía el paquete `ADMIN_KICK` al cliente objetivo para forzar su desconexión local.
-- En el cliente se añadió limpieza explícita del estado local cuando recibe `ADMIN_KICK` (handler en `Assets/red hunt/Scripts/Network/Handlers/AdminPacketHandler.cs`): primero se remueven todos los players del `LobbyManager` y del `SpawnManager` local y luego se desconecta el `Client`.
-- En la salida voluntaria (`LeaveLobby`) el cliente envía `DISCONNECT` y limpia su estado local (ahora `LobbyNetworkService.LeaveLobby()` remueve todos los players locales).
-- Se actualizó el flujo de cierre del host (`ShutdownServer`) para enviar `DISCONNECT` a todos, esperar un breve margen y luego limpiar conexiones y spawns en el servidor.
+- **Lobby robusto y seguro:**
+  - El host siempre es ID 1 (evita condiciones de carrera).
+  - IDs de jugadores reutilizables y control de máximo de jugadores.
+  - Flujo de join/leave/kick robusto: broadcast de REMOVE_PLAYER, limpieza local y desconexión ordenada.
+  - Mejoras en handshake y transporte cliente-servidor, manejo de errores y desconexión.
+  - Soporte para iniciar partida y sincronizar estado del lobby.
 
-**Por qué se hizo**
-- UDP puede perder o reordenar paquetes críticos; si el cliente expulsado no recibe `REMOVE_PLAYER` pero sí recibe `ADMIN_KICK`, su vista puede quedar inconsistente (sigue viendo avatares de otros aunque esté desconectado). La nueva secuencia evita ese caso y garantiza que el cliente expulsado limpie su propio estado antes de desconectarse.
+- **Principales archivos modificados:**
+  - `LobbyNetworkService.cs`: Forzado de ID host, lógica de join/leave, shutdown ordenado, manejo de paquetes y sincronización de estado.
+  - `LobbyManager.cs`: Añadir players remotos con ID, bloqueo para operaciones remotas, control de límite y notificaciones.
+  - `PlayerRegistry.cs`: IDs reutilizables, métodos para aceptar IDs explícitos y actualizar tipo de jugador.
+  - `ClientConnectionManager.cs`: IDs de cliente desde 2, reutilización y limpieza.
+  - `ClientPacketHandler.cs`: Manejo de asignación de player, desconexión y limpieza de estado.
+  - `ClientState.cs`: Estado de conexión y eventos.
+  - `Client.cs`: Handshake robusto, mejor manejo de transporte y desconexión.
+  - `Server.cs`: Dispatch de mensajes y limpieza.
+  - `BroadcastService.cs`: Broadcast a todos los clientes.
+  - `PacketBuilder.cs`: Nuevos builders para todos los paquetes clave.
+  - `SpawnManager.cs`: Spawn/remove de players remotos y posiciones.
+  - `UI/Admin/*`: Listado de jugadores, botón kick, flujo de kick y limpieza de estado.
+  - `Network/Handlers/*`: Manejo centralizado y robusto de paquetes admin/connection.
+  - `JoinLobbyCommand.cs` y `LeaveLobbyCommand.cs`: Integración de comandos en el flujo de lobby.
+  - **Documentación:** Registro de cambios y explicación de problemas UDP/reordenamiento y soluciones.
 
-**Qué comprobar (pruebas recomendadas)**
-1. Host expulsa player X:
-  - Todos los clientes (incluido X) reciben `REMOVE_PLAYER` y eliminan la instancia de X.
-  - El cliente X recibe `ADMIN_KICK` y se desconecta limpiamente (no quedan avatares visibles desde su perspectiva).
-2. Cliente X hace leave voluntario:
-  - X envía `DISCONNECT`, limpia su estado local y no ve más instancias.
-  - El servidor rebroadcast `REMOVE_PLAYER` y los demás clientes eliminan la instancia de X.
-3. Logs:
-  - Ver en los logs la secuencia: `CREATE_REMOVE_PLAYER` -> `SEND REMOVE_PLAYER` -> `REMOVE FROM MANAGER` -> `ADMIN_KICK` (target) -> `CLIENT DISCONNECT`.
+## Objetivos cumplidos
 
-**Recomendaciones futuras**
-- Implementar ACKs para mensajes críticos (`REMOVE_PLAYER`, `DISCONNECT`, `ADMIN_KICK`) o usar un canal fiable para control.
-- Centralizar la limpieza de estado local en una función reutilizable (`LocalState.CleanupOnDisconnect()`).
-- Añadir trazas (debug) con timestamps para depurar reordenamientos y pérdidas en entornos con NAT/firewall.
-- Añadir tests de integración para los flujos join/leave/kick.
+- Evitar condiciones de carrera en asignación de IDs (host = ID 1 garantizado).
+- Flujo de join/leave/kick robusto y ordenado.
+- Reutilización segura de IDs y control del máximo de players.
+- Mejoras en handshake, transporte y manejo de errores.
+- Sincronización de estado y soporte para iniciar partida.
 
-# Red Hunt - Estado y Arquitectura del Proyecto
+---
 
 ## Resumen Ejecutivo
 
@@ -45,217 +49,40 @@ El proyecto ahora cuenta con una **arquitectura profesional y escalable**:
 
 ---
 
-## Estado Inicial vs Estado Final
 
-### Antes
-```
-PlayerBootstrap (God Class)
-  Inicializaba Network, Application, Presentation
-  Conectaba eventos
-  500+ líneas de lógica mezclada
-```
-**Problemas:**
-- Imposible de testear
-- Un cambio pequeño rompía todo
-- Código duplicado
-- Difícil de mantener
-- No escalable
+## Arquitectura actual
 
-### Ahora
-```
-GameBootstrap (Orquestador limpio)
-  Ejecuta NetworkInstaller (80 líneas)
-  Ejecuta ApplicationInstaller (20 líneas)
-  Ejecuta PresentationInstaller (40 líneas)
-  Conecta eventos (50 líneas)
-  Total: ~60 líneas en GameBootstrap
-
-+ NetworkServices (contiene Network)
-+ ApplicationServices (contiene App)
-+ PresentationServices (contiene UI)
-```
-**Beneficios:**
-- Fácil de testear (cada Installer independiente)
-- Un cambio afecta solo su Installer
-- Código centralizado por responsabilidad
-- Fácil de mantener
-- Escalable (agregar servicio = agregar 5 líneas)
+- **Separación clara de capas:** Network, Application, Presentation.
+- **Patrón Installers:** Inicialización limpia y desacoplada.
+- **Sin God Classes:** Cada responsabilidad está centralizada y desacoplada.
+- **Fácil de testear y mantener:** Cambios localizados, bajo acoplamiento.
 
 ---
 
-## Estructura Actual del Proyecto
+---
 
-```text
+
+## Estructura del proyecto
+
+
+```
 Assets/red hunt/Scripts/
 ├── Network/
-│   ├── Transport/
-│   │   ├── Server.cs
-│   │   ├── Client.cs
-│   │   ├── ClientConnectionManager.cs
-│   │   ├── ClientState.cs
-│   │   └── BroadcastService.cs
-│   ├── Handlers/
-│   │   ├── ConnectionHandler.cs
-│   │   └── ClientPacketHandler.cs
-│   ├── Dispatching/
-│   │   └── PacketDispatcher.cs
-│   ├── Packets/
-│   │   ├── BasePacket.cs
-│   │   ├── AssignPlayerPacket.cs
-│   │   ├── PlayerReadyPacket.cs
-│   │   └── PacketBuilder.cs
-│   ├── Serialization/
-│   │   └── JsonSerializer.cs
-│   └── Interfaces/
-│       ├── IServer.cs
-│       ├── IClient.cs
-│       └── ISerializer.cs
-│
+│   ├── Transport/ (Server, Client, ClientConnectionManager, ClientState, BroadcastService)
+│   ├── Handlers/ (ConnectionHandler, ClientPacketHandler, AdminPacketHandler, etc.)
+│   ├── Packets/ (BasePacket, PacketBuilder, etc.)
+│   └── ...
 ├── Application/
 │   └── Services/
-│       ├── LobbyGame/
-│       │   ├── ILobbyCommand.cs
-│       │   ├── LobbyManager.cs
-│       │   ├── JoinLobbyCommand.cs
-│       │   └── LeaveLobbyCommand.cs
-│       └── Session/
-│           ├── PlayerRegistry.cs
-│           └── PlayerSession.cs
-│
+│       ├── LobbyGame/ (LobbyManager, LobbyNetworkService, JoinLobbyCommand, LeaveLobbyCommand)
+│       └── Session/ (PlayerRegistry, PlayerSession)
 ├── Presentation/
-│   └── Bootstrap/
-│       ├── GameBootstrap.cs (Orquestador)
-│       └── installers/
-│           ├── NetworkInstaller.cs
-│           ├── ApplicationInstaller.cs
-│           └── PresentationInstaller.cs
-│   └── UI/
+│   ├── Bootstrap/ (GameBootstrap, NetworkInstaller, ApplicationInstaller, PresentationInstaller)
+│   └── UI/ (AdminUI, LobbyUI, etc.)
+└── ...
 ```
 
 ---
 
-## Archivos Clave Creados/Modificados
 
-1. GameBootstrap.cs - Orquestador limpio
-2. NetworkInstaller.cs - Inicialización de red completa
-3. ApplicationInstaller.cs - Inicialización de app
-4. PresentationInstaller.cs - Inicialización de UI
-5. ARCHITECTURE_OVERVIEW.md - Documentación de arquitectura
-
-- `Transport/`: capa base de envio/recepcion (socket, relay, etc.).
-- `Serialization/`: serializacion y deserializacion de mensajes.
-- `Packets/`: definicion de paquetes/eventos de red.
-- `Handlers/`: manejo de paquetes recibidos.
-- `Dispatching/`: ruteo de eventos/mensajes a handlers.
-- `Lobby/`: flujo de sala, conexion de jugadores y estado previo a partida.
-- `Interfaces/`: contratos para desacoplar la red del resto del sistema.
-
-Regla: no debe contener logica de UI; solo comunicacion y adaptacion de datos.
-
-### 4) Presentation (Capa visual/audio)
-Responsable de mostrar el estado del juego al jugador.
-
-- `UI/`: pantallas, HUD, menus y feedback visual de interfaz.
-- `Animation/`: control de animaciones.
-- `VFX/`: efectos visuales.
-- `Sounds/`: efectos de audio y musica.
-
-Regla: consume estado/casos de uso; no debe contener reglas de negocio complejas.
-
-
-## Funcionalidades recientes integradas
-
-- **Visualización en tiempo real de jugadores conectados y desconectados:**
-  - Cuando un jugador se conecta, su avatar aparece visualmente en la escena de Unity.
-  - Al desconectarse, el avatar desaparece automáticamente.
-  - La UI refleja el estado de conexión de todos los jugadores en el lobby.
-- **Límite de jugadores:**
-  - El sistema impide que se unan más jugadores que el máximo configurado (por defecto: 4).
-  - El lobby muestra visualmente si está lleno.
-- **Reutilización de IDs:**
-  - Cuando un jugador se desconecta, su ID queda disponible para futuros jugadores.
-  - Esto optimiza la gestión de recursos y evita el crecimiento indefinido de IDs.
-
-## Flujo recomendado entre capas
-
-1. `Presentation` captura input/acciones del jugador y muestra visualmente los cambios (conexión/desconexión, nuevos avatares, etc).
-2. `Application` ejecuta casos de uso, valida el límite de jugadores y gestiona la asignación/reutilización de IDs.
-3. `Application` consulta/actualiza `Domains`.
-4. Si hay multiplayer, `Application` interactúa con `Network` por interfaces.
-5. `Presentation` refresca la vista con el nuevo estado, asegurando que la UI y la escena de Unity estén sincronizadas con el estado real del lobby y los jugadores.
-
-## Estado actual del repositorio
-
-La estructura de carpetas de `Scripts` ya tiene implementaciones activas.
-
-Scripts detectados en la revision:
-
-- `Application/Services/LobbyController.cs`
-- `Network/Bootstrap/PlayerBootstrap.cs`
-- `Network/Dispatching/PacketDispatcher.cs`
-- `Network/Handlers/PlayerHandler.cs`
-- `Network/Interfaces/IGameConnection.cs`
-- `Network/Interfaces/IClient.cs`
-- `Network/Interfaces/ISerializer.cs`
-- `Network/Interfaces/IServer.cs`
-- `Network/Packets/BasePacket.cs`
-- `Network/Packets/PacketBuilder.cs`
-- `Network/Packets/PlayerPacket.cs`
-- `Network/Serialization/JsonSerializer.cs`
-- `Network/Transport/Client/Client.cs`
-- `Network/Transport/Server/Server.cs`
-- `Presentation/UI/Lobby/LobbyUI.cs`
-
-## Actualizacion del proyecto 2
-
-En esta etapa ya se encuentra montada una base funcional para multiplayer y flujo de lobby:
-
-- Contratos de red (`IGameConnection`, `IClient`, `IServer`, `ISerializer`).
-- Transporte UDP cliente/servidor con recepcion asincrona.
-- Serializacion JSON de paquetes.
-- Sistema de paquetes (`BasePacket`, `PlayerPacket`, `PacketBuilder`).
-- Dispatching por tipo de paquete y handler dedicado de jugador.
-- Bootstrap de dependencias para inicializar red + dispatcher + handler.
-- Servicio de aplicacion para crear/unirse a lobby.
-- UI de lobby conectada al flujo de seleccion de rol.
-
-Esto confirma que el proyecto ya paso de una fase solo estructural a una fase de implementacion base ejecutable.
-
-## Recomendaciones de mejora (para despues)
-
-1. Validar y sanear payloads antes de deserializar para evitar errores y datos malformados.
-2. Definir un protocolo minimo de confiabilidad sobre UDP (ACK, reintentos y timeout).
-3. Evitar valores hardcodeados en UI (IP/puerto) y moverlos a configuracion editable.
-4. Persistir estado de sesion de jugadores (mapa de cliente, rol, estado en lobby).
-5. Implementar reconexion y heartbeat para detectar desconexiones de forma robusta.
-6. Reemplazar `Debug.Log` critico por logging estructurado con niveles.
-7. Agregar pruebas unitarias para `PacketDispatcher`, `PlayerHandler` y `LobbyController`.
-8. Documentar el flujo host/guest con un diagrama simple de mensajes en el README.
-9. Revisar el desacoplamiento entre `Presentation` y `Network` para reducir acoplamiento futuro.
-10. Definir convencion de versionado de paquetes para compatibilidad hacia adelante.
-
-Cuando empieces a crear clases, intenta mantener esta regla de dependencias:
-
-- `Domains` no depende de nadie.
-- `Application` depende de `Domains`.
-- `Network` y `Presentation` implementan/adaptan lo que `Application` necesita.
-
-# Cambios recientes (29/03/2026)
-
-- **LobbyManager.cs**: Lógica para evitar más de un Killer cliente; si un cliente pide Killer y ya hay otro, se le asigna Escapist. Sincronización y manejo de errores mejorados.
-- **LobbyNetworkService.cs**: Mejor sincronización de tipos de jugador, soporte para `START_GAME`, limpieza de estado local al salir, y evento para inicio de partida.
-- **PlayerRegistry.cs**: Nuevo método para actualizar tipo de jugador manteniendo estado ready/conectado.
-- **PacketBuilder.cs**: Nuevo paquete `START_GAME` para sincronizar inicio de partida.
-- **Client.cs / UdpTransport.cs**: Mejoras de robustez y manejo de errores en transporte y desconexión.
-- **ClientState.cs**: Flag de conexión y método para actualizarlo.
-- **GameBootstrap.cs**: Refactor de flujo UI/red, selección de rol previa, limpieza de estado y reconexión, integración de inicio de partida.
-- **LobbyUI.cs**: Refactor de UI: paneles main/roles/lobby, botones de roles, ready/start, helpers para limpiar/resetear estado visual y selección.
-- **AdminInstaller.cs / NetworkInstaller.cs**: Mejor integración de servicios y manejo autoritativo de paquetes PLAYER.
-
-## Tareas pendientes
-
-- [ ] **Caso crítico:** Si el host es Killer, no debe haber ningún otro Killer (ni cliente ni host duplicado). Falta forzar la exclusividad absoluta cuando el host ya es Killer.
-- [ ] Lógica de juego: una vez resuelto el caso anterior, implementar transición de lobby a partida y sincronización de estado de juego.
-- [ ] Mejorar feedback visual en la UI para mostrar claramente el rol asignado y errores de selección.
-- [ ] (Recomendado) Centralizar validación de roles y restricciones en función reutilizable.
 

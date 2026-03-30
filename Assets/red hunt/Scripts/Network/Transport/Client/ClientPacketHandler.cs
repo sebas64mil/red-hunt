@@ -32,6 +32,16 @@ public class ClientPacketHandler
 
         state.SetPlayerId(packet.id);
 
+        try
+        {
+            state.SetConnected(true);
+            (client as Client).isServerConnected = true;
+        }
+        catch
+        {
+            // .....................
+        }
+
         Debug.Log($"[Client] Mi ID asignado es: {packet.id}");
 
         var pendingType = state.PendingPlayerType;
@@ -45,6 +55,30 @@ public class ClientPacketHandler
         {
             var readyPacket = builder.CreatePlayerReady(packet.id);
             await client.SendMessageAsync(readyPacket);
+        }
+    }
+
+
+    public void HandleAssignReject(string json)
+    {
+        var packet = serializer.Deserialize<AssignRejectPacket>(json);
+
+        if (packet == null)
+        {
+            Debug.LogWarning("[Client] ASSIGN_REJECT inválido");
+            return;
+        }
+
+        Debug.LogWarning($"[Client] ASSIGN_REJECT recibido para id:{packet.id} motivo:{packet.reason}");
+        try
+        {
+            state.ClearPendingPlayerType();
+            state.SetPlayerId(-1);
+            (client as Client)?.Disconnect();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[Client] Error al procesar ASSIGN_REJECT: {e.Message}");
         }
     }
 
