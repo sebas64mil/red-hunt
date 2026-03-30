@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 
 public class LobbyManager
 {
     private readonly PlayerRegistry playerRegistry;
     private readonly int maxPlayers;
+    private readonly object syncRoot = new();
 
     public LobbyState CurrentState { get; private set; }
 
@@ -54,22 +56,71 @@ public class LobbyManager
 
     }
 
-
     public PlayerSession AddPlayerRemote(int id, string playerType)
     {
-        if (IsFull())
+        lock (syncRoot)
         {
-            UnityEngine.Debug.LogWarning("[Lobby] Lobby lleno, ignorando player remoto");
-            return null;
+            if (IsFull())
+            {
+                Debug.LogWarning("[Lobby] Lobby lleno, ignorando player remoto");
+                return null;
+            }
+
+            try
+            {
+                var allPlayers = playerRegistry.GetAllPlayers().ToList();
+
+    
+                int hostId = allPlayers.Any(p => p.Id == 1)
+                    ? 1
+                    : (allPlayers.Any() ? allPlayers.Min(p => p.Id) : -1);
+
+                int clientKillers = allPlayers.Count(p =>
+                    p.PlayerType == PlayerType.Killer.ToString() && p.Id != hostId);
+
+                bool newIsKiller = playerType == PlayerType.Killer.ToString();
+
+                if (newIsKiller && clientKillers >= 1)
+                {
+                    Debug.Log($"[Lobby] Player {id} solicitó Killer, pero ya existe {clientKillers} killer(es) cliente. Se asignará Escapist.");
+                    playerType = PlayerType.Escapist.ToString();
+                }
+
+                var player = playerRegistry.AddPlayerWithId(id, playerType);
+
+                OnPlayerJoined?.Invoke(player);
+                UpdateState();
+
+                return player;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[Lobby] Error añadiendo player remoto: {e.Message}");
+                return null;
+            }
         }
-
-        var player = playerRegistry.AddPlayerWithId(id, playerType);
-
-        OnPlayerJoined?.Invoke(player);
-        UpdateState();
-
-        return player;
     }
+
+
+    public bool UpdatePlayerTypeRemote(int id, string newType)
+    {
+        lock (syncRoot)
+        {
+            var existing = playerRegistry.GetPlayer(id);
+            if (existing == null) return false;
+
+            bool changed = playerRegistry.UpdatePlayerType(id, newType);
+            if (!changed) return false;
+
+            var updated = playerRegistry.GetPlayer(id);
+            OnPlayerLeft?.Invoke(id);
+            OnPlayerJoined?.Invoke(updated);
+
+            UpdateState();
+            return true;
+        }
+    }
+
 
     public void SetPlayerReady(int id)
     {
@@ -77,7 +128,7 @@ public class LobbyManager
 
         if (player == null)
         {
-            UnityEngine.Debug.LogWarning($"[Lobby] Player {id} no encontrado");
+            Debug.LogWarning($"[Lobby] Player {id} no encontrado");
             return;
         }
 

@@ -43,13 +43,42 @@ public class UdpTransport : ITransport
                 Debug.Log("[Transport] UdpClient fue desechado, finalizando ReceiveLoop");
                 break;
             }
-                catch (Exception e)
+            catch (SocketException se)
             {
                 if (isRunning)
                 {
-                    Debug.LogWarning("[Transport] Error: " + e.Message);
+                    Debug.LogWarning("[Transport] Socket error en ReceiveLoop: " + se.Message);
                 }
+                break;
             }
+            catch (Exception e)
+            {
+                if (isRunning)
+                {
+                    Debug.LogWarning("[Transport] Error en ReceiveLoop: " + e.Message);
+                }
+                break;
+            }
+        }
+
+        isRunning = false;
+
+        try
+        {
+            cancellationTokenSource?.Cancel();
+        }
+        catch { }
+
+        try
+        {
+            udpClient?.Close();
+            udpClient?.Dispose();
+        }
+        catch { }
+        finally
+        {
+            udpClient = null;
+            Debug.Log("[Transport] ReceiveLoop finalizado y recursos liberados");
         }
     }
 
@@ -61,8 +90,15 @@ public class UdpTransport : ITransport
             return;
         }
 
-        byte[] data = Encoding.UTF8.GetBytes(message);
-        await udpClient.SendAsync(data, data.Length, endpoint);
+        try
+        {
+            byte[] data = Encoding.UTF8.GetBytes(message);
+            await udpClient.SendAsync(data, data.Length, endpoint);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning("[Transport] Error enviando datagrama: " + e.Message);
+        }
     }
 
     public async Task SendToAll(string message, List<IPEndPoint> clients)
@@ -77,19 +113,37 @@ public class UdpTransport : ITransport
 
         foreach (var client in clients)
         {
-            await udpClient.SendAsync(data, data.Length, client);
+            try
+            {
+                await udpClient.SendAsync(data, data.Length, client);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[Transport] Error enviando a {client}: {e.Message}");
+            }
         }
     }
 
     public void Stop()
     {
         isRunning = false;
-        cancellationTokenSource?.Cancel();
-        cancellationTokenSource?.Dispose();
-        
-        udpClient?.Close();
-        udpClient?.Dispose();
-        udpClient = null;
+        try
+        {
+            cancellationTokenSource?.Cancel();
+            cancellationTokenSource?.Dispose();
+        }
+        catch { }
+
+        try
+        {
+            udpClient?.Close();
+            udpClient?.Dispose();
+        }
+        catch { }
+        finally
+        {
+            udpClient = null;
+        }
 
         Debug.Log("[Transport] UDP detenido");
     }

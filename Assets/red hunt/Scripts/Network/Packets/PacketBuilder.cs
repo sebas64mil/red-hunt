@@ -77,11 +77,20 @@ public class PacketBuilder
         return serializer.Serialize(packet);
     }
 
+    public string CreateStartGame()
+    {
+        var packet = new BasePacket
+        {
+            type = "START_GAME"
+        };
+        return serializer.Serialize(packet);
+    }
+
+
     public string GetPacketType(string json)
     {
         if (string.IsNullOrEmpty(json)) return string.Empty;
 
-        // JsonUtility no soporta Dictionary<string,string>, deserializamos a BasePacket
         var basePacket = serializer.Deserialize<BasePacket>(json);
         return basePacket?.type ?? string.Empty;
     }

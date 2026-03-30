@@ -31,17 +31,37 @@ public class Client : MonoBehaviour, IClient
 
         OnMessageReceived?.Invoke(msg, sender);
 
-        dispatcher.Dispatch(msg, sender); 
+        dispatcher.Dispatch(msg, sender);
     }
 
     public async Task ConnectToServer(string ipAddress, int port)
     {
         serverEndPoint = new IPEndPoint(IPAddress.Parse(ipAddress), port);
 
-        await transport.Start(0);
+        try
+        {
+            await transport.Start(0);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError("[Client] Error al iniciar transporte: " + ex.Message);
+            try { transport.Stop(); } catch { }
+            isConnected = false;
+            throw;
+        }
+
         isConnected = true;
 
-        await SendMessageAsync("{\"type\":\"CONNECT\"}"); 
+        try
+        {
+            await SendMessageAsync("{\"type\":\"CONNECT\"}");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError("[Client] Error enviando CONNECT: " + ex.Message);
+            Disconnect();
+            throw;
+        }
     }
 
     public async Task SendMessageAsync(string message)
@@ -52,18 +72,47 @@ public class Client : MonoBehaviour, IClient
             return;
         }
 
-        await transport.Send(message, serverEndPoint);
-
-        Debug.Log("[Client] Sent: " + message);
+        try
+        {
+            await transport.Send(message, serverEndPoint);
+            Debug.Log("[Client] Sent: " + message);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning("[Client] Error en SendMessageAsync: " + e.Message);
+            throw;
+        }
     }
 
     public void Disconnect()
     {
-        if (!isConnected) return;
+
+        if (!isConnected)
+        {
+            try
+            {
+                transport?.Stop();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[Client] Error forzando Stop en Disconnect: " + ex.Message);
+            }
+            isConnected = false;
+            Debug.Log("[Client] Disconnected (forced)");
+            OnDisconnected?.Invoke();
+            return;
+        }
 
         isConnected = false;
 
-        transport.Stop();
+        try
+        {
+            transport.Stop();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning("[Client] Error al detener transporte en Disconnect: " + ex.Message);
+        }
 
         Debug.Log("[Client] Disconnected");
         OnDisconnected?.Invoke();

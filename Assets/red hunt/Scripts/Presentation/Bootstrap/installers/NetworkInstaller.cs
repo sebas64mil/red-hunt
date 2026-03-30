@@ -47,22 +47,49 @@ public class NetworkInstaller
             lobbyNetworkService?.HandlePacketReceived(json);
         });
 
-        dispatcher.Register("PLAYER", (json, sender) =>
+        dispatcher.Register("PLAYER", async (json, sender) =>
         {
             try
             {
                 var packet = serializer.Deserialize<PlayerPacket>(json);
                 if (packet == null) return;
 
-                lobbyManager?.AddPlayerRemote(packet.id, packet.playerType);
+                var added = lobbyManager?.AddPlayerRemote(packet.id, packet.playerType);
 
-                broadcastService?.SendToAll(json).ConfigureAwait(false);
+                string authoritativeJson;
+                if (added != null)
+                {
+                    authoritativeJson = builder.CreatePlayer(added.Id, added.PlayerType);
+                }
+                else
+                {
+                    authoritativeJson = builder.CreateRemovePlayer(packet.id);
+                }
+                try
+                {
+                    if (server != null)
+                        await server.SendToClientAsync(authoritativeJson, sender);
+                }
+                catch (Exception sendEx)
+                {
+                    Debug.LogWarning($"[NetworkInstaller] Error enviando PACKET directo al emisor: {sendEx.Message}");
+                }
+
+                try
+                {
+                    await broadcastService?.SendToAll(authoritativeJson);
+                }
+                catch (Exception bcEx)
+                {
+                    Debug.LogWarning($"[NetworkInstaller] Error en broadcast PLAYER: {bcEx.Message}");
+                }
             }
             catch (System.Exception e)
             {
                 Debug.LogError($"[NetworkInstaller] Error procesando PLAYER: {e.Message}");
             }
         });
+
 
         dispatcher.Register("PLAYER_READY", (json, sender) =>
         {

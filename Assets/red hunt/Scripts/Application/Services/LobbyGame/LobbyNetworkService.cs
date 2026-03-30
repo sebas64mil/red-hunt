@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -17,6 +18,11 @@ public class LobbyNetworkService : MonoBehaviour
 
     private IServer server;
     private ClientConnectionManager connectionManager;
+
+    private AdminNetworkService adminService; 
+
+    public event Action OnStartGameReceived;
+
 
     public void Init(
         LobbyManager lobbyManager,
@@ -50,19 +56,31 @@ public class LobbyNetworkService : MonoBehaviour
         this.isHost = value;
     }
 
-    public void JoinLobby()
+    public void SetAdminService(AdminNetworkService service)
     {
-        string playerType = isHost
-            ? PlayerType.Killer.ToString()
-            : PlayerType.Escapist.ToString();
+        this.adminService = service;
+    }
+
+    public void JoinLobby(string playerType = null)
+    {
+        string resolvedType = playerType;
+
+        if (string.IsNullOrEmpty(resolvedType))
+        {
+            resolvedType = isHost
+                ? PlayerType.Killer.ToString()
+                : PlayerType.Escapist.ToString();
+        }
+
+        Debug.Log($"[LobbyNetworkService] JoinLobby called. isHost={isHost}, resolvedType={resolvedType}");
 
         if (!isHost)
         {
-            clientState?.SetPendingPlayerType(playerType);
+            clientState?.SetPendingPlayerType(resolvedType);
             return;
         }
 
-        var command = new JoinLobbyCommand(playerType);
+        var command = new JoinLobbyCommand(resolvedType);
         lobbyManager.ExecuteCommand(command);
     }
     public async Task LeaveLobby()
@@ -127,6 +145,18 @@ public class LobbyNetworkService : MonoBehaviour
         }
     }
 
+    public async Task StartGame()
+    {
+        if (!isHost)
+        {
+            Debug.LogWarning("[LobbyNetworkService] StartGame invocado en cliente - ignorando");
+            return;
+        }
+
+        Debug.Log("[LobbyNetworkService] Enviando START_GAME a todos los clientes");
+        var packet = packetBuilder.CreateStartGame();
+        await broadcastService.SendToAll(packet);
+    }
 
     private async Task HandlePlayerJoined(PlayerSession player)
     {
@@ -185,6 +215,10 @@ public class LobbyNetworkService : MonoBehaviour
                 HandleRemovePlayerPacket(packetJson);
                 break;
 
+            case "START_GAME":
+                HandleStartGamePacket(packetJson);
+                break;
+
             default:
                 Debug.LogWarning($"Paquete desconocido recibido: {packetType}");
                 break;
@@ -196,14 +230,36 @@ public class LobbyNetworkService : MonoBehaviour
         var playerPacket = packetBuilder.Serializer.Deserialize<PlayerPacket>(json);
         if (playerPacket == null) return;
 
-        if (!lobbyManager.GetAllPlayers().Any(p => p.Id == playerPacket.id))
+        var existing = lobbyManager.GetAllPlayers().FirstOrDefault(p => p.Id == playerPacket.id);
+        if (existing != null)
         {
-            AddRemotePlayer(playerPacket.id, playerPacket.playerType);
+            if (existing.PlayerType != playerPacket.playerType)
+            {
+                Debug.Log($"[LobbyNetworkService] Actualizando tipo player {playerPacket.id} -> {playerPacket.playerType}");
+                var updated = lobbyManager.UpdatePlayerTypeRemote(playerPacket.id, playerPacket.playerType);
+                if (updated)
+                {
+                    SpawnManagerInstance?.RemovePlayer(playerPacket.id);
+                    SpawnManagerInstance?.SpawnRemotePlayer(
+                        playerPacket.id,
+                        ParsePlayerType(playerPacket.playerType)
+                    );
+                }
+            }
+
+            return;
+        }
+
+        var added = lobbyManager.AddPlayerRemote(playerPacket.id, playerPacket.playerType);
+        if (added == null)
+        {
+            Debug.LogWarning($"[LobbyNetworkService] Player {playerPacket.id} no pudo ser añadido (lobby lleno u error)");
+            return;
         }
 
         SpawnManagerInstance?.SpawnRemotePlayer(
-            playerPacket.id,
-            ParsePlayerType(playerPacket.playerType)
+            added.Id,
+            ParsePlayerType(added.PlayerType)
         );
     }
 
@@ -212,14 +268,18 @@ public class LobbyNetworkService : MonoBehaviour
         var readyPacket = packetBuilder.Serializer.Deserialize<PlayerReadyPacket>(json);
         if (readyPacket == null) return;
 
-        if (!lobbyManager.GetAllPlayers().Any(p => p.Id == readyPacket.id))
+        var existing = lobbyManager.GetAllPlayers().FirstOrDefault(p => p.Id == readyPacket.id);
+        if (existing != null)
         {
-            AddRemotePlayer(readyPacket.id, PlayerType.Escapist.ToString());
+            return;
         }
 
+        var added = lobbyManager.AddPlayerRemote(readyPacket.id, PlayerType.Escapist.ToString());
+        if (added == null) return;
+
         SpawnManagerInstance?.SpawnRemotePlayer(
-            readyPacket.id,
-            PlayerType.Escapist
+            added.Id,
+            ParsePlayerType(added.PlayerType)
         );
     }
 
@@ -241,6 +301,11 @@ public class LobbyNetworkService : MonoBehaviour
         lobbyManager.RemovePlayerRemote(packet.id);
     }
 
+    private void HandleStartGamePacket(string json)
+    {
+        Debug.Log("[LobbyNetworkService] START_GAME recibido");
+        OnStartGameReceived?.Invoke();
+    }
 
     public void AddRemotePlayer(int id, string type)
     {

@@ -67,4 +67,21 @@ public class PlayerRegistry
 
         return nextId++;
     }
+
+    public bool UpdatePlayerType(int id, string newType)
+    {
+        if (!players.TryGetValue(id, out var old)) return false;
+
+        var updated = new PlayerSession(id, newType);
+
+        // mantener estado relevante
+        if (old.IsReady)
+            updated.SetReady(true);
+
+        if (!old.IsConnected)
+            updated.Disconnect();
+
+        players[id] = updated;
+        return true;
+    }
 }

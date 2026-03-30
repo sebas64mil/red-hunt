@@ -240,3 +240,22 @@ Cuando empieces a crear clases, intenta mantener esta regla de dependencias:
 - `Application` depende de `Domains`.
 - `Network` y `Presentation` implementan/adaptan lo que `Application` necesita.
 
+# Cambios recientes (29/03/2026)
+
+- **LobbyManager.cs**: Lógica para evitar más de un Killer cliente; si un cliente pide Killer y ya hay otro, se le asigna Escapist. Sincronización y manejo de errores mejorados.
+- **LobbyNetworkService.cs**: Mejor sincronización de tipos de jugador, soporte para `START_GAME`, limpieza de estado local al salir, y evento para inicio de partida.
+- **PlayerRegistry.cs**: Nuevo método para actualizar tipo de jugador manteniendo estado ready/conectado.
+- **PacketBuilder.cs**: Nuevo paquete `START_GAME` para sincronizar inicio de partida.
+- **Client.cs / UdpTransport.cs**: Mejoras de robustez y manejo de errores en transporte y desconexión.
+- **ClientState.cs**: Flag de conexión y método para actualizarlo.
+- **GameBootstrap.cs**: Refactor de flujo UI/red, selección de rol previa, limpieza de estado y reconexión, integración de inicio de partida.
+- **LobbyUI.cs**: Refactor de UI: paneles main/roles/lobby, botones de roles, ready/start, helpers para limpiar/resetear estado visual y selección.
+- **AdminInstaller.cs / NetworkInstaller.cs**: Mejor integración de servicios y manejo autoritativo de paquetes PLAYER.
+
+## Tareas pendientes
+
+- [ ] **Caso crítico:** Si el host es Killer, no debe haber ningún otro Killer (ni cliente ni host duplicado). Falta forzar la exclusividad absoluta cuando el host ya es Killer.
+- [ ] Lógica de juego: una vez resuelto el caso anterior, implementar transición de lobby a partida y sincronización de estado de juego.
+- [ ] Mejorar feedback visual en la UI para mostrar claramente el rol asignado y errores de selección.
+- [ ] (Recomendado) Centralizar validación de roles y restricciones en función reutilizable.
+
