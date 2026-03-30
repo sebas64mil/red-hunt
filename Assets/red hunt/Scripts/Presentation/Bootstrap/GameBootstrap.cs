@@ -189,6 +189,8 @@ public class GameBootstrap : MonoBehaviour
                     Debug.Log("[Bootstrap] Conectando cliente (ConnectToServer) desde OnConfirmRole");
                     try
                     {
+                        networkServices?.ClientState?.SetPendingPlayerType(role.ToString());
+
                         await StartClientFlow();
                     }
                     catch (Exception ex)
@@ -197,6 +199,13 @@ public class GameBootstrap : MonoBehaviour
                         presentationServices?.LobbyUI?.ResetAllToMain();
                         adminUI.ClearAll();
                         clientConnected = false;
+
+                        try
+                        {
+                            networkServices?.ClientState?.ClearPendingPlayerType();
+                        }
+                        catch { }
+
                         return;
                     }
                 }
