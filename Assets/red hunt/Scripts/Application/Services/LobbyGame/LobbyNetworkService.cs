@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -312,7 +312,7 @@ public class LobbyNetworkService : MonoBehaviour
         var added = lobbyManager.AddPlayerRemote(playerPacket.id, requestedType);
         if (added == null)
         {
-            Debug.LogWarning($"[LobbyNetworkService] Player {playerPacket.id} no pudo ser a�adido (lobby lleno u error)");
+            Debug.LogWarning($"[LobbyNetworkService] Player {playerPacket.id} no pudo ser añadido (lobby lleno u error)");
             return;
         }
 

@@ -19,19 +19,20 @@ public class LobbyUI : MonoBehaviour
     public event Action OnJoinChosen;
     public event Action<PlayerType> OnRoleChosen;
     public event Action<PlayerType> OnConfirmRole;
-    public event Action<int> OnPlayerReady; 
+    public event Action<int> OnPlayerReady;
     public event Action OnStartGame;
 
     private bool isHost;
     private bool isConnected;
 
-    [SerializeField] private Button leaveButton;
-    [SerializeField] private Button shutdownButton;
+    [Header("Buttons (separated)")]
+    [SerializeField] private LeaveButton leaveButton;
+    [SerializeField] private ShutdownButton shutdownButton;
 
     [Header("Panels")]
-    [SerializeField] private GameObject mainPanel;  
-    [SerializeField] private GameObject rolePanel;   
-    [SerializeField] private GameObject lobbyPanel;  
+    [SerializeField] private GameObject mainPanel;
+    [SerializeField] private GameObject rolePanel;
+    [SerializeField] private GameObject lobbyPanel;
 
     [Header("Role Buttons")]
     [SerializeField] private Button hostButton;
@@ -64,10 +65,7 @@ public class LobbyUI : MonoBehaviour
         if (readyButton != null) readyButton.onClick.RemoveAllListeners();
         if (startButton != null) startButton.onClick.RemoveAllListeners();
 
-        if (leaveButton != null) leaveButton.onClick.RemoveAllListeners();
-        if (shutdownButton != null) shutdownButton.onClick.RemoveAllListeners();
         if (roleBackButton != null) roleBackButton.onClick.RemoveAllListeners();
-
 
         if (hostButton != null) hostButton.onClick.AddListener(OnHostButton);
         if (joinButton != null) joinButton.onClick.AddListener(OnJoinButton);
@@ -76,12 +74,49 @@ public class LobbyUI : MonoBehaviour
         if (readyButton != null) readyButton.onClick.AddListener(OnReadyButton);
         if (startButton != null) startButton.onClick.AddListener(OnStartButton);
 
-        if (leaveButton != null) leaveButton.onClick.AddListener(OnLeaveButton);
-        if (shutdownButton != null) shutdownButton.onClick.AddListener(OnShutdownButton);
+        if (leaveButton != null)
+        {
+            leaveButton.OnClicked -= OnLeaveButton;
+            leaveButton.OnClicked += OnLeaveButton;
+        }
+
+        if (shutdownButton != null)
+        {
+            shutdownButton.OnClicked -= OnShutdownButton;
+            shutdownButton.OnClicked += OnShutdownButton;
+        }
+
         if (roleBackButton != null) roleBackButton.onClick.AddListener(OnBackToMain);
 
         if (readyButton != null)
             readyButton.interactable = false;
+    }
+
+    private void OnEnable()
+    {
+        try
+        {
+            LobbyBootstrap.Instance?.RegisterLobbyUI(this);
+        }
+        catch (Exception)
+        {
+            Debug.LogWarning("[LobbyUI] Registro con GameBootstrap falló");
+        }
+    }
+
+    private void OnDisable()
+    {
+        try
+        {
+            LobbyBootstrap.Instance?.UnregisterLobbyUI(this);
+        }
+        catch (Exception) { }
+    }
+
+    private void OnDestroy()
+    {
+        if (leaveButton != null) leaveButton.OnClicked -= OnLeaveButton;
+        if (shutdownButton != null) shutdownButton.OnClicked -= OnShutdownButton;
     }
 
     public void OnHostButton()
@@ -279,13 +314,22 @@ public class LobbyUI : MonoBehaviour
         if (rolePanel != null) rolePanel.SetActive(false);
         if (lobbyPanel != null) lobbyPanel.SetActive(true);
     }
+
+    public void SetStartInteractable(bool enabled)
+    {
+        if (startButton == null) return;
+
+        startButton.gameObject.SetActive(isHost);
+        startButton.interactable = isHost && enabled;
+    }
+
     private void UpdateLeaveButton()
     {
         if (leaveButton != null)
-            leaveButton.gameObject.SetActive(isConnected && !isHost);
+            leaveButton.SetVisible(isConnected && !isHost);
 
         if (shutdownButton != null)
-            shutdownButton.gameObject.SetActive(isConnected && isHost);
+            shutdownButton.SetVisible(isConnected && isHost);
     }
 
     private void UpdateStartButton()

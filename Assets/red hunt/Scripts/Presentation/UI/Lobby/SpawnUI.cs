@@ -28,6 +28,27 @@ public class SpawnUI : MonoBehaviour
         this.spawnManager = spawnManager;
     }
 
+    private void OnEnable()
+    {
+        try
+        {
+            LobbyBootstrap.Instance?.RegisterSpawnUI(this);
+        }
+        catch (Exception)
+        {
+            Debug.LogWarning("[SpawnUI] Registro con GameBootstrap falló");
+        }
+    }
+
+    private void OnDisable()
+    {
+        try
+        {
+            LobbyBootstrap.Instance?.UnregisterSpawnUI(this);
+        }
+        catch (Exception) { }
+    }
+
     public void OnPlayerAssigned(int id, string playerType)
     {
         if (spawnManager == null)

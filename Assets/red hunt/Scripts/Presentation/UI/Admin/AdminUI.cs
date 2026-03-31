@@ -19,6 +19,27 @@ public class AdminUI : MonoBehaviour
             rootPanel.SetActive(false);
     }
 
+    private void OnEnable()
+    {
+        try
+        {
+            LobbyBootstrap.Instance?.RegisterAdminUI(this);
+        }
+        catch (Exception)
+        {
+            Debug.LogWarning("[AdminUI] Registro con GameBootstrap falló");
+        }
+    }
+
+    private void OnDisable()
+    {
+        try
+        {
+            LobbyBootstrap.Instance?.UnregisterAdminUI(this);
+        }
+        catch (Exception) { }
+    }
+
     public void SetIsHost(bool isHost)
     {
         if (rootPanel != null)
