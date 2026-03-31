@@ -14,11 +14,8 @@ public class PresentationBootstrap : MonoBehaviour
     private NetworkBootstrap networkBootstrap;
     private LobbyNetworkService lobbyNetworkService;
 
-    // AdminUI guardada para añadir/remover entradas automáticamente
     private AdminUI adminUI;
 
-    // Predicate opcional para suprimir el ShowLobby para el jugador local
-    // (por ejemplo cuando el usuario eligió "host" localmente)
     private Func<bool> shouldSuppressShowForLocal;
 
     public void Init(LobbyUI lobbyUI = null, SpawnUI spawnUI = null)
@@ -28,37 +25,134 @@ public class PresentationBootstrap : MonoBehaviour
         TryInstall();
     }
 
-    public void RegisterLobbyUI(LobbyUI ui)
-    {
-        if (ui == null)
-        {
-            queuedLobbyUI = null;
-            return;
-        }
-
-        queuedLobbyUI = ui;
-        TryInstall();
-    }
-
     public void RegisterSpawnUI(SpawnUI ui)
     {
         if (ui == null)
         {
             queuedSpawnUI = null;
+            if (Presentation != null)
+                Presentation.SpawnUI = null;
             return;
         }
 
         queuedSpawnUI = ui;
-        TryInstall();
+
+        if (!installed)
+        {
+            TryInstall();
+            return;
+        }
+
+        try
+        {
+            int localPlayerId = network_bootstrap_clientstate_id_fallback();
+
+            var spawnParent = ui.GetSpawnParent();
+            var killerPrefab = ui.KillerPrefab;
+            var escapistPrefab = ui.EscapistPrefab;
+            var hostSpawnPos = ui.HostSpawnPosition;
+            var clientBasePos = ui.ClientBasePosition;
+            var clientSpacing = ui.ClientSpacing;
+
+            var newSpawnManager = new SpawnManager(
+                spawnParent,
+                killerPrefab,
+                escapistPrefab,
+                localPlayerId,
+                hostSpawnPos,
+                clientBasePos,
+                clientSpacing
+            );
+
+            Presentation.SpawnManager = newSpawnManager;
+            Presentation.SpawnUI = ui;
+            Presentation.SpawnUI.Init(newSpawnManager);
+
+            if (lobbyNetworkService != null)
+                lobby_network_service_assign(newSpawnManager);
+
+            Debug.Log("[PresentationBootstrap] SpawnUI re-registrada y nuevo SpawnManager asignado al SpawnUI y LobbyNetworkService tras cambio de escena.");
+
+            try
+            {
+                var players = appBootstrap?.Services?.LobbyManager?.GetAllPlayers();
+                if (players != null)
+                {
+                    foreach (var p in players)
+                    {
+                        try
+                        {
+                            Presentation.SpawnUI.OnPlayerAssigned(p.Id, p.PlayerType);
+                        }
+                        catch (Exception exSpawn)
+                        {
+                            Debug.LogWarning($"[PresentationBootstrap] Error al repoblar player {p.Id}: {exSpawn.Message}");
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[PresentationBootstrap] Error repoblando spawns tras RegisterSpawnUI: {e.Message}");
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[PresentationBootstrap] Error re-registrando SpawnUI: {e.Message}");
+        }
     }
 
-    // Permite que Presentation gestione AdminUI (añadir/remover/clear)
+    private void lobby_network_service_assign(SpawnManager manager)
+    {
+        try
+        {
+            lobbyNetworkService.SpawnManagerInstance = manager;
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[PresentationBootstrap] No se pudo asignar SpawnManager a LobbyNetworkService: {e.Message}");
+        }
+    }
+
+    public void RegisterLobbyUI(LobbyUI ui)
+    {
+        if (ui == null)
+        {
+            queuedLobbyUI = null;
+            if (Presentation != null)
+                Presentation.LobbyUI = null;
+            return;
+        }
+
+        queuedLobbyUI = ui;
+
+        if (!installed)
+        {
+            TryInstall();
+            return;
+        }
+
+        try
+        {
+            Presentation.LobbyUI = ui;
+
+            var playerId = networkBootstrap?.Services?.ClientState?.PlayerId ?? -1;
+            Presentation.LobbyUI.SetLocalPlayerId(playerId);
+            Presentation.LobbyUI.ResetReadyState();
+
+            Debug.Log("[PresentationBootstrap] LobbyUI re-registrada tras cambio de escena.");
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[PresentationBootstrap] Error re-registrando LobbyUI: {e.Message}");
+        }
+    }
+
     public void RegisterAdminUI(AdminUI admin)
     {
         adminUI = admin;
     }
 
-    // Attach application and network bootstraps so Presentation puede reaccionar a sus eventos
     public void AttachApplication(ApplicationBootstrap app)
     {
         appBootstrap = app ?? throw new ArgumentNullException(nameof(app));
@@ -75,17 +169,34 @@ public class PresentationBootstrap : MonoBehaviour
         networkBootstrap.OnLocalJoinAccepted += HandleLocalJoinAccepted;
         networkBootstrap.OnClientDisconnected += HandleClientDisconnected;
 
-        // Si Presentation ya está instalada, asegurar que el LobbyNetworkService tenga el SpawnManager
-        if (installed && lobbyNetworkService != null && Presentation?.SpawnManager != null)
+        if (lobbyNetworkService != null)
+            lobbyNetworkService.OnStartGameReceived += HandleStartGameReceived;
+
+        if (installed && LobbyNetworkServiceValid())
         {
             lobbyNetworkService.SpawnManagerInstance = Presentation.SpawnManager;
         }
     }
 
-    /// <summary>
-    /// Registrar un predicate que, cuando devuelve true, suprime la acción de mostrar el lobby
-    /// para el jugador local tras recibir su PlayerId (comportamiento equivalente al original).
-    /// </summary>
+    private bool LobbyNetworkServiceValid()
+    {
+        return lobbyNetworkService != null && Presentation?.SpawnManager != null;
+    }
+
+    private void HandleStartGameReceived(string sceneName)
+    {
+        try
+        {
+            Debug.Log($"[PresentationBootstrap] START_GAME recibido (cliente) -> cambiando a escena '{sceneName}'");
+            if (!string.IsNullOrEmpty(sceneName))
+                GameManager.ChangeScene(sceneName);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[PresentationBootstrap] Error en HandleStartGameReceived: {e.Message}");
+        }
+    }
+
     public void RegisterShowSuppressionPredicate(Func<bool> predicate)
     {
         shouldSuppressShowForLocal = predicate;
@@ -103,7 +214,6 @@ public class PresentationBootstrap : MonoBehaviour
 
         Presentation = new PresentationInstaller().Install(queuedLobbyUI, queuedSpawnUI, -1);
 
-        // conectar spawn manager al lobbyNetworkService si ya existe
         if (lobbyNetworkService != null && Presentation?.SpawnManager != null)
             lobbyNetworkService.SpawnManagerInstance = Presentation.SpawnManager;
 
@@ -119,10 +229,8 @@ public class PresentationBootstrap : MonoBehaviour
             if (Presentation?.SpawnUI != null)
                 Presentation.SpawnUI.OnPlayerAssigned(player.Id, player.PlayerType);
 
-            // actualizar AdminUI si está registrada
             adminUI?.AddPlayerEntry(player.Id);
 
-            // intentar mostrar lobby para el jugador local si procede
             TryShowLobbyForLocalIfNeeded(player.Id);
         }
         catch (Exception e)
@@ -192,7 +300,6 @@ public class PresentationBootstrap : MonoBehaviour
                     Presentation?.SpawnUI?.HandlePlayerDisconnected(p.Id);
             }
 
-            // limpiar admin UI si existe
             adminUI?.ClearAll();
         }
         catch (Exception e)
@@ -207,7 +314,6 @@ public class PresentationBootstrap : MonoBehaviour
         {
             if (Presentation?.LobbyUI == null || appBootstrap?.Services == null) return;
 
-            // Preguntar al predicate si debemos suprimir mostrar el lobby (ej: elección host)
             if (shouldSuppressShowForLocal != null && shouldSuppressShowForLocal())
             {
                 Debug.Log("[PresentationBootstrap] Supresión de mostrar lobby para local activada; omitiendo ShowLobbyPanel");
@@ -252,5 +358,17 @@ public class PresentationBootstrap : MonoBehaviour
             }
         }
         catch { }
+    }
+
+    private int network_bootstrap_clientstate_id_fallback()
+    {
+        try
+        {
+            return networkBootstrap?.Services?.ClientState?.PlayerId ?? -1;
+        }
+        catch
+        {
+            return -1;
+        }
     }
 }

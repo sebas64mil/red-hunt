@@ -10,6 +10,10 @@ public class ModularLobbyBootstrap : MonoBehaviour
     [SerializeField] private SpawnUI spawnUI;
     [SerializeField] private AdminUI adminUI;
 
+    // Evento público que otros GameObjects (p. ej. SceneChanger) pueden invocar
+    // para solicitar el inicio de la partida (cambio de escena).
+    public event Action<string> OnRequestStartGame;
+
     // Referencias a bootstraps autónomos
     private ApplicationBootstrap appBoot;
     private NetworkBootstrap networkBoot;
@@ -67,6 +71,25 @@ public class ModularLobbyBootstrap : MonoBehaviour
         // 4) UIBinding (gestiona eventos de UI y ejecuta flows usando Network/Presentation/Application)
         uiBinding = gameObject.GetComponent<UIBindingBootstrap>() ?? gameObject.AddComponent<UIBindingBootstrap>();
         uiBinding.Bind(lobbyUI, adminUI, networkBoot, appBoot, presentationBoot);
+
+        // Suscribir UIBinding al evento público para recepcionar solicitudes externas de StartGame
+        if (uiBinding != null)
+        {
+            OnRequestStartGame -= uiBinding.HandleExternalStartRequest;
+            OnRequestStartGame += uiBinding.HandleExternalStartRequest;
+        }
+    }
+
+    // Nuevo: método público para que otros objetos soliciten el StartGame sin invocar directamente el event.
+    public void RequestStartGame(string sceneName)
+    {
+        if (string.IsNullOrWhiteSpace(sceneName))
+        {
+            Debug.LogWarning("[ModularLobbyBootstrap] RequestStartGame: sceneName vacío.");
+            return;
+        }
+
+        OnRequestStartGame?.Invoke(sceneName);
     }
 
     // -------------------- Registration API (delegan a bootstraps) --------------------
@@ -149,8 +172,7 @@ public class ModularLobbyBootstrap : MonoBehaviour
 
     private void OnDestroy()
     {
-        // No duplicar limpieza: cada bootstrap limpia sus propios handlers en OnDestroy.
-        // Aquí sólo rompemos la singleton.
+
         if (Instance == this) Instance = null;
     }
 }

@@ -77,11 +77,12 @@ public class PacketBuilder
         return serializer.Serialize(packet);
     }
 
-    public string CreateStartGame()
+    public string CreateStartGame(string sceneName)
     {
-        var packet = new BasePacket
+        var packet = new StartGamePacket
         {
-            type = "START_GAME"
+            type = "START_GAME",
+            sceneName = sceneName
         };
         return serializer.Serialize(packet);
     }

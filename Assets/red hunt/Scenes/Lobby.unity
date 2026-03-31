@@ -2154,7 +2154,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1019199083}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1174263338}
+        m_TargetAssemblyTypeName: SceneChanger, Assembly-CSharp
+        m_MethodName: StartGame
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: Game
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1019199083
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2265,6 +2277,7 @@ GameObject:
   - component: {fileID: 1174263334}
   - component: {fileID: 1174263336}
   - component: {fileID: 1174263337}
+  - component: {fileID: 1174263338}
   m_Layer: 0
   m_Name: UIControllers
   m_TagString: Untagged
@@ -2346,6 +2359,19 @@ MonoBehaviour:
   rootPanel: {fileID: 1227456167}
   contentParent: {fileID: 151662863}
   playerEntryPrefab: {fileID: 4522886154354513748, guid: 4b37bdf0fb4d65145b39b7b7ea28b061, type: 3}
+--- !u!114 &1174263338
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1174263333}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b68cde6284af1d4408365c12cd1f4c83, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SceneChanger
+  sceneName: Game
 --- !u!1 &1214679107
 GameObject:
   m_ObjectHideFlags: 0

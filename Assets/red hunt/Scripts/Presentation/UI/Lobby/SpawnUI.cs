@@ -32,7 +32,7 @@ public class SpawnUI : MonoBehaviour
     {
         try
         {
-            LobbyBootstrap.Instance?.RegisterSpawnUI(this);
+            ModularLobbyBootstrap.Instance?.RegisterSpawnUI(this);
         }
         catch (Exception)
         {
@@ -44,7 +44,7 @@ public class SpawnUI : MonoBehaviour
     {
         try
         {
-            LobbyBootstrap.Instance?.UnregisterSpawnUI(this);
+            ModularLobbyBootstrap.Instance?.UnregisterSpawnUI(this);
         }
         catch (Exception) { }
     }

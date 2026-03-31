@@ -9,6 +9,7 @@ public class LobbyUI : MonoBehaviour
     public string IpAddress => ipAddress;
     public int Port => port;
 
+    // OnCreateLobby ahora incluye ip y port para coincidir con UIBindingBootstrap
     public event Action<string, int> OnCreateLobby;
     public event Action<string, int> OnJoinLobby;
 
@@ -20,7 +21,9 @@ public class LobbyUI : MonoBehaviour
     public event Action<PlayerType> OnRoleChosen;
     public event Action<PlayerType> OnConfirmRole;
     public event Action<int> OnPlayerReady;
-    public event Action OnStartGame;
+
+    // Start event now carries sceneName when invoked via inspector
+    public event Action<string> OnStartGame;
 
     private bool isHost;
     private bool isConnected;
@@ -96,7 +99,7 @@ public class LobbyUI : MonoBehaviour
     {
         try
         {
-            LobbyBootstrap.Instance?.RegisterLobbyUI(this);
+            ModularLobbyBootstrap.Instance?.RegisterLobbyUI(this);
         }
         catch (Exception)
         {
@@ -108,7 +111,7 @@ public class LobbyUI : MonoBehaviour
     {
         try
         {
-            LobbyBootstrap.Instance?.UnregisterLobbyUI(this);
+            ModularLobbyBootstrap.Instance?.UnregisterLobbyUI(this);
         }
         catch (Exception) { }
     }
@@ -198,11 +201,19 @@ public class LobbyUI : MonoBehaviour
     }
 
 
+    // Existing parameterless handler kept for compatibility; invokes event with empty string
     public void OnStartButton()
     {
-        OnStartGame?.Invoke();
+        OnStartGame?.Invoke(string.Empty);
     }
 
+    // Public method intended to be used from the Button.onClick inspector passing the scene name
+    public void OnStartButtonWithScene(string sceneName)
+    {
+        OnStartGame?.Invoke(sceneName);
+    }
+
+    // Ahora pasa ip y port
     public void ConfirmCreateLobby()
     {
         OnCreateLobby?.Invoke(ipAddress, port);

@@ -23,7 +23,7 @@ public class AdminUI : MonoBehaviour
     {
         try
         {
-            LobbyBootstrap.Instance?.RegisterAdminUI(this);
+            ModularLobbyBootstrap.Instance?.RegisterAdminUI(this);
         }
         catch (Exception)
         {
@@ -35,7 +35,7 @@ public class AdminUI : MonoBehaviour
     {
         try
         {
-            LobbyBootstrap.Instance?.UnregisterAdminUI(this);
+            ModularLobbyBootstrap.Instance?.UnregisterAdminUI(this);
         }
         catch (Exception) { }
     }

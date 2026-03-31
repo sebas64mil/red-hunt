@@ -21,18 +21,16 @@ public class UIBindingBootstrap : MonoBehaviour
     private Action<PlayerType> lobby_OnConfirmRole;
     private Action<string, int> lobby_OnCreateLobby;
     private Action<string, int> lobby_OnJoinLobby;
-    private Action lobby_OnStartGame;
+    private Action<string> lobby_OnStartGame;
     private Action lobby_OnLeaveLobby;
     private Action lobby_OnShutdownServer;
     private Action<int> admin_OnKickRequested;
 
     private void DebugLog(string msg) => Debug.Log($"[UIBinding] {msg}");
 
-    // Inyectar dependencias y bind de eventos UI -> handlers locales
-    // LobbyUI puede ser null (soporte para re-register/unregister)
+
     public void Bind(LobbyUI ui, AdminUI admin, NetworkBootstrap networkBootstrap, ApplicationBootstrap appBootstrap, PresentationBootstrap presentationBootstrap)
     {
-        // permitir nulls para soporte dinámico
         lobbyUI = ui;
         adminUI = admin;
         network = networkBootstrap ?? throw new ArgumentNullException(nameof(networkBootstrap));
@@ -43,11 +41,9 @@ public class UIBindingBootstrap : MonoBehaviour
 
         CreateNamedHandlers();
 
-        // Registrar predicate en Presentation para suprimir Show cuando el usuario eligió Host
         presentation.RegisterShowSuppressionPredicate(() => lastSelectionIsHost);
 
-        // Suscribirse a eventos de red y aplicación para mantener estado local consistente
-        // Evitar duplicar suscripciones
+
         network.OnClientDisconnected -= HandleNetworkDisconnected;
         network.OnClientDisconnected += HandleNetworkDisconnected;
 
@@ -57,7 +53,6 @@ public class UIBindingBootstrap : MonoBehaviour
         network.OnLocalJoinAccepted -= HandleNetworkLocalJoinAccepted;
         network.OnLocalJoinAccepted += HandleNetworkLocalJoinAccepted;
 
-        // Subscribir a eventos de Application para actualizar StartButton y limpieza
         appServicesProvider.OnPlayerLeft -= HandleAppPlayerLeft;
         appServicesProvider.OnPlayerLeft += HandleAppPlayerLeft;
 
@@ -69,8 +64,6 @@ public class UIBindingBootstrap : MonoBehaviour
 
         if (adminUI != null)
             BindAdminUI(adminUI);
-
-        // Actualizar estado inicial del StartButton (por si ya hay players)
         UpdateStartButtonAvailability();
 
         DebugLog("Bind completado.");
@@ -88,20 +81,17 @@ public class UIBindingBootstrap : MonoBehaviour
         }
         catch { }
 
-        // PresentationBootstrap ya limpia UI en su handler, no duplicar.
         UpdateStartButtonAvailability();
     }
 
     private void HandleNetworkPlayerIdAssigned(int id)
     {
-        // Mantener coherencia si hace falta (no cambiamos flags aquí).
         DebugLog($"Network asignó playerId {id}");
     }
 
     private void HandleNetworkLocalJoinAccepted(int id)
     {
         DebugLog($"Network local join accepted {id}");
-        // Cuando se acepta join local, cliente está conectado
         clientConnected = true;
         UpdateStartButtonAvailability();
     }
@@ -119,7 +109,6 @@ public class UIBindingBootstrap : MonoBehaviour
                 try { network?.Services?.ClientState?.ClearPendingPlayerType(); } catch { }
             }
 
-            // siempre actualizar disponibilidad del Start
             UpdateStartButtonAvailability();
         }
         catch (Exception e)
@@ -133,7 +122,6 @@ public class UIBindingBootstrap : MonoBehaviour
         try
         {
             DebugLog($"Application reported PlayerJoined: {player.Id} ({player.PlayerType})");
-            // update Start button availability when players join
             UpdateStartButtonAvailability();
         }
         catch (Exception e)
@@ -336,10 +324,22 @@ public class UIBindingBootstrap : MonoBehaviour
             }
         };
 
-        lobby_OnStartGame = async () =>
+        // Now accepts sceneName passed from UI (inspector)
+        lobby_OnStartGame = async (sceneName) =>
         {
-            DebugLog("Host solicitó START_GAME desde UI");
-            await lobbyNetworkService?.StartGame();
+            DebugLog($"Host solicitó START_GAME desde UI para escena '{sceneName}'");
+            await lobbyNetworkService?.StartGame(sceneName);
+
+            // Cambiar localmente la escena en el host también
+            try
+            {
+                if (!string.IsNullOrEmpty(sceneName))
+                    GameManager.ChangeScene(sceneName);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"Error cambiando escena local en host: {ex.Message}");
+            }
         };
 
         lobby_OnLeaveLobby = async () =>
@@ -386,7 +386,7 @@ public class UIBindingBootstrap : MonoBehaviour
 
             try
             {
-                var players = appServicesProvider?.Services?.LobbyManager.GetAllPlayers();
+                var players = appServicesProvider?.Services?.LobbyManager?.GetAllPlayers();
                 if (players != null)
                 {
                     foreach (var p in players)
@@ -435,6 +435,7 @@ public class UIBindingBootstrap : MonoBehaviour
         ui.OnJoinLobby -= lobby_OnJoinLobby;
         ui.OnJoinLobby += lobby_OnJoinLobby;
 
+        // subscribe to string-based start event
         ui.OnStartGame -= lobby_OnStartGame;
         ui.OnStartGame += lobby_OnStartGame;
 
@@ -528,5 +529,41 @@ public class UIBindingBootstrap : MonoBehaviour
             }
         }
         catch { }
+    }
+
+    public async Task RequestStartGame(string sceneName)
+    {
+        try
+        {
+            Debug.Log($"[UIBinding] RequestStartGame invoked for scene '{sceneName}'");
+            await lobbyNetworkService?.StartGame(sceneName);
+
+            if (!string.IsNullOrEmpty(sceneName))
+            {
+                try
+                {
+                    GameManager.ChangeScene(sceneName);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"[UIBinding] Error cambiando escena local en RequestStartGame: {e.Message}");
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[UIBinding] Error en RequestStartGame: {e.Message}");
+        }
+    }
+
+    public void HandleExternalStartRequest(string sceneName)
+    {
+        if (string.IsNullOrWhiteSpace(sceneName))
+        {
+            Debug.LogWarning("[UIBinding] HandleExternalStartRequest: sceneName vacío.");
+            return;
+        }
+
+        _ = RequestStartGame(sceneName);
     }
 }

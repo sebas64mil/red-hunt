@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Net;
 using UnityEngine;
 
 public class LobbyNetworkService : MonoBehaviour
@@ -14,13 +15,16 @@ public class LobbyNetworkService : MonoBehaviour
     private bool isHost;
     public bool IsHost => isHost;
 
+    // Nuevo flag: true cuando el host ha iniciado la partida
+    public bool GameStarted { get; private set; } = false;
+
     public SpawnManager SpawnManagerInstance { get; set; }
 
     private IServer server;
     private ClientConnectionManager connectionManager;
 
 
-    public event Action OnStartGameReceived;
+    public event Action<string> OnStartGameReceived;
     public event Action<int> OnLocalJoinAccepted;
 
 
@@ -68,6 +72,13 @@ public class LobbyNetworkService : MonoBehaviour
         }
 
         Debug.Log($"[LobbyNetworkService] JoinLobby called. isHost={isHost}, resolvedType={resolvedType}");
+
+        // Si el host ya inició la partida, no permitir joins
+        if (GameStarted)
+        {
+            Debug.LogWarning("[LobbyNetworkService] JoinLobby ignorado: la partida ya ha comenzado.");
+            return;
+        }
 
         if (!isHost)
         {
@@ -167,7 +178,7 @@ public class LobbyNetworkService : MonoBehaviour
         }
     }
 
-    public async Task StartGame()
+    public async Task StartGame(string sceneName)
     {
         if (!isHost)
         {
@@ -175,9 +186,32 @@ public class LobbyNetworkService : MonoBehaviour
             return;
         }
 
-        Debug.Log("[LobbyNetworkService] Enviando START_GAME a todos los clientes");
-        var packet = packetBuilder.CreateStartGame();
-        await broadcastService.SendToAll(packet);
+        try
+        {
+            // Marcar que la partida empezó para bloquear joins posteriores
+            GameStarted = true;
+
+            Debug.Log($"[LobbyNetworkService] Enviando START_GAME('{sceneName}') a todos los clientes");
+            var startPacket = packetBuilder.CreateStartGame(sceneName);
+            await broadcastService.SendToAll(startPacket);
+
+            // Dar tiempo a que los clientes carguen la escena y registren su SpawnUI
+            const int postStartDelayMs = 500;
+            await Task.Delay(postStartDelayMs);
+
+            // Reenviar estado de players para que cada cliente pueda spawnear sus players en la nueva escena
+            Debug.Log("[LobbyNetworkService] Reenviando PLAYER packets tras START_GAME");
+            var allPlayers = lobbyManager.GetAllPlayers().ToList();
+            foreach (var p in allPlayers)
+            {
+                string packetJson = packetBuilder.CreatePlayer(p.Id, p.PlayerType.ToString());
+                await broadcastService.SendToAll(packetJson);
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[LobbyNetworkService] Error en StartGame: {e.Message}");
+        }
     }
 
     private async Task HandlePlayerJoined(PlayerSession player)
@@ -257,6 +291,63 @@ public class LobbyNetworkService : MonoBehaviour
         if (playerPacket == null) return;
 
         string requestedType = playerPacket.playerType;
+
+        if (isHost && GameStarted)
+        {
+            var existsHost = lobbyManager.GetAllPlayers().FirstOrDefault(p => p.Id == playerPacket.id);
+            if (existsHost == null)
+            {
+                Debug.LogWarning($"[LobbyNetworkService] Ignorando intento de join de player {playerPacket.id} porque la partida ya ha comenzado.");
+
+                try
+                {
+                    var rejectPacket = packetBuilder.CreateAssignReject(playerPacket.id, "Game already started");
+
+                    if (connectionManager != null && server != null)
+                    {
+                        if (connectionManager.TryGetEndpointById(playerPacket.id, out IPEndPoint endpoint) && endpoint != null)
+                        {
+                            _ = server.SendToClientAsync(rejectPacket, endpoint);
+                            Debug.Log($"[LobbyNetworkService] ASSIGN_REJECT dirigido enviado a {endpoint} para player {playerPacket.id}");
+
+                            try
+                            {
+                                var disconnectPacket = packetBuilder.CreateDisconnect();
+                                _ = server.SendToClientAsync(disconnectPacket, endpoint);
+                                Debug.Log($"[LobbyNetworkService] DISCONNECT dirigido enviado a {endpoint} para player {playerPacket.id}");
+                            }
+                            catch (Exception exDisconnect)
+                            {
+                                Debug.LogWarning($"[LobbyNetworkService] Error enviando DISCONNECT dirigido a {endpoint}: {exDisconnect.Message}");
+                            }
+
+                            // Eliminar endpoint del connection manager para liberar slot/recursos
+                            try
+                            {
+                                connectionManager.RemoveClient(endpoint);
+                                Debug.Log($"[LobbyNetworkService] Endpoint {endpoint} eliminado del ConnectionManager para player {playerPacket.id}");
+                            }
+                            catch (Exception exRemove)
+                            {
+                                Debug.LogWarning($"[LobbyNetworkService] Error eliminando endpoint del ConnectionManager: {exRemove.Message}");
+                            }
+
+                            return;
+                        }
+                    }
+
+                    // Fallback: si no hay endpoint disponible, usar broadcast como antes
+                    _ = broadcastService.SendToAll(rejectPacket);
+                    Debug.Log($"[LobbyNetworkService] ASSIGN_REJECT enviado por broadcast para player {playerPacket.id}");
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"[LobbyNetworkService] Error enviando ASSIGN_REJECT: {e.Message}");
+                }
+
+                return;
+            }
+        }
 
         if (isHost)
         {
@@ -374,8 +465,22 @@ public class LobbyNetworkService : MonoBehaviour
 
     private void HandleStartGamePacket(string json)
     {
-        Debug.Log("[LobbyNetworkService] START_GAME recibido");
-        OnStartGameReceived?.Invoke();
+        var packet = packetBuilder.Serializer.Deserialize<StartGamePacket>(json);
+        if (packet == null)
+        {
+            Debug.LogWarning("[LobbyNetworkService] START_GAME recibido pero packet inválido");
+            return;
+        }
+
+        Debug.Log($"[LobbyNetworkService] START_GAME recibido -> escena: {packet.sceneName}");
+        try
+        {
+            OnStartGameReceived?.Invoke(packet.sceneName);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[LobbyNetworkService] Error invocando OnStartGameReceived: {e.Message}");
+        }
     }
 
     public void AddRemotePlayer(int id, string type)

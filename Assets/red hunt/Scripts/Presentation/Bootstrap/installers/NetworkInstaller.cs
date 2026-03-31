@@ -172,6 +172,26 @@ public class NetworkInstaller
             }
         });
 
+        // NEW: register START_GAME so clients receive the packet and change scene
+        dispatcher.Register("START_GAME", (json, sender) =>
+        {
+            try
+            {
+                var packet = serializer.Deserialize<StartGamePacket>(json);
+                if (packet == null) return;
+
+                Debug.Log($"[NetworkInstaller] START_GAME recibido -> escena: {packet.sceneName}");
+
+                // Forward to LobbyNetworkService so PresentationBootstrap (subscribed to OnStartGameReceived)
+                // will trigger the local scene change on clients.
+                lobbyNetworkService?.HandlePacketReceived(json);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[NetworkInstaller] Error procesando START_GAME: {e.Message}");
+            }
+        });
+
         if (isHost)
         {
             dispatcher.Register("DISCONNECT", async (json, sender) =>
@@ -235,13 +255,16 @@ public class NetworkInstaller
             Dispatcher = dispatcher,
             Builder = builder,
             Serializer = serializer,
-            ConnectionManager = connectionManager,
+            ConnectionManager = connection_manager_fallback(connectionManager),
             ClientState = clientState,
             BroadcastService = broadcastService,
             AdminService = adminService
 
         };
     }
+
+    // small helper to satisfy style in return (keeps previous variable name)
+    private ClientConnectionManager connection_manager_fallback(ClientConnectionManager manager) => manager;
 }
 
 public class NetworkServices
