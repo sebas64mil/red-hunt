@@ -83,12 +83,28 @@ El proyecto ahora cuenta con una **arquitectura profesional y escalable**:
 - **BroadcastService.cs, ClientConnection.cs, ClientConnectionManager.cs, Server.cs:** Lógica de servidor, conexiones y broadcast.
 - **UdpTransport.cs:** Implementación del transporte UDP.
 
+
+
 #### Presentation
-- **GameBootstrap.cs:** Inicializa el juego y sus dependencias.
+- **Sistema modular de bootstrap:**
+  - Se eliminó la God Class `GameBootstrap`/`LobbyBootstrap` y se reemplazó por un sistema modular basado en `ModularLobbyBootstrap`.
+  - `ModularLobbyBootstrap` orquesta la inicialización y conexión de los bootstraps autónomos:
+    - **ApplicationBootstrap:** Inicializa y expone los servicios de la capa Application, reexpone eventos clave (join/leave player).
+    - **NetworkBootstrap:** Inicializa la red, conecta con Application y expone eventos de red (asignación de ID, desconexión, etc.).
+    - **PresentationBootstrap:** Gestiona la UI y conecta los paneles visuales con los servicios y eventos de Application/Network.
+    - **UIBindingBootstrap:** Realiza el binding de eventos entre la UI y los servicios, permitiendo flujos desacoplados y testables.
+  - Cada bootstrap es autónomo y testable, y ModularLobbyBootstrap los orquesta y conecta.
 - **AdminInstaller.cs, ApplicationInstaller.cs, NetworkInstaller.cs, PresentationInstaller.cs:** Instalan y configuran dependencias de cada capa.
 - **PlayerView.cs:** Representación visual del jugador.
-- **AdminPlayerEntry.cs, AdminUI.cs:** UI para administración de jugadores.
-- **LobbyUI.cs, SpawnUI.cs:** UI para el lobby y el spawn de jugadores.
+- **UI/Admin/**
+  - **AdminPlayerEntry.cs, AdminUI.cs:** UI para administración de jugadores.
+- **UI/Lobby/**
+  - **LobbyUI.cs:** UI principal del lobby, maneja eventos de conexión, roles y estado de la sala.
+  - **LeaveButton.cs:** Botón modular para abandonar el lobby, con control de visibilidad e interacción.
+  - **ShutdownButton.cs:** Botón modular para apagar el servidor, con eventos y control de estado.
+  - **SpawnUI.cs:** UI para mostrar y gestionar el spawn de jugadores, posiciones y roles.
+
+Este sistema modular permite desacoplar responsabilidades, facilita el testing y la extensión, y elimina dependencias circulares y God Classes. Cada bootstrap puede evolucionar de forma independiente y ModularLobbyBootstrap se encarga de la orquestación y el wiring de eventos.
 
 ---
 
@@ -103,63 +119,84 @@ El proyecto ahora cuenta con una **arquitectura profesional y escalable**:
 
 ---
 
+
 ### Diagrama de flujo de archivos y comunicación
 
 ```mermaid
 flowchart TB
-    GameBootstrap["GameBootstrap"]
-    LobbyUI["LobbyUI"]
-    AdminUI["AdminUI"]
-    SpawnUI["SpawnUI"]
+  ModularLobbyBootstrap["ModularLobbyBootstrap"]
+  ApplicationBootstrap["ApplicationBootstrap"]
+  NetworkBootstrap["NetworkBootstrap"]
+  PresentationBootstrap["PresentationBootstrap"]
+  UIBindingBootstrap["UIBindingBootstrap"]
 
-    PlayerRegistry["PlayerRegistry"]
-    SpawnManager["SpawnManager"]
-    PlayerView["PlayerView"]
-    LobbyManager["LobbyManager"]
-    LobbyNetworkService["LobbyNetworkService"]
-    AdminNetworkService["AdminNetworkService"]
+  LobbyUI["LobbyUI"]
+  AdminUI["AdminUI"]
+  SpawnUI["SpawnUI"]
 
-    Client["Client"]
-    Server["Server"]
-    PacketDispatcher["PacketDispatcher"]
-    PacketBuilder["PacketBuilder"]
-    BasePacket["BasePacket"]
-    JsonSerializer["JsonSerializer"]
-    UdpTransport["UdpTransport"]
+  PlayerRegistry["PlayerRegistry"]
+  SpawnManager["SpawnManager"]
+  PlayerView["PlayerView"]
+  LobbyManager["LobbyManager"]
+  LobbyNetworkService["LobbyNetworkService"]
+  AdminNetworkService["AdminNetworkService"]
 
-    %% Primer nivel
-    GameBootstrap --> LobbyManager
-    GameBootstrap --> PlayerRegistry
-    GameBootstrap --> SpawnManager
-    GameBootstrap --> LobbyNetworkService
-    GameBootstrap --> AdminNetworkService
-    
-    %% UI
-    LobbyUI --> LobbyManager
-    LobbyUI --> LobbyNetworkService
-    AdminUI --> AdminNetworkService
-    SpawnUI --> SpawnManager
+  Client["Client"]
+  Server["Server"]
+  PacketDispatcher["PacketDispatcher"]
+  PacketBuilder["PacketBuilder"]
+  BasePacket["BasePacket"]
+  JsonSerializer["JsonSerializer"]
+  UdpTransport["UdpTransport"]
 
-    %% Application
-    LobbyManager --> PlayerRegistry
-    LobbyManager --> SpawnManager
-    LobbyManager --> LobbyNetworkService
-    LobbyNetworkService --> Client
-    LobbyNetworkService --> PacketBuilder
-    AdminNetworkService --> Client
-    AdminNetworkService --> PacketBuilder
-    SpawnManager --> PlayerView
+  %% Orquestación principal
+  ModularLobbyBootstrap --> ApplicationBootstrap
+  ModularLobbyBootstrap --> NetworkBootstrap
+  ModularLobbyBootstrap --> PresentationBootstrap
+  ModularLobbyBootstrap --> UIBindingBootstrap
 
-    %% Network
-    Client --> PacketDispatcher
-    Client --> UdpTransport
-    Server --> PacketDispatcher
-    Server --> UdpTransport
-    PacketDispatcher --> BasePacket
-    PacketDispatcher --> LobbyManager
-    PacketBuilder --> BasePacket
-    PacketBuilder --> JsonSerializer
-    JsonSerializer --> BasePacket
+  %% UI
+  PresentationBootstrap --> LobbyUI
+  PresentationBootstrap --> AdminUI
+  PresentationBootstrap --> SpawnUI
+
+  %% Application
+  ApplicationBootstrap --> PlayerRegistry
+  ApplicationBootstrap --> LobbyManager
+  ApplicationBootstrap --> SpawnManager
+  ApplicationBootstrap --> LobbyNetworkService
+  ApplicationBootstrap --> AdminNetworkService
+
+  %% Network
+  NetworkBootstrap --> Client
+  NetworkBootstrap --> Server
+  NetworkBootstrap --> PacketDispatcher
+  NetworkBootstrap --> PacketBuilder
+  NetworkBootstrap --> UdpTransport
+  NetworkBootstrap --> JsonSerializer
+
+  %% Flujos cruzados
+  LobbyUI --> LobbyManager
+  LobbyUI --> LobbyNetworkService
+  AdminUI --> AdminNetworkService
+  SpawnUI --> SpawnManager
+  LobbyManager --> PlayerRegistry
+  LobbyManager --> SpawnManager
+  LobbyManager --> LobbyNetworkService
+  LobbyNetworkService --> Client
+  LobbyNetworkService --> PacketBuilder
+  AdminNetworkService --> Client
+  AdminNetworkService --> PacketBuilder
+  SpawnManager --> PlayerView
+  Client --> PacketDispatcher
+  Client --> UdpTransport
+  Server --> PacketDispatcher
+  Server --> UdpTransport
+  PacketDispatcher --> BasePacket
+  PacketDispatcher --> LobbyManager
+  PacketBuilder --> BasePacket
+  PacketBuilder --> JsonSerializer
+  JsonSerializer --> BasePacket
 ```
 
 ## Estructura completa de Scripts
@@ -234,7 +271,13 @@ Assets/red hunt/Scripts/
 ├── Presentation/
 │   ├── Animation/ (vacío)
 │   ├── Bootstrap/
-│   │   ├── GameBootstrap.cs
+│   │   ├── ModularLobbyBootstrap.cs
+│   │   ├── LobbyBootstrap.cs (obsoleto)
+│   │   ├── BoostrapModular/
+│   │   │   ├── ApplicationBootstrap.cs
+│   │   │   ├── NetworkBootstrap.cs
+│   │   │   ├── PresentationBootstrap.cs
+│   │   │   └── UIBindingBootstrap.cs
 │   │   └── installers/
 │   │       ├── AdminInstaller.cs
 │   │       ├── ApplicationInstaller.cs
@@ -249,6 +292,8 @@ Assets/red hunt/Scripts/
 │   │   │   └── AdminUI.cs
 │   │   └── Lobby/
 │   │       ├── LobbyUI.cs
+│   │       ├── LeaveButton.cs
+│   │       ├── ShutdownButton.cs
 │   │       └── SpawnUI.cs
 │   └── VFX/ (vacío)
 ```
