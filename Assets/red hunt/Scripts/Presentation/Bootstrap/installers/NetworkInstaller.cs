@@ -28,7 +28,8 @@ public class NetworkInstaller
 
         // --- Connection Manager y Handler ---
         var connectionManager = new ClientConnectionManager(3);
-        var connectionHandler = new ConnectionHandler(connectionManager, server, builder, lobbyManager);
+        // Se pasa ahora lobbyNetworkService para que ConnectionHandler pueda rechazar joins si GameStarted == true
+        var connectionHandler = new ConnectionHandler(connectionManager, server, builder, lobbyManager, lobbyNetworkService);
 
         dispatcher.Register("CONNECT", (json, sender) =>
             connectionHandler.HandleConnect(sender));
@@ -138,9 +139,6 @@ public class NetworkInstaller
                 Debug.LogError($"[NetworkInstaller] Error procesando PLAYER: {e.Message}");
             }
         });
-
-
-
 
         dispatcher.Register("PLAYER_READY", (json, sender) =>
         {

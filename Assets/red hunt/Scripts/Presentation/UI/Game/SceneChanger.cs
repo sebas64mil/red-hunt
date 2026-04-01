@@ -2,7 +2,6 @@ using UnityEngine;
 
 public class SceneChanger : MonoBehaviour
 {
-    [Tooltip("Nombre de la escena a cargar. Se puede escribir aquí y reutilizar desde el Inspector.")]
     [SerializeField] private string sceneName;
 
     public void SetSceneName(string name)

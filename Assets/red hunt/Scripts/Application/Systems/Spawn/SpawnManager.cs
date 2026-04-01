@@ -65,7 +65,17 @@ public class SpawnManager
         if (view != null)
         {
             bool isLocal = id == localPlayerId;
-            view.Init(id, isLocal);
+            view.Init(id, /*isHost:*/ false);
+            view.SetLocal(isLocal);
+
+
+            // Registrar la vista inmediatamente en el bootstrap persistente para evitar race conditions
+            try
+            {
+                var camBootstrap = ModularLobbyBootstrap.Instance?.GetComponent<PlayerCameraBootstrap>();
+                camBootstrap?.RegisterPlayerView(view);
+            }
+            catch { }
         }
         else
         {
@@ -88,14 +98,6 @@ public class SpawnManager
             playerTypes.Remove(id);
     }
 
-
-    private Vector3 GetSpawnPosition(int id, PlayerType type)
-    {
-        if (type == PlayerType.Killer)
-            return new Vector3(0, 0, 0);
-
-        return new Vector3(id * 2f, 0, 5f);
-    }
 
     private Vector3 GetSpawnPosition(int id, PlayerType type, int clientIndex)
     {

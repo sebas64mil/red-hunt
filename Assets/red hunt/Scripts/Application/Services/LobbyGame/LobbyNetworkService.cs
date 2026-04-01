@@ -48,6 +48,24 @@ public class LobbyNetworkService : MonoBehaviour
         this.server = server;
         this.connectionManager = connectionManager;
 
+        this.clientState = clientState;
+        if (this.clientState != null)
+        {
+            this.clientState.OnPlayerIdAssigned += id =>
+            {
+                try
+                {
+                    SpawnManagerInstance?.SetLocalPlayerId(id);
+                }
+                catch { }
+
+                try
+                {
+                    ModularLobbyBootstrap.Instance?.GetComponent<PlayerCameraBootstrap>()?.SetLocalPlayerId(id);
+                }
+                catch { }
+            };
+        }
 
         lobbyManager.OnPlayerJoined += async (player) => await HandlePlayerJoined(player);
         lobbyManager.OnPlayerReady += async (id) => await HandlePlayerReady(id);
