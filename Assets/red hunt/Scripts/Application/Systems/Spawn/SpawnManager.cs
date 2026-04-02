@@ -7,15 +7,51 @@ public class SpawnManager
     private Dictionary<int, GameObject> players = new();
     private Dictionary<int, PlayerType> playerTypes = new();
 
-    private readonly Transform spawnParent;
+    private readonly Transform killerSpawnParent;
+    private readonly Transform escapistSpawnParent;
+
     private readonly GameObject killerPrefab;
     private readonly GameObject escapistPrefab;
 
-    private readonly Vector3 hostSpawnPosition;
-    private readonly Vector3 clientBasePosition;
-    private readonly float clientSpacing;
+    private readonly Vector3 killerSpawnPosition;
+    private readonly Vector3 escapistBasePosition;
+    private readonly float escapistSpacing;
+
+    private readonly float killerRotationY;
+    private readonly float escapistRotationY;
 
     private int localPlayerId;
+
+    public SpawnManager(
+        Transform killerSpawnParent,
+        Transform escapistSpawnParent,
+        GameObject killerPrefab,
+        GameObject escapistPrefab,
+        int localPlayerId,
+        Vector3 killerSpawnPosition,
+        Vector3 escapistBasePosition,
+        float escapistSpacing,
+        float killerRotationY = 0f,
+        float escapistRotationY = 0f)
+    {
+        this.killerSpawnParent = killerSpawnParent;
+        this.escapistSpawnParent = escapistSpawnParent;
+        this.killerPrefab = killerPrefab;
+        this.escapistPrefab = escapistPrefab;
+        this.localPlayerId = localPlayerId;
+
+        this.killerSpawnPosition = killerSpawnPosition;
+        this.escapistBasePosition = escapistBasePosition;
+        this.escapistSpacing = escapistSpacing;
+        this.killerRotationY = killerRotationY;
+        this.escapistRotationY = escapistRotationY;
+
+        Debug.Log($"[SpawnManager] ✅ Inicializado con spawnParents separados:");
+        Debug.Log($"  - Killer Parent: {(killerSpawnParent != null ? killerSpawnParent.name : "NULL")}");
+        Debug.Log($"  - Escapist Parent: {(escapistSpawnParent != null ? escapistSpawnParent.name : "NULL")}");
+        Debug.Log($"  - Killer RotationY: {killerRotationY}°");
+        Debug.Log($"  - Escapist RotationY: {escapistRotationY}°");
+    }
 
     public SpawnManager(
         Transform spawnParent,
@@ -25,15 +61,19 @@ public class SpawnManager
         Vector3 hostSpawnPosition,
         Vector3 clientBasePosition,
         float clientSpacing)
+        : this(
+            spawnParent,
+            spawnParent,
+            killerPrefab,
+            escapistPrefab,
+            localPlayerId,
+            hostSpawnPosition,
+            clientBasePosition,
+            clientSpacing,
+            0f,
+            0f)
     {
-        this.spawnParent = spawnParent;
-        this.killerPrefab = killerPrefab;
-        this.escapistPrefab = escapistPrefab;
-        this.localPlayerId = localPlayerId;
-
-        this.hostSpawnPosition = hostSpawnPosition;
-        this.clientBasePosition = clientBasePosition;
-        this.clientSpacing = clientSpacing;
+        Debug.Log("[SpawnManager] ⚠️ Usando constructor antiguo - ambos tipos usan el mismo spawnParent");
     }
 
     public void SetLocalPlayerId(int id)
@@ -51,24 +91,53 @@ public class SpawnManager
             return;
         }
 
-        Debug.Log($"[SpawnManager] Agregando player {id} de tipo {type}");
-        int clientIndex = 0;
-        if (type != PlayerType.Killer)
+        Debug.Log($"[SpawnManager] 👤 Agregando player {id} de tipo {type}");
+
+        int escapistIndex = 0;
+        if (type == PlayerType.Escapist)
         {
-            clientIndex = playerTypes.Values.Count(t => t != PlayerType.Killer);
+            escapistIndex = id - 2;
+            
+            if (escapistIndex < 0)
+            {
+                Debug.LogWarning($"[SpawnManager] ⚠️ Índice negativo calculado para Escapista {id}. Usando 0.");
+                escapistIndex = 0;
+            }
         }
 
         GameObject prefab = type == PlayerType.Killer ? killerPrefab : escapistPrefab;
-        Vector3 spawnPos = GetSpawnPosition(id, type, clientIndex);
+        Vector3 spawnPos = GetSpawnPosition(type, escapistIndex);
+        
+        float rotationY = type == PlayerType.Killer ? killerRotationY : escapistRotationY;
+        Quaternion spawnRotation = Quaternion.Euler(0f, rotationY, 0f);
 
-        GameObject playerGO = GameObject.Instantiate(prefab, spawnPos, Quaternion.identity, spawnParent);
+        Transform parentTransform = type == PlayerType.Killer ? killerSpawnParent : escapistSpawnParent;
+
+        if (parentTransform == null)
+        {
+            Debug.LogError($"[SpawnManager] ❌ SpawnParent NULL para tipo {type}");
+            return;
+        }
+
+        GameObject playerGO = GameObject.Instantiate(prefab, spawnPos, spawnRotation, parentTransform);
         playerGO.name = $"{type}_{id}";
+
+
+        var rb = playerGO.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.useGravity = true;
+            rb.isKinematic = false;
+        }
+        else
+        {
+            Debug.LogWarning($"[SpawnManager] ⚠️ Player {id} no tiene Rigidbody");
+        }
 
         var view = playerGO.GetComponent<PlayerView>();
         if (view != null)
         {
             bool isLocal = id == localPlayerId;
-            // ⭐ El host siempre tiene ID 1 en este sistema
             bool isHostPlayer = id == 1;
             view.Init(id, isHostPlayer);
             view.SetLocal(isLocal);
@@ -93,6 +162,9 @@ public class SpawnManager
     {
         if (!players.ContainsKey(id)) return;
 
+        var playerType = playerTypes[id];
+        Debug.Log($"[SpawnManager] 🗑️ Removiendo player {id} ({playerType})");
+
         GameObject.Destroy(players[id]);
         players.Remove(id);
 
@@ -110,12 +182,14 @@ public class SpawnManager
         return null;
     }
 
-    private Vector3 GetSpawnPosition(int id, PlayerType type, int clientIndex)
+    private Vector3 GetSpawnPosition(PlayerType type, int index)
     {
         if (type == PlayerType.Killer)
-            return hostSpawnPosition;
+        {
+            return killerSpawnPosition;
+        }
 
-        return clientBasePosition + new Vector3(clientIndex * clientSpacing, 0f, 0f);
+        return escapistBasePosition + new Vector3(index * escapistSpacing, 0f, 0f);
     }
 
     public void SpawnRemotePlayer(int id, PlayerType type)
@@ -123,5 +197,13 @@ public class SpawnManager
         if (players.ContainsKey(id)) return;
 
         AddPlayer(id, type);
+    }
+
+    public int GetKillerCount() => playerTypes.Values.Count(t => t == PlayerType.Killer);
+    public int GetEscapistCount() => playerTypes.Values.Count(t => t == PlayerType.Escapist);
+
+    public void LogPlayerCounts()
+    {
+        Debug.Log($"[SpawnManager] 📊 Jugadores activos - Killers: {GetKillerCount()}, Escapists: {GetEscapistCount()}");
     }
 }

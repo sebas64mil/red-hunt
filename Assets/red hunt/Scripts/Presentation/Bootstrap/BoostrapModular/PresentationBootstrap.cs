@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Linq;
 using UnityEngine;
 
@@ -47,21 +47,24 @@ public class PresentationBootstrap : MonoBehaviour
         {
             int localPlayerId = network_bootstrap_clientstate_id_fallback();
 
-            var spawnParent = ui.GetSpawnParent();
+            // â­ CAMBIO: Usar nuevos parÃ¡metros separados
+            var killerSpawnParent = ui.GetKillerSpawnParent();
+            var escapistSpawnParent = ui.GetEscapistSpawnParent();
             var killerPrefab = ui.KillerPrefab;
             var escapistPrefab = ui.EscapistPrefab;
-            var hostSpawnPos = ui.HostSpawnPosition;
-            var clientBasePos = ui.ClientBasePosition;
-            var clientSpacing = ui.ClientSpacing;
+            var killerSpawnPos = ui.KillerSpawnPosition;
+            var escapistBasePos = ui.EscapistBasePosition;
+            var escapistSpacing = ui.EscapistSpacing;
 
             var newSpawnManager = new SpawnManager(
-                spawnParent,
+                killerSpawnParent,
+                escapistSpawnParent,
                 killerPrefab,
                 escapistPrefab,
                 localPlayerId,
-                hostSpawnPos,
-                clientBasePos,
-                clientSpacing
+                killerSpawnPos,
+                escapistBasePos,
+                escapistSpacing
             );
 
             Presentation.SpawnManager = newSpawnManager;
@@ -71,9 +74,9 @@ public class PresentationBootstrap : MonoBehaviour
             if (lobbyNetworkService != null)
                 lobby_network_service_assign(newSpawnManager);
 
-            Debug.Log("[PresentationBootstrap] SpawnUI re-registrada y nuevo SpawnManager asignado al SpawnUI y LobbyNetworkService tras cambio de escena.");
+            Debug.Log("[PresentationBootstrap] âœ… SpawnUI re-registrada con spawnParents SEPARADOS");
 
-            // Solo repoblar players que aún no están en el SpawnManager
+            // Solo repoblar players que aÃºn no estÃ©n en el SpawnManager
             try
             {
                 var players = appBootstrap?.Services?.LobbyManager?.GetAllPlayers();
@@ -83,7 +86,6 @@ public class PresentationBootstrap : MonoBehaviour
                     {
                         try
                         {
-                            // Evitar duplicados: solo agregar si no existe
                             if (!Presentation.SpawnManager.HasPlayer(p.Id))
                             {
                                 Presentation.SpawnUI.OnPlayerAssigned(p.Id, p.PlayerType);
@@ -98,7 +100,7 @@ public class PresentationBootstrap : MonoBehaviour
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"[PresentationBootstrap] Error repoblando spawns tras RegisterSpawnUI: {e.Message}");
+                Debug.LogWarning($"[PresentationBootstrap] Error repoblando spawns: {e.Message}");
             }
         }
         catch (Exception e)
@@ -251,7 +253,7 @@ public class PresentationBootstrap : MonoBehaviour
             Debug.Log($"[PresentationBootstrap] Player Left: {playerId}");
             Presentation?.SpawnUI?.HandlePlayerDisconnected(playerId);
 
-            // actualizar AdminUI si está registrada
+            // actualizar AdminUI si estÃ¡ registrada
             adminUI?.RemovePlayerEntry(playerId);
         }
         catch (Exception e)
@@ -321,7 +323,7 @@ public class PresentationBootstrap : MonoBehaviour
 
             if (shouldSuppressShowForLocal != null && shouldSuppressShowForLocal())
             {
-                Debug.Log("[PresentationBootstrap] Supresión de mostrar lobby para local activada; omitiendo ShowLobbyPanel");
+                Debug.Log("[PresentationBootstrap] SupresiÃ³n de mostrar lobby para local activada; omitiendo ShowLobbyPanel");
                 return;
             }
 
@@ -332,7 +334,7 @@ public class PresentationBootstrap : MonoBehaviour
             var exists = appBootstrap.Services.LobbyManager.GetAllPlayers()?.Any(p => p.Id == id) ?? false;
             if (!exists)
             {
-                Debug.Log($"[PresentationBootstrap] player {id} no está aún en LobbyManager, esperando broadcast");
+                Debug.Log($"[PresentationBootstrap] player {id} no estÃ¡ aÃºn en LobbyManager, esperando broadcast");
                 return;
             }
 

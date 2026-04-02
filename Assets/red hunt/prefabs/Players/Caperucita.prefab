@@ -172,7 +172,6 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   groundCheckDistance: 0.2
-  enableGravity: 1
 --- !u!114 &8329300350526883317
 MonoBehaviour:
   m_ObjectHideFlags: 0

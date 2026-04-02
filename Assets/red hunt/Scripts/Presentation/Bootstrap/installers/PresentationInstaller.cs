@@ -1,10 +1,10 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public class PresentationInstaller
 {
     public PresentationServices Install(LobbyUI lobbyUI, SpawnUI spawnUI, int localPlayerId)
     {
-        Debug.Log("[PresentationInstaller] Iniciando instalaci�n...");
+        Debug.Log("[PresentationInstaller] Iniciando instalación...");
 
         if (lobbyUI == null)
             throw new System.Exception("LobbyUI no asignado");
@@ -12,14 +12,36 @@ public class PresentationInstaller
         if (spawnUI == null)
             throw new System.Exception("SpawnUI no asignado");
 
-        var spawnParent = spawnUI.GetSpawnParent();
+        var killerSpawnParent = spawnUI.GetKillerSpawnParent();
+        var escapistSpawnParent = spawnUI.GetEscapistSpawnParent();
 
-        if (spawnParent == null)
-            throw new System.Exception("SpawnParent no configurado");
+        if (killerSpawnParent == null)
+            throw new System.Exception("Killer SpawnParent no configurado");
 
-        var spawnManager = new SpawnManager(spawnParent, spawnUI.KillerPrefab, spawnUI.EscapistPrefab, localPlayerId, spawnUI.HostSpawnPosition, spawnUI.ClientBasePosition, spawnUI.ClientSpacing);
+        if (escapistSpawnParent == null)
+            throw new System.Exception("Escapist SpawnParent no configurado");
+
+        // ✅ Pasar también las rotaciones Y
+        var spawnManager = new SpawnManager(
+            killerSpawnParent,
+            escapistSpawnParent,
+            spawnUI.KillerPrefab,
+            spawnUI.EscapistPrefab,
+            localPlayerId,
+            spawnUI.KillerSpawnPosition,
+            spawnUI.EscapistBasePosition,
+            spawnUI.EscapistSpacing,
+            spawnUI.KillerRotationY,
+            spawnUI.EscapistRotationY
+        );
 
         spawnUI.Init(spawnManager);
+
+        Debug.Log("[PresentationInstaller] ✅ SpawnManager creado con spawnParents SEPARADOS");
+        Debug.Log($"  - Killer Parent: {killerSpawnParent.name}");
+        Debug.Log($"  - Escapist Parent: {escapistSpawnParent.name}");
+        Debug.Log($"  - Killer RotationY: {spawnUI.KillerRotationY}°");
+        Debug.Log($"  - Escapist RotationY: {spawnUI.EscapistRotationY}°");
 
         return new PresentationServices
         {

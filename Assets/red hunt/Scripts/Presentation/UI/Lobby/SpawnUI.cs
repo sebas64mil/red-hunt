@@ -1,31 +1,48 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System;
 
 public class SpawnUI : MonoBehaviour
 {
     [SerializeField] private GameObject killerPrefab;
     [SerializeField] private GameObject escapistPrefab;
-    [SerializeField] private Transform spawnParent;
+
+    // ⭐ CAMBIO: Separar spawnParents por tipo
+    [SerializeField] private Transform killerSpawnParent;
+    [SerializeField] private Transform escapistSpawnParent;
 
     [Header("Spawn Positions")]
-    [SerializeField] private Vector3 hostSpawnPosition = Vector3.zero;
-    [SerializeField] private Vector3 clientBasePosition = new Vector3(0f, 0f, 5f);
-    [SerializeField] private float clientSpacing = 2f;
+    [SerializeField] private Vector3 killerSpawnPosition = Vector3.zero;
+    [SerializeField] private Vector3 escapistBasePosition = new Vector3(0f, 0f, 5f);
+    [SerializeField] private float escapistSpacing = 2f;
 
+    [Header("Spawn Rotations (Y axis in degrees)")]
+    [SerializeField] private float killerRotationY = 0f;
+    [SerializeField] private float escapistRotationY = 0f;
 
     private SpawnManager spawnManager;
 
     public GameObject KillerPrefab => killerPrefab;
     public GameObject EscapistPrefab => escapistPrefab;
 
+    public Transform KillerSpawnParent => killerSpawnParent;
+    public Transform EscapistSpawnParent => escapistSpawnParent;
 
-    public Vector3 HostSpawnPosition => hostSpawnPosition;
-    public Vector3 ClientBasePosition => clientBasePosition;
-    public float ClientSpacing => clientSpacing;
+    public Vector3 KillerSpawnPosition => killerSpawnPosition;
+    public Vector3 EscapistBasePosition => escapistBasePosition;
+    public float EscapistSpacing => escapistSpacing;
+
+    public float KillerRotationY => killerRotationY;
+    public float EscapistRotationY => escapistRotationY;
 
     public void Init(SpawnManager spawnManager)
     {
         this.spawnManager = spawnManager;
+        
+        Debug.Log("[SpawnUI] ✅ SpawnUI Inicializado");
+        Debug.Log($"  - Killer Parent: {(killerSpawnParent != null ? killerSpawnParent.name : "NO ASIGNADO")}");
+        Debug.Log($"  - Escapist Parent: {(escapistSpawnParent != null ? escapistSpawnParent.name : "NO ASIGNADO")}");
+        Debug.Log($"  - Killer RotationY: {killerRotationY}°");
+        Debug.Log($"  - Escapist RotationY: {escapistRotationY}°");
     }
 
     private void OnEnable()
@@ -36,7 +53,7 @@ public class SpawnUI : MonoBehaviour
         }
         catch (Exception)
         {
-            Debug.LogWarning("[SpawnUI] Registro con GameBootstrap fall�");
+            Debug.LogWarning("[SpawnUI] Registro con GameBootstrap falló");
         }
     }
 
@@ -59,7 +76,7 @@ public class SpawnUI : MonoBehaviour
 
         if (!Enum.TryParse<PlayerType>(playerType, true, out var type))
         {
-            Debug.LogWarning($"[SpawnUI] Tipo inv�lido: {playerType}, usando Escapist");
+            Debug.LogWarning($"[SpawnUI] Tipo inválido: {playerType}, usando Escapist");
             type = PlayerType.Escapist;
         }
 
@@ -77,8 +94,6 @@ public class SpawnUI : MonoBehaviour
         spawnManager.RemovePlayer(id);
     }
 
-    public Transform GetSpawnParent()
-    {
-        return spawnParent;
-    }
+    public Transform GetKillerSpawnParent() => killerSpawnParent;
+    public Transform GetEscapistSpawnParent() => escapistSpawnParent;
 }

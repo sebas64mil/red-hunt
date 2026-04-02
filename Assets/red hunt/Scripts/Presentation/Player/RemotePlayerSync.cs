@@ -19,16 +19,26 @@ public class RemotePlayerSync : MonoBehaviour
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        
+        if (rb != null)
+        {
+            rb.useGravity = true;
+            Debug.Log($"[RemotePlayerSync] ✅ Gravedad habilitada para jugador remoto en Awake");
+        }
+        
         targetPosition = transform.position;
         targetRotation = transform.rotation;
-        Debug.Log($"[RemotePlayerSync] Awake: rb={rb != null}, playerId={remotePlayerId}");
     }
 
     public void Init(int playerId)
     {
         remotePlayerId = playerId;
         isInitialized = true;
-        Debug.Log($"[RemotePlayerSync] Init: playerId={playerId}, nombre del gameobject={gameObject.name}");
+        
+        if (rb != null)
+        {
+            rb.useGravity = true;
+        }
     }
 
     private void FixedUpdate()
@@ -42,7 +52,6 @@ public class RemotePlayerSync : MonoBehaviour
 
     public void OnRemotePositionReceived(MovePacket movePacket)
     {
-        // ⭐ DEBUG: Verificar qué está pasando
         if (!isInitialized)
         {
             Debug.LogWarning($"[RemotePlayerSync] OnRemotePositionReceived PERO NO INICIALIZADO: movePacket.playerId={movePacket.playerId}, remotePlayerId={remotePlayerId}");
@@ -60,8 +69,6 @@ public class RemotePlayerSync : MonoBehaviour
         targetVelocity = movePacket.GetVelocity();
 
         hasReceivedData = true;
-
-        Debug.Log($"[RemotePlayerSync] ✅ MOVE procesado para playerId={remotePlayerId}: pos={targetPosition}");
 
         UpdateAnimations(movePacket);
     }
@@ -85,7 +92,7 @@ public class RemotePlayerSync : MonoBehaviour
 
             rb.linearVelocity = new Vector3(
                 Mathf.Lerp(currentVelocity.x, horizontalVelocity.x, Time.fixedDeltaTime * positionLerpSpeed),
-                currentVelocity.y,
+                currentVelocity.y,  
                 Mathf.Lerp(currentVelocity.z, horizontalVelocity.z, Time.fixedDeltaTime * positionLerpSpeed)
             );
         }

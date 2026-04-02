@@ -186,7 +186,6 @@ public class PlayerNetworkService : MonoBehaviour
             
             _ = broadcastService.SendToAll(snapshotJson);
             
-            Debug.Log($"[PlayerNetworkService] 📸 Snapshot HOST enviado: {playersData.Count} jugadores");
         }
         catch (Exception ex)
         {

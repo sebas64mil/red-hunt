@@ -117,7 +117,6 @@ public class GameplayBootstrap : MonoBehaviour
         if (playerMovement != null)
         {
             playerMovement.enabled = true;
-            playerMovement.SetGravityEnabled(true);
             Debug.Log("[GameplayBootstrap] ✅ PlayerMovement ACTIVADO");
         }
 
@@ -204,7 +203,6 @@ public class GameplayBootstrap : MonoBehaviour
         if (playerMovement != null)
         {
             playerMovement.enabled = false;
-            playerMovement.SetGravityEnabled(true);
             Debug.Log($"[GameplayBootstrap] PlayerMovement DESACTIVADO para remoto {remotePlayerId}");
         }
 

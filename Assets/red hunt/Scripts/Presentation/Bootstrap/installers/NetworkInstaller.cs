@@ -204,7 +204,6 @@ public class NetworkInstaller
                     return;
                 }
 
-                Debug.Log($"[NetworkInstaller] 📸 CLIENTE recibió Snapshot: {snapshot.players.Count} jugadores en el snapshot");
 
                 if (snapshot.players == null || snapshot.players.Count == 0)
                 {
@@ -236,7 +235,6 @@ public class NetworkInstaller
                         };
 
 
-                        // ⭐ VERIFICAR que networkServices.OnRemotePlayerMoveReceived está asignado
                         if (networkServices?.OnRemotePlayerMoveReceived != null)
                         {
                             networkServices.OnRemotePlayerMoveReceived.Invoke(movePacket);

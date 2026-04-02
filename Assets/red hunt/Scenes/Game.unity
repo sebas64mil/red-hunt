@@ -836,10 +836,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SpawnUI
   killerPrefab: {fileID: 2850871068998057502, guid: 11c19b00056ed624e99610e1c460e4b1, type: 3}
   escapistPrefab: {fileID: 4877026484939899116, guid: 8490170555ab8b8419729d51e00d5951, type: 3}
-  spawnParent: {fileID: 909342877}
-  hostSpawnPosition: {x: -15.04, y: -0.06, z: -13.58}
-  clientBasePosition: {x: -4.2, y: -0.06, z: -5.9}
-  clientSpacing: 3
+  killerSpawnParent: {fileID: 909342877}
+  escapistSpawnParent: {fileID: 1709908041}
+  killerSpawnPosition: {x: -15.04, y: -0.06, z: -13.58}
+  escapistBasePosition: {x: -4.2, y: -0.06, z: -5.9}
+  escapistSpacing: 2.5
+  killerRotationY: 0
+  escapistRotationY: 0
 --- !u!114 &402444431
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2534,7 +2537,7 @@ GameObject:
   - component: {fileID: 909342877}
   - component: {fileID: 909342876}
   m_Layer: 0
-  m_Name: SpawnHost
+  m_Name: SpawnKiller
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2555,7 +2558,7 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
@@ -3647,7 +3650,7 @@ GameObject:
   - component: {fileID: 1709908041}
   - component: {fileID: 1709908040}
   m_Layer: 0
-  m_Name: SpawnClients
+  m_Name: SpawnEscapist
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3668,7 +3671,7 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
@@ -3682,13 +3685,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1709908039}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
   m_LocalPosition: {x: -4.2, y: -0.06, z: -5.9}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
 --- !u!1 &1846731870
 GameObject:
   m_ObjectHideFlags: 0
@@ -4279,8 +4282,8 @@ SceneRoots:
   - {fileID: 1320829577}
   - {fileID: 1477744330}
   - {fileID: 909342877}
-  - {fileID: 39417642}
   - {fileID: 1709908041}
   - {fileID: 1063694590}
   - {fileID: 771560282}
   - {fileID: 793908173}
+  - {fileID: 39417642}

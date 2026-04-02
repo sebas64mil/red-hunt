@@ -107,7 +107,7 @@ public class LobbyNetworkService : MonoBehaviour
         {
             clientState?.SetPlayerId(1);
             clientState?.SetConnected(true);
-            clientState?.SetIsHost(true);  // ⭐ AÑADIR ESTA LÍNEA
+            clientState?.SetIsHost(true); 
         }
         catch { }
 
@@ -429,6 +429,31 @@ public class LobbyNetworkService : MonoBehaviour
         if (added == null)
         {
             Debug.LogWarning($"[LobbyNetworkService] Player {playerPacket.id} no pudo ser añadido (lobby lleno u error)");
+            
+            // ⭐ NUEVO: Enviar ASSIGN_REJECT al cliente
+            try
+            {
+                var rejectPacket = packetBuilder.CreateAssignReject(playerPacket.id, "Lobby full or internal error");
+                
+                if (connectionManager != null && server != null)
+                {
+                    if (connectionManager.TryGetEndpointById(playerPacket.id, out IPEndPoint endpoint) && endpoint != null)
+                    {
+                        _ = server.SendToClientAsync(rejectPacket, endpoint);
+                        Debug.Log($"[LobbyNetworkService] ASSIGN_REJECT dirigido enviado a {endpoint} para player {playerPacket.id}");
+                    }
+                }
+                else
+                {
+                    _ = broadcastService.SendToAll(rejectPacket);
+                    Debug.Log($"[LobbyNetworkService] ASSIGN_REJECT enviado por broadcast para player {playerPacket.id}");
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[LobbyNetworkService] Error enviando ASSIGN_REJECT: {e.Message}");
+            }
+            
             return;
         }
 
@@ -476,7 +501,7 @@ public class LobbyNetworkService : MonoBehaviour
     private void HandleRemovePlayerPacket(string json)
     {
         var packet = packetBuilder.Serializer.Deserialize<RemovePlayerPacket>(json);
-        if (packet == null) return;
+        if(packet == null) return;
 
         Debug.Log($"[LobbyNetworkService] Player {packet.id} disconnected");
 

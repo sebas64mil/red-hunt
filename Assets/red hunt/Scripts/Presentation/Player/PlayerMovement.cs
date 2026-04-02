@@ -16,9 +16,6 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private LayerMask groundLayer;
     [SerializeField] private float groundCheckDistance = 0.2f;
 
-    [Header("Gravedad")]
-    [SerializeField] private bool enableGravity = true;
-
     private Rigidbody rb;
     private PlayerInputHandler inputHandler;
     private Transform cameraHolder;  // ⭐ GameObject vacío que rota arriba/abajo
@@ -69,21 +66,11 @@ public class PlayerMovement : MonoBehaviour
         {
             Debug.LogError("[PlayerMovement] ❌ CameraHolder no pudo ser creado");
         }
-    }
 
-    public void SetGravityEnabled(bool enabled)
-    {
-        enableGravity = enabled;
         if (rb != null)
         {
-            rb.useGravity = enabled;
-            if (!enabled)
-            {
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
-            }
+            rb.useGravity = true;
         }
-        Debug.Log($"[PlayerMovement] Gravedad: {(enabled ? "ACTIVADA" : "DESACTIVADA")}");
     }
 
     private void OnEnable()
@@ -94,6 +81,12 @@ public class PlayerMovement : MonoBehaviour
             Debug.Log("[PlayerMovement] ✅ Evento OnJump suscrito");
         }
         hasLoggedInputCheck = false;
+
+        // ✅ Asegurar gravedad al activar el jugador
+        if (rb != null)
+        {
+            rb.useGravity = true;
+        }
     }
 
     private void OnDisable()
@@ -165,7 +158,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void HandleJump()
     {
-        if (rb == null || !isGrounded || !enableGravity) return;
+        if (rb == null || !isGrounded) return;
 
         Debug.Log("[PlayerMovement] JUMP activado");
         rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
@@ -176,18 +169,17 @@ public class PlayerMovement : MonoBehaviour
     {
         if (cameraHolder == null || lookInput == Vector2.zero) return;
 
-        float mouseX = lookInput.x * mouseSensitivity * Time.deltaTime;
-        float mouseY = lookInput.y * mouseSensitivity * Time.deltaTime;
+        float lookX = lookInput.x * mouseSensitivity * Time.deltaTime;
+        float lookY = lookInput.y * mouseSensitivity * Time.deltaTime;
 
         // ⭐ ROTACIÓN VERTICAL: Aplicar al CameraHolder (pitch)
-        xRotation -= mouseY;
+        xRotation -= lookY;
         xRotation = Mathf.Clamp(xRotation, -maxLookAngle, maxLookAngle);
         cameraHolder.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
         
         // ⭐ ROTACIÓN HORIZONTAL: Aplicar al cuerpo del jugador (yaw)
-        transform.Rotate(Vector3.up * mouseX);
+        transform.Rotate(Vector3.up * lookX);
 
-        Debug.Log($"[PlayerMovement] 📷 Look: xRot={xRotation:F1}°, mouseX={mouseX:F2}, mouseY={mouseY:F2}");
     }
 
     private void CheckGroundStatus()

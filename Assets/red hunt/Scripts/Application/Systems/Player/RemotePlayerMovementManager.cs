@@ -22,7 +22,6 @@ public class RemotePlayerMovementManager
         }
 
         remotePlayerSyncMap[playerId] = remoteSync;
-        Debug.Log($"[RemotePlayerMovementManager] ✅ Player remoto {playerId} registrado");
     }
 
     public void UnregisterRemotePlayer(int playerId)
@@ -65,7 +64,6 @@ public class RemotePlayerMovementManager
 
         remoteSync.OnRemotePositionReceived(movePacket);
         OnMoveReceived?.Invoke(movePacket);
-        Debug.Log($"[RemotePlayerMovementManager] ✅ MOVE procesado para player {playerId}");
     }
 
     public int GetRegisteredRemotePlayersCount() => remotePlayerSyncMap.Count;
