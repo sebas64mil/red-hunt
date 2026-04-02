@@ -18,12 +18,9 @@ public class LobbyUI : MonoBehaviour
 
     public event Action OnHostChosen;
     public event Action OnJoinChosen;
-    public event Action<PlayerType> OnRoleChosen;
     public event Action<PlayerType> OnConfirmRole;
     public event Action<int> OnPlayerReady;
 
-    // Start event now carries sceneName when invoked via inspector
-    public event Action<string> OnStartGame;
 
     private bool isHost;
     private bool isConnected;
@@ -66,7 +63,6 @@ public class LobbyUI : MonoBehaviour
         if (chooseKillerButton != null) chooseKillerButton.onClick.RemoveAllListeners();
         if (chooseEscapistButton != null) chooseEscapistButton.onClick.RemoveAllListeners();
         if (readyButton != null) readyButton.onClick.RemoveAllListeners();
-        if (startButton != null) startButton.onClick.RemoveAllListeners();
 
         if (roleBackButton != null) roleBackButton.onClick.RemoveAllListeners();
 
@@ -75,7 +71,6 @@ public class LobbyUI : MonoBehaviour
         if (chooseKillerButton != null) chooseKillerButton.onClick.AddListener(() => OnChooseRole(PlayerType.Killer));
         if (chooseEscapistButton != null) chooseEscapistButton.onClick.AddListener(() => OnChooseRole(PlayerType.Escapist));
         if (readyButton != null) readyButton.onClick.AddListener(OnReadyButton);
-        if (startButton != null) startButton.onClick.AddListener(OnStartButton);
 
         if (leaveButton != null)
         {
@@ -93,6 +88,8 @@ public class LobbyUI : MonoBehaviour
 
         if (readyButton != null)
             readyButton.interactable = false;
+
+        if (startButton != null) startButton.interactable = false;
     }
 
     private void OnEnable()
@@ -137,20 +134,10 @@ public class LobbyUI : MonoBehaviour
     public void OnChooseRole(PlayerType role)
     {
         selectedRole = role;
-        OnRoleChosen?.Invoke(role);
+        OnConfirmRole?.Invoke(role);
 
         if (readyButton != null && !readyProcessing)
             readyButton.interactable = true;
-    }
-
-    public void OnChooseKiller()
-    {
-        OnChooseRole(PlayerType.Killer);
-    }
-
-    public void OnChooseEscapist()
-    {
-        OnChooseRole(PlayerType.Escapist);
     }
 
     public void OnReadyButton()
@@ -200,20 +187,6 @@ public class LobbyUI : MonoBehaviour
         ResetReadyState();
     }
 
-
-    // Existing parameterless handler kept for compatibility; invokes event with empty string
-    public void OnStartButton()
-    {
-        OnStartGame?.Invoke(string.Empty);
-    }
-
-    // Public method intended to be used from the Button.onClick inspector passing the scene name
-    public void OnStartButtonWithScene(string sceneName)
-    {
-        OnStartGame?.Invoke(sceneName);
-    }
-
-    // Ahora pasa ip y port
     public void ConfirmCreateLobby()
     {
         OnCreateLobby?.Invoke(ipAddress, port);

@@ -15,7 +15,6 @@ public class LobbyNetworkService : MonoBehaviour
     private bool isHost;
     public bool IsHost => isHost;
 
-    // Nuevo flag: true cuando el host ha iniciado la partida
     public bool GameStarted { get; private set; } = false;
 
     public SpawnManager SpawnManagerInstance { get; set; }
@@ -108,6 +107,7 @@ public class LobbyNetworkService : MonoBehaviour
         {
             clientState?.SetPlayerId(1);
             clientState?.SetConnected(true);
+            clientState?.SetIsHost(true);  // ⭐ AÑADIR ESTA LÍNEA
         }
         catch { }
 
@@ -201,6 +201,13 @@ public class LobbyNetworkService : MonoBehaviour
         if (!isHost)
         {
             Debug.LogWarning("[LobbyNetworkService] StartGame invocado en cliente - ignorando");
+            return;
+        }
+
+        // Evitar múltiples llamadas a StartGame
+        if (GameStarted)
+        {
+            Debug.LogWarning("[LobbyNetworkService] StartGame ya fue invocado - ignorando llamada duplicada");
             return;
         }
 
@@ -424,11 +431,6 @@ public class LobbyNetworkService : MonoBehaviour
             Debug.LogWarning($"[LobbyNetworkService] Player {playerPacket.id} no pudo ser añadido (lobby lleno u error)");
             return;
         }
-
-        SpawnManagerInstance?.SpawnRemotePlayer(
-            added.Id,
-            ParsePlayerType(added.PlayerType)
-        );
 
         if (clientState != null && clientState.PlayerId == added.Id)
         {

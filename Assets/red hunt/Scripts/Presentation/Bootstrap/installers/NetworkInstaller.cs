@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Net;
 using UnityEngine;
@@ -12,11 +12,12 @@ public class NetworkInstaller
         LobbyNetworkService lobbyNetworkService,
         bool isHost)
     {
-        Debug.Log("[NetworkInstaller] Iniciando instalaci�n de Network...");
+        Debug.Log("[NetworkInstaller] Iniciando instalación de Network...");
 
-        // --- Serializador y builder ---
+        // --- Serializador y builders ---
         var serializer = new JsonSerializer();
         var builder = new PacketBuilder(serializer);
+        var playerPacketBuilder = new PlayerPacketBuilder(serializer);
         var dispatcher = new PacketDispatcher(serializer);
 
         // --- Transportes ---
@@ -28,7 +29,6 @@ public class NetworkInstaller
 
         // --- Connection Manager y Handler ---
         var connectionManager = new ClientConnectionManager(3);
-        // Se pasa ahora lobbyNetworkService para que ConnectionHandler pueda rechazar joins si GameStarted == true
         var connectionHandler = new ConnectionHandler(connectionManager, server, builder, lobbyManager, lobbyNetworkService);
 
         dispatcher.Register("CONNECT", (json, sender) =>
@@ -39,15 +39,13 @@ public class NetworkInstaller
 
         var broadcastService = new BroadcastService(server, connectionManager);
 
-        var adminService = AdminInstaller.Install(dispatcher,serializer,server,client,builder,broadcastService,connectionManager,lobbyManager,lobbyNetworkService?.SpawnManagerInstance,lobbyNetworkService,isHost,clientState);
+        var adminService = AdminInstaller.Install(dispatcher, serializer, server, client, builder, broadcastService, connectionManager, lobbyManager, lobbyNetworkService?.SpawnManagerInstance, lobbyNetworkService, isHost, clientState);
 
         dispatcher.Register("ASSIGN_PLAYER", (json, sender) =>
         {
             clientPacketHandler.HandleAssignPlayer(json);
-
             lobbyNetworkService?.HandlePacketReceived(json);
         });
-
 
         dispatcher.Register("ASSIGN_REJECT", (json, sender) =>
         {
@@ -61,7 +59,6 @@ public class NetworkInstaller
                 Debug.LogError($"[NetworkInstaller] Error procesando ASSIGN_REJECT: {e.Message}");
             }
         });
-
 
         dispatcher.Register("PLAYER", async (json, sender) =>
         {
@@ -104,35 +101,7 @@ public class NetworkInstaller
                     }
                 }
 
-                var added = lobbyManager?.AddPlayerRemote(packet.id, packet.playerType);
-
-                string authoritativeJson;
-                if (added != null)
-                {
-                    authoritativeJson = builder.CreatePlayer(packet.id, packet.playerType);
-                }
-                else
-                {
-                    authoritativeJson = builder.CreateRemovePlayer(packet.id);
-                }
-                try
-                {
-                    if (server != null)
-                        await server.SendToClientAsync(authoritativeJson, sender);
-                }
-                catch (Exception sendEx)
-                {
-                    Debug.LogWarning($"[NetworkInstaller] Error enviando PACKET directo al emisor: {sendEx.Message}");
-                }
-
-                try
-                {
-                    await broadcastService?.SendToAll(authoritativeJson);
-                }
-                catch (Exception bcEx)
-                {
-                    Debug.LogWarning($"[NetworkInstaller] Error en broadcast PLAYER: {bcEx.Message}");
-                }
+                lobbyManager?.AddPlayerRemote(packet.id, packet.playerType);
             }
             catch (System.Exception e)
             {
@@ -170,7 +139,61 @@ public class NetworkInstaller
             }
         });
 
-        // NEW: register START_GAME so clients receive the packet and change scene
+        var networkServices = new NetworkServices();
+
+        dispatcher.Register("MOVE", async (json, sender) =>
+        {
+            try
+            {
+                var movePacket = playerPacketBuilder.DeserializeMovePacket(json);
+                if (movePacket == null)
+                {
+                    Debug.LogWarning("[NetworkInstaller] ❌ MOVE packet inválido");
+                    return;
+                }
+
+                Debug.Log($"[NetworkInstaller] 📦 MOVE recibido: playerId={movePacket.playerId}, isHost={isHost}, myPlayerId={clientState.PlayerId}");
+
+                if (isHost)
+                {
+                    // HOST: Rebroadcastea a otros clientes
+                    Debug.Log($"[NetworkInstaller] 📡 HOST reenviando MOVE de player {movePacket.playerId} a OTROS clientes");
+                    await broadcastService.SendToAllExcept(json, sender);
+                    Debug.Log($"[NetworkInstaller] ✅ HOST: MOVE reenviado");
+                }
+                else
+                {
+                    // CLIENTE: Procesa MOVEs remotos
+                    int myPlayerId = clientState.PlayerId;
+                    
+                    Debug.Log($"[NetworkInstaller] 🔍 CLIENTE {myPlayerId} procesando MOVE: playerId={movePacket.playerId}, esRemoto={movePacket.playerId != myPlayerId}");
+                    
+                    if (movePacket.playerId != myPlayerId)
+                    {
+                        Debug.Log($"[NetworkInstaller] ✅ CLIENTE {myPlayerId}: Invocando callback para player {movePacket.playerId}");
+                        
+                        if (networkServices.OnRemotePlayerMoveReceived == null)
+                        {
+                            Debug.LogError($"[NetworkInstaller] ❌ OnRemotePlayerMoveReceived es NULL!");
+                        }
+                        else
+                        {
+                            networkServices.OnRemotePlayerMoveReceived.Invoke(movePacket);
+                            Debug.Log($"[NetworkInstaller] ✅ Callback invocado correctamente");
+                        }
+                    }
+                    else
+                    {
+                        Debug.Log($"[NetworkInstaller] ⏭️ CLIENTE: MOVE propio ignorado");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[NetworkInstaller] ❌ Error procesando MOVE: {e.Message}\n{e.StackTrace}");
+            }
+        });
+
         dispatcher.Register("START_GAME", (json, sender) =>
         {
             try
@@ -180,8 +203,6 @@ public class NetworkInstaller
 
                 Debug.Log($"[NetworkInstaller] START_GAME recibido -> escena: {packet.sceneName}");
 
-                // Forward to LobbyNetworkService so PresentationBootstrap (subscribed to OnStartGameReceived)
-                // will trigger the local scene change on clients.
                 lobbyNetworkService?.HandlePacketReceived(json);
             }
             catch (Exception e)
@@ -202,12 +223,11 @@ public class NetworkInstaller
 
                     if (clientId <= 0)
                     {
-                        Debug.LogWarning("ClientId inv�lido en DISCONNECT");
+                        Debug.LogWarning("ClientId inválido en DISCONNECT");
                         return;
                     }
 
                     connectionManager.RemoveClient(sender);
-
                     lobbyManager.RemovePlayerRemote(clientId);
 
                     var removePacket = builder.CreateRemovePlayer(clientId);
@@ -225,7 +245,7 @@ public class NetworkInstaller
             {
                 try
                 {
-                    Debug.Log("[NetworkInstaller] DISCONNECT recibido (cliente) - servidor se est� cerrando");
+                    Debug.Log("[NetworkInstaller] DISCONNECT recibido (cliente)");
 
                     var players = lobbyManager.GetAllPlayers().ToList();
                     foreach (var p in players)
@@ -246,22 +266,21 @@ public class NetworkInstaller
 
         lobbyNetworkService?.Init(lobbyManager, broadcastService, builder, isHost, clientState, clientPacketHandler, server, connectionManager);
 
-        return new NetworkServices
-        {
-            Server = server,
-            Client = client,
-            Dispatcher = dispatcher,
-            Builder = builder,
-            Serializer = serializer,
-            ConnectionManager = connection_manager_fallback(connectionManager),
-            ClientState = clientState,
-            BroadcastService = broadcastService,
-            AdminService = adminService
+        // ⭐ Configurar networkServices AL FINAL
+        networkServices.Server = server;
+        networkServices.Client = client;
+        networkServices.Dispatcher = dispatcher;
+        networkServices.Builder = builder;
+        networkServices.Serializer = serializer;
+        networkServices.PlayerPacketBuilder = playerPacketBuilder;
+        networkServices.ConnectionManager = connection_manager_fallback(connectionManager);
+        networkServices.ClientState = clientState;
+        networkServices.BroadcastService = broadcastService;
+        networkServices.AdminService = adminService;
 
-        };
+        return networkServices;
     }
 
-    // small helper to satisfy style in return (keeps previous variable name)
     private ClientConnectionManager connection_manager_fallback(ClientConnectionManager manager) => manager;
 }
 
@@ -271,12 +290,15 @@ public class NetworkServices
     public IClient Client { get; set; }
     public PacketDispatcher Dispatcher { get; set; }
     public PacketBuilder Builder { get; set; }
+    public PlayerPacketBuilder PlayerPacketBuilder { get; set; }
     public ISerializer Serializer { get; set; }
     public ClientConnectionManager ConnectionManager { get; set; }
     public ClientState ClientState { get; set; }
     public BroadcastService BroadcastService { get; set; }
     public AdminNetworkService AdminService { get; set; }
 
+    // ⭐ NUEVO: Callback para que GameplayBootstrap procese MOVEs remotos
+    public Action<MovePacket> OnRemotePlayerMoveReceived { get; set; }
 
     private Action<string, IPEndPoint> CreateDisconnectHandler(bool isHost, LobbyManager lobbyManager)
     {
@@ -291,7 +313,7 @@ public class NetworkServices
                     var clientId = ConnectionManager.GetClientId(sender);
                     if (clientId <= 0)
                     {
-                        Debug.LogWarning("ClientId inv�lido en DISCONNECT");
+                        Debug.LogWarning("ClientId inválido en DISCONNECT");
                         return;
                     }
 
@@ -313,7 +335,7 @@ public class NetworkServices
             {
                 try
                 {
-                    Debug.Log("[NetworkServices] DISCONNECT recibido (cliente) - servidor se est� cerrando");
+                    Debug.Log("[NetworkServices] DISCONNECT recibido (cliente) - servidor se está cerrando");
 
                     var players = lobbyManager.GetAllPlayers().ToList();
                     foreach (var p in players)

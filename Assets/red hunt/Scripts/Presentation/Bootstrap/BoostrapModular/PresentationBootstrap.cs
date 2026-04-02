@@ -73,6 +73,7 @@ public class PresentationBootstrap : MonoBehaviour
 
             Debug.Log("[PresentationBootstrap] SpawnUI re-registrada y nuevo SpawnManager asignado al SpawnUI y LobbyNetworkService tras cambio de escena.");
 
+            // Solo repoblar players que aún no están en el SpawnManager
             try
             {
                 var players = appBootstrap?.Services?.LobbyManager?.GetAllPlayers();
@@ -82,7 +83,11 @@ public class PresentationBootstrap : MonoBehaviour
                     {
                         try
                         {
-                            Presentation.SpawnUI.OnPlayerAssigned(p.Id, p.PlayerType);
+                            // Evitar duplicados: solo agregar si no existe
+                            if (!Presentation.SpawnManager.HasPlayer(p.Id))
+                            {
+                                Presentation.SpawnUI.OnPlayerAssigned(p.Id, p.PlayerType);
+                            }
                         }
                         catch (Exception exSpawn)
                         {

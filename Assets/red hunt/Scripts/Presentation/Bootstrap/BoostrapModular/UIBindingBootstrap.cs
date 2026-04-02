@@ -21,7 +21,6 @@ public class UIBindingBootstrap : MonoBehaviour
     private Action<PlayerType> lobby_OnConfirmRole;
     private Action<string, int> lobby_OnCreateLobby;
     private Action<string, int> lobby_OnJoinLobby;
-    private Action<string> lobby_OnStartGame;
     private Action lobby_OnLeaveLobby;
     private Action lobby_OnShutdownServer;
     private Action<int> admin_OnKickRequested;
@@ -324,24 +323,6 @@ public class UIBindingBootstrap : MonoBehaviour
             }
         };
 
-        // Now accepts sceneName passed from UI (inspector)
-        lobby_OnStartGame = async (sceneName) =>
-        {
-            DebugLog($"Host solicitó START_GAME desde UI para escena '{sceneName}'");
-            await lobbyNetworkService?.StartGame(sceneName);
-
-            // Cambiar localmente la escena en el host también
-            try
-            {
-                if (!string.IsNullOrEmpty(sceneName))
-                    GameManager.ChangeScene(sceneName);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning($"Error cambiando escena local en host: {ex.Message}");
-            }
-        };
-
         lobby_OnLeaveLobby = async () =>
         {
             DebugLog("Usuario solicitó abandonar el lobby (voluntario)");
@@ -435,9 +416,7 @@ public class UIBindingBootstrap : MonoBehaviour
         ui.OnJoinLobby -= lobby_OnJoinLobby;
         ui.OnJoinLobby += lobby_OnJoinLobby;
 
-        // subscribe to string-based start event
-        ui.OnStartGame -= lobby_OnStartGame;
-        ui.OnStartGame += lobby_OnStartGame;
+
 
         ui.OnLeaveLobby -= lobby_OnLeaveLobby;
         ui.OnLeaveLobby += lobby_OnLeaveLobby;
@@ -458,7 +437,8 @@ public class UIBindingBootstrap : MonoBehaviour
             ui.OnConfirmRole -= lobby_OnConfirmRole;
             ui.OnCreateLobby -= lobby_OnCreateLobby;
             ui.OnJoinLobby -= lobby_OnJoinLobby;
-            ui.OnStartGame -= lobby_OnStartGame;
+
+
             ui.OnLeaveLobby -= lobby_OnLeaveLobby;
             ui.OnShutdownServer -= lobby_OnShutdownServer;
         }

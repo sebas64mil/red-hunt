@@ -10,15 +10,13 @@ public class ModularLobbyBootstrap : MonoBehaviour
     [SerializeField] private SpawnUI spawnUI;
     [SerializeField] private AdminUI adminUI;
 
-    // Evento público que otros GameObjects (p. ej. SceneChanger) pueden invocar
-    // para solicitar el inicio de la partida (cambio de escena).
     public event Action<string> OnRequestStartGame;
 
-    // Referencias a bootstraps autónomos
     private ApplicationBootstrap appBoot;
     private NetworkBootstrap networkBoot;
     private PresentationBootstrap presentationBoot;
     private UIBindingBootstrap uiBinding;
+    private GameplayBootstrap gameplayBootstrap;
 
     private void Awake()
     {
@@ -78,6 +76,12 @@ public class ModularLobbyBootstrap : MonoBehaviour
             OnRequestStartGame -= uiBinding.HandleExternalStartRequest;
             OnRequestStartGame += uiBinding.HandleExternalStartRequest;
         }
+
+        // Agregar GameplayBootstrap
+        gameplayBootstrap = gameObject.AddComponent<GameplayBootstrap>();
+        gameplayBootstrap.Init(networkBoot, appBoot, presentationBoot);
+
+        Debug.Log("[ModularLobbyBootstrap] GameplayBootstrap inicializado");
     }
 
     // Nuevo: método público para que otros objetos soliciten el StartGame sin invocar directamente el event.

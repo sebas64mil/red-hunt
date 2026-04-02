@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 
@@ -7,11 +7,9 @@ public class SpawnManager
     private Dictionary<int, GameObject> players = new();
     private Dictionary<int, PlayerType> playerTypes = new();
 
-
     private readonly Transform spawnParent;
     private readonly GameObject killerPrefab;
     private readonly GameObject escapistPrefab;
-
 
     private readonly Vector3 hostSpawnPosition;
     private readonly Vector3 clientBasePosition;
@@ -33,22 +31,27 @@ public class SpawnManager
         this.escapistPrefab = escapistPrefab;
         this.localPlayerId = localPlayerId;
 
-
         this.hostSpawnPosition = hostSpawnPosition;
         this.clientBasePosition = clientBasePosition;
         this.clientSpacing = clientSpacing;
     }
-
 
     public void SetLocalPlayerId(int id)
     {
         localPlayerId = id;
     }
 
+    public bool HasPlayer(int id) => players.ContainsKey(id);
+
     public void AddPlayer(int id, PlayerType type)
     {
-        if (players.ContainsKey(id)) return;
+        if (players.ContainsKey(id))
+        {
+            Debug.LogWarning($"[SpawnManager] Player con id {id} ya existe. Ignorando AddPlayer.");
+            return;
+        }
 
+        Debug.Log($"[SpawnManager] Agregando player {id} de tipo {type}");
         int clientIndex = 0;
         if (type != PlayerType.Killer)
         {
@@ -65,11 +68,11 @@ public class SpawnManager
         if (view != null)
         {
             bool isLocal = id == localPlayerId;
-            view.Init(id, /*isHost:*/ false);
+            // ⭐ El host siempre tiene ID 1 en este sistema
+            bool isHostPlayer = id == 1;
+            view.Init(id, isHostPlayer);
             view.SetLocal(isLocal);
 
-
-            // Registrar la vista inmediatamente en el bootstrap persistente para evitar race conditions
             try
             {
                 var camBootstrap = ModularLobbyBootstrap.Instance?.GetComponent<PlayerCameraBootstrap>();
@@ -82,7 +85,6 @@ public class SpawnManager
             Debug.LogWarning($"[SpawnManager] PlayerView no encontrado en {playerGO.name}");
         }
 
-        // registrar player en estructuras
         players[id] = playerGO;
         playerTypes[id] = type;
     }
@@ -98,6 +100,15 @@ public class SpawnManager
             playerTypes.Remove(id);
     }
 
+    public GameObject GetPlayerGameObject(int id)
+    {
+        if (players.TryGetValue(id, out GameObject playerGO))
+        {
+            return playerGO;
+        }
+
+        return null;
+    }
 
     private Vector3 GetSpawnPosition(int id, PlayerType type, int clientIndex)
     {
@@ -106,6 +117,7 @@ public class SpawnManager
 
         return clientBasePosition + new Vector3(clientIndex * clientSpacing, 0f, 0f);
     }
+
     public void SpawnRemotePlayer(int id, PlayerType type)
     {
         if (players.ContainsKey(id)) return;

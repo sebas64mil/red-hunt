@@ -30,12 +30,10 @@ public class LobbyManager
         return count >= maxPlayers;
     }
 
-
     public void ExecuteCommand(ILobbyCommand command)
     {
         command.Execute(this);
     }
-
 
     public PlayerSession AddPlayer(string playerType)
     {
@@ -53,13 +51,20 @@ public class LobbyManager
 
         OnPlayerLeft?.Invoke(id);
         UpdateState();
-
     }
 
     public PlayerSession AddPlayerRemote(int id, string playerType)
     {
         lock (syncRoot)
         {
+            // Validar que el jugador no exista ya
+            var existing = playerRegistry.GetPlayer(id);
+            if (existing != null)
+            {
+               // Debug.LogWarning($"[Lobby] Player {id} ya existe en el registro, ignorando AddPlayerRemote");
+                return existing;
+            }
+
             if (IsFull())
             {
                 Debug.LogWarning("[Lobby] Lobby lleno, ignorando player remoto");
@@ -83,7 +88,6 @@ public class LobbyManager
         }
     }
 
-
     public bool UpdatePlayerTypeRemote(int id, string newType)
     {
         lock (syncRoot)
@@ -102,7 +106,6 @@ public class LobbyManager
             return true;
         }
     }
-
 
     public void SetPlayerReady(int id)
     {
@@ -123,17 +126,12 @@ public class LobbyManager
 
         OnPlayerLeft?.Invoke(id);
         UpdateState();
-
     }
-
 
     public IEnumerable<PlayerSession> GetAllPlayers()
     {
         return playerRegistry.GetAllPlayers();
     }
-
-
-    // ------------------ STATE ------------------
 
     private void UpdateState()
     {
@@ -149,5 +147,4 @@ public class LobbyManager
         else
             CurrentState = LobbyState.Waiting;
     }
-
 }

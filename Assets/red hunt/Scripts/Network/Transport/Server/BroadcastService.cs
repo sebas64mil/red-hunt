@@ -1,5 +1,7 @@
 using System.Threading.Tasks;
-
+using UnityEngine; 
+using System;
+using System.Net;
 
 public class BroadcastService
 {
@@ -19,6 +21,25 @@ public class BroadcastService
         foreach (var client in clients)
         {
             await server.SendToClientAsync(message, client);
+        }
+    }
+
+    public async Task SendToAllExcept(string data, IPEndPoint excludeSender)
+    {
+        try
+        {
+            var clients = manager.GetAllClients();
+            foreach (var client in clients)
+            {
+                if (!client.Equals(excludeSender))
+                {
+                    await server.SendToClientAsync(data, client);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[BroadcastService] Error en SendToAllExcept: {e.Message}");
         }
     }
 }

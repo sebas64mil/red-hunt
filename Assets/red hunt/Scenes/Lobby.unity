@@ -2405,8 +2405,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3345c929fde26bc4790763e9ae336679, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LobbyUI
-  ipAddress: 192.168.20.4
-  port: 5004
+  ipAddress: 192.168.2.15
+  port: 5000
   leaveButton: {fileID: 1649728405}
   shutdownButton: {fileID: 1724378603}
   mainPanel: {fileID: 1798678938}
@@ -2495,6 +2495,7 @@ GameObject:
   - component: {fileID: 1214679111}
   - component: {fileID: 1214679110}
   - component: {fileID: 1214679115}
+  - component: {fileID: 1214679116}
   m_Layer: 0
   m_Name: Network
   m_TagString: Untagged
@@ -2597,6 +2598,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerCameraBootstrap
   lobbySceneName: Lobby
   gameSceneName: Game
+--- !u!114 &1214679116
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1214679107}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f456056ef8a67b4aadfcfe1222a2c8a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameplayBootstrap
 --- !u!1 &1227456167 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 6630159080587278172, guid: 33c1b32ab9a181643951a02a0cae6855, type: 3}

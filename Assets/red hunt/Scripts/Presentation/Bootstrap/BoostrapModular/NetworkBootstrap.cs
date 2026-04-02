@@ -109,7 +109,6 @@ public class NetworkBootstrap : MonoBehaviour
             if (lobbyNetworkService != null)
                 lobbyNetworkService.OnLocalJoinAccepted -= HandleLocalJoinAccepted;
 
-            // Intentar desconectar servidor si queda corriendo (seguro)
             Services?.Server?.Disconnect();
         }
         catch { }

@@ -5,7 +5,7 @@ public class ClientState
     public int PlayerId { get; private set; } = -1;
     public string PendingPlayerType { get; private set; }
     public bool IsConnected { get; private set; } = false;
-
+    public bool IsHost { get; private set; } = false;
 
     public event Action<int> OnPlayerIdAssigned;
 
@@ -28,5 +28,10 @@ public class ClientState
     public void SetConnected(bool connected)
     {
         IsConnected = connected;
+    }
+
+    public void SetIsHost(bool isHost)
+    {
+        IsHost = isHost;
     }
 }
