@@ -2,16 +2,32 @@
 
 # Red Hunt — Estado y Arquitectura del Proyecto (Actualizado 30/03/2026)
 
-## Resumen de cambios recientes (commit lobby)
+## Resumen de cambios recientes (commit movimiento + lobby)
 
-- **Lobby robusto y seguro:**
-  - El host siempre es ID 1 (evita condiciones de carrera).
-  - IDs de jugadores reutilizables y control de máximo de jugadores.
-  - Flujo de join/leave/kick robusto: broadcast de REMOVE_PLAYER, limpieza local y desconexión ordenada.
-  - Mejoras en handshake y transporte cliente-servidor, manejo de errores y desconexión.
-  - Soporte para iniciar partida y sincronizar estado del lobby.
+### Movimiento del Player (⭐ NUEVO)
+- **Sistema de movimiento local:** Movimiento en 8 direcciones con velocidad fija, sistema de salto con detección de terreno y drag dinámico.
+- **Sistema de cámara:** Rotación vertical (pitch) en CameraHolder, rotación horizontal (yaw) en el cuerpo del jugador con sensibilidad configurable.
+- **Input handler modular:** Integración con Unity Input System (PlayerInput), acciones Move, Look y Jump con suscripción a eventos.
+- **Sincronización de movimiento:** Host envía snapshots de TODOS los jugadores, clientes envían solo su MOVE local con posición, rotación, velocidad e isJumping.
+- **Interpolación de jugadores remotos:** Lerp suave de posición/rotación, aplicación de velocidad horizontal, sincronización de estado con timestamp.
+- **Gestor centralizado de movimiento remoto:** RemotePlayerMovementManager registra/desregistra players remotos y procesa MovePackets.
 
-- **Principales archivos modificados:**
+- **Principales archivos nuevos:**
+  - `PlayerMovement.cs`: Manejo de movimiento (WASD), salto y look (mouse) con CameraHolder.
+  - `PlayerInputHandler.cs`: Integración con PlayerInput del InputSystem (Move, Look, Jump actions).
+  - `PlayerNetworkService.cs`: Sincronización de movimiento: host envía snapshots, clientes envían MOVEs, manejo de conexión bidireccional.
+  - `RemotePlayerMovementManager.cs`: Gestor centralizado de sincronización de jugadores remotos, registro y procesamiento de MovePackets.
+  - `RemotePlayerSync.cs`: Interpolación local de jugadores remotos, aplicación de velocidad y rotación.
+  - `MovePacket.cs`: Paquete de red con posición, rotación, velocidad e isJumping.
+
+### Lobby robusto y seguro
+- El host siempre es ID 1 (evita condiciones de carrera).
+- IDs de jugadores reutilizables y control de máximo de jugadores.
+- Flujo de join/leave/kick robusto: broadcast de REMOVE_PLAYER, limpieza local y desconexión ordenada.
+- Mejoras en handshake y transporte cliente-servidor, manejo de errores y desconexión.
+- Soporte para iniciar partida y sincronizar estado del lobby.
+
+- **Principales archivos modificados (lobby):**
   - `LobbyNetworkService.cs`: Forzado de ID host, lógica de join/leave, shutdown ordenado, manejo de paquetes y sincronización de estado.
   - `LobbyManager.cs`: Añadir players remotos con ID, bloqueo para operaciones remotas, control de límite y notificaciones.
   - `PlayerRegistry.cs`: IDs reutilizables, métodos para aceptar IDs explícitos y actualizar tipo de jugador.
@@ -35,6 +51,9 @@
 - Reutilización segura de IDs y control del máximo de players.
 - Mejoras en handshake, transporte y manejo de errores.
 - Sincronización de estado y soporte para iniciar partida.
+- **Sistema de movimiento completo:** Input local (WASD + mouse), sincronización en red (MOVEs + snapshots de host), interpolación de players remotos.
+- **Controlador de cámara funcional:** Rotación vertical/horizontal con sensibilidad configurable y sistema de CameraHolder.
+- **Integración de InputSystem:** Acciones Move, Look y Jump mapeadas y funcionales.
 
 ---
 
@@ -65,6 +84,8 @@ El proyecto ahora cuenta con una **arquitectura profesional y escalable**:
 - **PlayerRegistry.cs:** Lleva el registro de los jugadores activos y sus IDs, permitiendo reutilización y control de máximo.
 - **PlayerSession.cs:** Representa la sesión individual de un jugador.
 - **SpawnManager.cs:** Gestiona el spawn y remoción de jugadores en la escena.
+- **PlayerNetworkService.cs:** (⭐ NUEVO) Sincronización de movimiento: host envía snapshots de todos los players, clientes envían MOVEs locales, manejo de conexión bidireccional.
+- **RemotePlayerMovementManager.cs:** (⭐ NUEVO) Gestor centralizado que registra/desregistra players remotos y procesa MovePackets, dispara eventos de movimiento.
 
 #### Domains
 - **Player.cs:** Entidad que representa a un jugador.
@@ -78,6 +99,7 @@ El proyecto ahora cuenta con una **arquitectura profesional y escalable**:
 - **AdminPacketBuilder.cs / PacketBuilder.cs / BasePacket.cs:** Construcción y definición de paquetes de red.
 - **AssignPlayerPacket.cs, AssignRejectPacket.cs, LobbyStatePacket.cs, PlayerPacket.cs, PlayerReadyPacket.cs:** Paquetes para sincronización y gestión de jugadores.
 - **DisconnectPacket.cs, RemovePlayerPacket.cs:** Paquetes para desconexión y remoción de jugadores.
+- **MovePacket.cs:** (⭐ NUEVO) Paquete de movimiento con posición, rotación, velocidad e isJumping.
 - **JsonSerializer.cs:** Serializador JSON para los datos de red.
 - **Client.cs, ClientPacketHandler.cs, ClientState.cs:** Lógica y estado del cliente de red.
 - **BroadcastService.cs, ClientConnection.cs, ClientConnectionManager.cs, Server.cs:** Lógica de servidor, conexiones y broadcast.
@@ -96,6 +118,9 @@ El proyecto ahora cuenta con una **arquitectura profesional y escalable**:
   - Cada bootstrap es autónomo y testable, y ModularLobbyBootstrap los orquesta y conecta.
 - **AdminInstaller.cs, ApplicationInstaller.cs, NetworkInstaller.cs, PresentationInstaller.cs:** Instalan y configuran dependencias de cada capa.
 - **PlayerView.cs:** Representación visual del jugador.
+- **PlayerMovement.cs:** (⭐ NUEVO) Sistema de movimiento del jugador: WASD para movimiento en 8 direcciones, salto con detección de terreno, drag dinámico.
+- **PlayerInputHandler.cs:** (⭐ NUEVO) Handler de input integrado con PlayerInput del InputSystem: Move, Look y Jump actions con eventos.
+- **RemotePlayerSync.cs:** (⭐ NUEVO) Interpolación suave de posición/rotación para jugadores remotos, aplicación de velocidad desde red.
 - **UI/Admin/**
   - **AdminPlayerEntry.cs, AdminUI.cs:** UI para administración de jugadores.
 - **UI/Lobby/**
@@ -110,12 +135,17 @@ Este sistema modular permite desacoplar responsabilidades, facilita el testing y
 
 ### Flujo principal del sistema
 
-1. **Inicio:** Se inicializan los Installers y el GameBootstrap.
+1. **Inicio:** Se inicializan los Installers y el ModularGameBootstrap.
 2. **Lobby:** El jugador se conecta, se le asigna un ID y se sincroniza el estado del lobby.
 3. **Gestión de jugadores:** El LobbyManager y PlayerRegistry controlan la entrada/salida y el tipo de cada jugador.
 4. **Comunicación de red:** Los servicios y handlers de Network gestionan el envío/recepción de paquetes (join, leave, kick, etc.).
-5. **UI:** La Presentation muestra el estado y permite acciones (admin, lobby, spawn).
-6. **Desconexión/Remoción:** Se limpian los estados y se actualiza la UI.
+5. **Movimiento local:** PlayerInputHandler captura input (WASD+Mouse), PlayerMovement aplica physics y rotación de cámara.
+6. **Sincronización de movimiento:** 
+   - Host: PlayerNetworkService envía snapshots de TODOS los players cada 100ms (snapshotRate).
+   - Clientes: PlayerNetworkService envía MOVEs locales cada 100ms (syncRate) con posición, rotación, velocidad e isJumping.
+7. **Movimiento remoto:** RemotePlayerMovementManager recibe MovePackets y los delega a RemotePlayerSync, que interpola posición/rotación suavemente.
+8. **UI:** La Presentation muestra el estado y permite acciones (admin, lobby, spawn).
+9. **Desconexión/Remoción:** Se limpian los estados y se actualiza la UI.
 
 ---
 
@@ -140,6 +170,12 @@ flowchart TB
   LobbyManager["LobbyManager"]
   LobbyNetworkService["LobbyNetworkService"]
   AdminNetworkService["AdminNetworkService"]
+  PlayerNetworkService["PlayerNetworkService ⭐"]
+  RemotePlayerMovementManager["RemotePlayerMovementManager ⭐"]
+
+  PlayerMovement["PlayerMovement ⭐"]
+  PlayerInputHandler["PlayerInputHandler ⭐"]
+  RemotePlayerSync["RemotePlayerSync ⭐"]
 
   Client["Client"]
   Server["Server"]
@@ -148,6 +184,7 @@ flowchart TB
   BasePacket["BasePacket"]
   JsonSerializer["JsonSerializer"]
   UdpTransport["UdpTransport"]
+  MovePacket["MovePacket ⭐"]
 
   %% Orquestación principal
   ModularLobbyBootstrap --> ApplicationBootstrap
@@ -166,6 +203,8 @@ flowchart TB
   ApplicationBootstrap --> SpawnManager
   ApplicationBootstrap --> LobbyNetworkService
   ApplicationBootstrap --> AdminNetworkService
+  ApplicationBootstrap --> PlayerNetworkService
+  ApplicationBootstrap --> RemotePlayerMovementManager
 
   %% Network
   NetworkBootstrap --> Client
@@ -188,15 +227,32 @@ flowchart TB
   AdminNetworkService --> Client
   AdminNetworkService --> PacketBuilder
   SpawnManager --> PlayerView
+  
+  %% Movimiento y entrada ⭐
+  PlayerView --> PlayerMovement
+  PlayerView --> PlayerInputHandler
+  PlayerView --> RemotePlayerSync
+  PlayerInputHandler --> PlayerMovement
+  PlayerMovement --> PlayerNetworkService
+  PlayerNetworkService --> Client
+  PlayerNetworkService --> Server
+  PlayerNetworkService --> PacketBuilder
+  RemotePlayerMovementManager --> RemotePlayerSync
+  
+  %% Paquetes
   Client --> PacketDispatcher
   Client --> UdpTransport
   Server --> PacketDispatcher
   Server --> UdpTransport
   PacketDispatcher --> BasePacket
   PacketDispatcher --> LobbyManager
+  PacketDispatcher --> RemotePlayerMovementManager
+  PacketDispatcher --> MovePacket
   PacketBuilder --> BasePacket
+  PacketBuilder --> MovePacket
   PacketBuilder --> JsonSerializer
   JsonSerializer --> BasePacket
+  JsonSerializer --> MovePacket
 ```
 
 ## Estructura completa de Scripts
@@ -218,6 +274,9 @@ Assets/red hunt/Scripts/
 │   │       ├── PlayerRegistry.cs
 │   │       └── PlayerSession.cs
 │   └── Systems/
+│       └── Player/
+│           ├── PlayerNetworkService.cs (⭐ NUEVO)
+│           └── RemotePlayerMovementManager.cs (⭐ NUEVO)
 │       └── Spawn/
 │           └── SpawnManager.cs
 ├── Domains/
@@ -252,9 +311,11 @@ Assets/red hunt/Scripts/
 │   │   │   ├── LobbyStatePacket.cs
 │   │   │   ├── PlayerPacket.cs
 │   │   │   └── PlayerReadyPacket.cs
-│   │   └── PlayerDestroy/
-│   │       ├── DisconnectPacket.cs
-│   │       └── RemovePlayerPacket.cs
+│   │   ├── PlayerDestroy/
+│   │   │   ├── DisconnectPacket.cs
+│   │   │   └── RemovePlayerPacket.cs
+│   │   └── Game/
+│   │       └── MovePacket.cs (⭐ NUEVO)
 │   ├── Serialization/
 │   │   └── JsonSerializer.cs
 │   └── Transport/
@@ -262,11 +323,11 @@ Assets/red hunt/Scripts/
 │       │   ├── Client.cs
 │       │   ├── ClientPacketHandler.cs
 │       │   └── ClientState.cs
-│       └── Server/
-│           ├── BroadcastService.cs
-│           ├── ClientConnection.cs
-│           ├── ClientConnectionManager.cs
-│           └── Server.cs
+│       ├── Server/
+│       │   ├── BroadcastService.cs
+│       │   ├── ClientConnection.cs
+│       │   ├── ClientConnectionManager.cs
+│       │   └── Server.cs
 │       └── UdpTransport.cs
 ├── Presentation/
 │   ├── Animation/ (vacío)
@@ -284,12 +345,17 @@ Assets/red hunt/Scripts/
 │   │       ├── NetworkInstaller.cs
 │   │       └── PresentationInstaller.cs
 │   ├── Player/
-│   │   └── PlayerView.cs
+│   │   ├── PlayerView.cs
+│   │   ├── PlayerMovement.cs (⭐ NUEVO)
+│   │   ├── PlayerInputHandler.cs (⭐ NUEVO)
+│   │   └── RemotePlayerSync.cs (⭐ NUEVO)
 │   ├── Sounds/ (vacío)
 │   ├── UI/
 │   │   ├── Admin/
 │   │   │   ├── AdminPlayerEntry.cs
 │   │   │   └── AdminUI.cs
+│   │   ├── Game/
+│   │   │   └── SceneChanger.cs
 │   │   └── Lobby/
 │   │       ├── LobbyUI.cs
 │   │       ├── LeaveButton.cs
