@@ -1,12 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerNetworkService : MonoBehaviour
 {
+    [Header("Sincronización")]
     [SerializeField] private float syncRate = 0.1f;
+    [SerializeField] private float snapshotRate = 0.1f;  // ⭐ NUEVO: Snapshot cada 100ms
     [SerializeField] private float connectionCheckInterval = 0.5f;
-    [SerializeField] private float positionThreshold = 0.01f;        // ⭐ Umbral mínimo de cambio de posición
-    [SerializeField] private float rotationThreshold = 0.5f;         // ⭐ Umbral mínimo de cambio de rotación (grados)
+    [SerializeField] private float positionThreshold = 0.01f;
+    [SerializeField] private float rotationThreshold = 0.5f;
 
     private IClient client;
     private BroadcastService broadcastService;
@@ -17,15 +20,20 @@ public class PlayerNetworkService : MonoBehaviour
     private PlayerMovement playerMovement;
     private Transform playerTransform;
 
-    // ⭐ NUEVO: Cache de última posición/rotación enviada
+    // ⭐ Cache de última posición/rotación enviada
     private Vector3 lastSentPosition = Vector3.zero;
     private Quaternion lastSentRotation = Quaternion.identity;
     private Vector3 lastSentVelocity = Vector3.zero;
     private bool lastSentIsJumping = false;
 
     private float timeSinceLastSync = 0f;
+    private float timeSinceLastSnapshot = 0f;  // ⭐ NUEVO
     private float timeSinceLastConnectionCheck = 0f;
     private bool connectionReady = false;
+
+    // ⭐ NUEVO: Referencia al SpawnManager para acceder a todos los jugadores
+    private SpawnManager spawnManager;
+    private LobbyManager lobbyManager;
 
     public event Action<MovePacket> OnRemotePlayerMove;
 
@@ -35,15 +43,24 @@ public class PlayerNetworkService : MonoBehaviour
         playerTransform = transform;
     }
 
-    public void Init(int id, IClient clientInstance, ISerializer serializer, bool hostFlag, BroadcastService broadcastServiceInstance = null)
+    public void Init(
+        int id, 
+        IClient clientInstance, 
+        ISerializer serializer, 
+        bool hostFlag, 
+        BroadcastService broadcastServiceInstance = null,
+        SpawnManager spawnManagerInstance = null,  // ⭐ NUEVO
+        LobbyManager lobbyManagerInstance = null)   // ⭐ NUEVO
     {
         playerId = id;
         client = clientInstance;
         broadcastService = broadcastServiceInstance;
         playerPacketBuilder = new PlayerPacketBuilder(serializer ?? throw new ArgumentNullException(nameof(serializer)));
         isHost = hostFlag;
+        spawnManager = spawnManagerInstance;  // ⭐ NUEVO
+        lobbyManager = lobbyManagerInstance;   // ⭐ NUEVO
 
-        // ⭐ Inicializar cache con valores actuales
+        // Inicializar cache con valores actuales
         if (playerTransform != null)
         {
             lastSentPosition = playerTransform.position;
@@ -58,6 +75,7 @@ public class PlayerNetworkService : MonoBehaviour
     private void OnEnable()
     {
         timeSinceLastSync = 0f;
+        timeSinceLastSnapshot = 0f;  // ⭐ NUEVO
         timeSinceLastConnectionCheck = 0f;
     }
 
@@ -77,12 +95,26 @@ public class PlayerNetworkService : MonoBehaviour
             return;
         }
 
-        timeSinceLastSync += Time.fixedDeltaTime;
-
-        if (timeSinceLastSync >= syncRate)
+        // ⭐ NUEVO: Lógica diferente para host y cliente
+        if (isHost)
         {
-            SendLocalPlayerPosition();
-            timeSinceLastSync = 0f;
+            // HOST: Enviar snapshot de todos los jugadores
+            timeSinceLastSnapshot += Time.fixedDeltaTime;
+            if (timeSinceLastSnapshot >= snapshotRate)
+            {
+                SendPlayerStateSnapshot();
+                timeSinceLastSnapshot = 0f;
+            }
+        }
+        else
+        {
+            // CLIENTE: Enviar solo su MOVE
+            timeSinceLastSync += Time.fixedDeltaTime;
+            if (timeSinceLastSync >= syncRate)
+            {
+                SendLocalPlayerPosition();
+                timeSinceLastSync = 0f;
+            }
         }
     }
 
@@ -106,14 +138,71 @@ public class PlayerNetworkService : MonoBehaviour
         }
     }
 
+    // ⭐ NUEVO: Enviar snapshot de TODOS los jugadores (solo host)
+    private void SendPlayerStateSnapshot()
+    {
+        if (lobbyManager == null || spawnManager == null || broadcastService == null)
+        {
+            Debug.LogWarning("[PlayerNetworkService] ❌ No se puede enviar snapshot: lobbyManager, spawnManager o broadcastService es NULL");
+            return;
+        }
+
+        try
+        {
+            var playersData = new Dictionary<int, (Transform transform, Vector3 velocity, bool isJumping)>();
+
+            // Recolectar datos de TODOS los jugadores
+            var allPlayers = lobbyManager.GetAllPlayers();
+            foreach (var playerSession in allPlayers)
+            {
+                var playerGO = spawnManager.GetPlayerGameObject(playerSession.Id);
+                if (playerGO == null)
+                {
+                    Debug.LogWarning($"[PlayerNetworkService] ⚠️ Player GameObject no encontrado para {playerSession.Id}");
+                    continue;
+                }
+
+                var playerMovementComponent = playerGO.GetComponent<PlayerMovement>();
+                if (playerMovementComponent == null)
+                {
+                    Debug.LogWarning($"[PlayerNetworkService] ⚠️ PlayerMovement no encontrado para {playerSession.Id}");
+                    continue;
+                }
+
+                playersData[playerSession.Id] = (
+                    playerGO.transform,
+                    playerMovementComponent.CurrentVelocity,
+                    playerMovementComponent.IsJumping
+                );
+            }
+
+            if (playersData.Count == 0)
+            {
+                Debug.LogWarning("[PlayerNetworkService] ⚠️ No hay datos de jugadores para el snapshot");
+                return;
+            }
+
+            string snapshotJson = playerPacketBuilder.CreatePlayerStateSnapshot(playersData);
+            
+            _ = broadcastService.SendToAll(snapshotJson);
+            
+            Debug.Log($"[PlayerNetworkService] 📸 Snapshot HOST enviado: {playersData.Count} jugadores");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[PlayerNetworkService] ❌ Error enviando snapshot: {ex.Message}\n{ex.StackTrace}");
+        }
+    }
+
+    // ⭐ ORIGINAL: Enviar solo el MOVE del jugador local (cliente)
     private void SendLocalPlayerPosition()
     {
         if (playerMovement == null || playerTransform == null) return;
 
-        // ⭐ NUEVO: Verificar si hay cambios significativos
+        // Verificar si hay cambios significativos
         if (!HasSignificantChange())
         {
-            return; // No enviar si no hay cambios
+            return;
         }
 
         try
@@ -125,21 +214,16 @@ public class PlayerNetworkService : MonoBehaviour
                 playerMovement.IsJumping
             );
 
-            // ⭐ Actualizar cache después de crear el packet
+            // Actualizar cache después de crear el packet
             lastSentPosition = playerTransform.position;
             lastSentRotation = playerTransform.rotation;
             lastSentVelocity = playerMovement.CurrentVelocity;
             lastSentIsJumping = playerMovement.IsJumping;
 
-            if (isHost && broadcastService != null)
-            {
-                _ = broadcastService.SendToAll(movePacketJson);
-                Debug.Log($"[PlayerNetworkService] 📤 Host enviando MOVE con cambio: pos={playerTransform.position}");
-            }
-            else if (!isHost && client != null && client.isConnected)
+            if (!isHost && client != null && client.isConnected)
             {
                 _ = client.SendMessageAsync(movePacketJson);
-                Debug.Log($"[PlayerNetworkService] 📤 Cliente {playerId} enviando MOVE con cambio: pos={playerTransform.position}");
+                Debug.Log($"[PlayerNetworkService] 📤 Cliente {playerId} enviando MOVE: pos={playerTransform.position}");
             }
         }
         catch (Exception ex)
@@ -148,7 +232,6 @@ public class PlayerNetworkService : MonoBehaviour
         }
     }
 
-    // ⭐ NUEVO: Método para detectar cambios significativos
     private bool HasSignificantChange()
     {
         Vector3 currentPos = playerTransform.position;

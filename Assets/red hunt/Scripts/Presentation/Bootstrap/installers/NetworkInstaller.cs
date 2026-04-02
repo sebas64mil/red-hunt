@@ -41,6 +41,9 @@ public class NetworkInstaller
 
         var adminService = AdminInstaller.Install(dispatcher, serializer, server, client, builder, broadcastService, connectionManager, lobbyManager, lobbyNetworkService?.SpawnManagerInstance, lobbyNetworkService, isHost, clientState);
 
+        // ⭐ CREAR networkServices ANTES de registrar handlers que lo usen
+        var networkServices = new NetworkServices();
+
         dispatcher.Register("ASSIGN_PLAYER", (json, sender) =>
         {
             clientPacketHandler.HandleAssignPlayer(json);
@@ -139,8 +142,6 @@ public class NetworkInstaller
             }
         });
 
-        var networkServices = new NetworkServices();
-
         dispatcher.Register("MOVE", async (json, sender) =>
         {
             try
@@ -152,34 +153,26 @@ public class NetworkInstaller
                     return;
                 }
 
-                Debug.Log($"[NetworkInstaller] 📦 MOVE recibido: playerId={movePacket.playerId}, isHost={isHost}, myPlayerId={clientState.PlayerId}");
 
                 if (isHost)
                 {
-                    // HOST: Rebroadcastea a otros clientes
-                    Debug.Log($"[NetworkInstaller] 📡 HOST reenviando MOVE de player {movePacket.playerId} a OTROS clientes");
                     await broadcastService.SendToAllExcept(json, sender);
-                    Debug.Log($"[NetworkInstaller] ✅ HOST: MOVE reenviado");
                 }
                 else
                 {
-                    // CLIENTE: Procesa MOVEs remotos
                     int myPlayerId = clientState.PlayerId;
                     
-                    Debug.Log($"[NetworkInstaller] 🔍 CLIENTE {myPlayerId} procesando MOVE: playerId={movePacket.playerId}, esRemoto={movePacket.playerId != myPlayerId}");
                     
                     if (movePacket.playerId != myPlayerId)
                     {
-                        Debug.Log($"[NetworkInstaller] ✅ CLIENTE {myPlayerId}: Invocando callback para player {movePacket.playerId}");
                         
                         if (networkServices.OnRemotePlayerMoveReceived == null)
                         {
-                            Debug.LogError($"[NetworkInstaller] ❌ OnRemotePlayerMoveReceived es NULL!");
+                            Debug.LogWarning($"[NetworkInstaller] ⚠️ OnRemotePlayerMoveReceived aún es NULL");
                         }
                         else
                         {
                             networkServices.OnRemotePlayerMoveReceived.Invoke(movePacket);
-                            Debug.Log($"[NetworkInstaller] ✅ Callback invocado correctamente");
                         }
                     }
                     else
@@ -191,6 +184,78 @@ public class NetworkInstaller
             catch (Exception e)
             {
                 Debug.LogError($"[NetworkInstaller] ❌ Error procesando MOVE: {e.Message}\n{e.StackTrace}");
+            }
+        });
+
+        dispatcher.Register("PLAYER_STATE_SNAPSHOT", (json, sender) =>
+        {
+            try
+            {
+                if (isHost)
+                {
+                    Debug.Log("[NetworkInstaller] ⏭️ Host ignorando su propio snapshot");
+                    return;
+                }
+
+                var snapshot = playerPacketBuilder.DeserializePlayerStateSnapshot(json);
+                if (snapshot == null)
+                {
+                    Debug.LogWarning("[NetworkInstaller] ❌ PlayerStateSnapshot inválido o NULL");
+                    return;
+                }
+
+                Debug.Log($"[NetworkInstaller] 📸 CLIENTE recibió Snapshot: {snapshot.players.Count} jugadores en el snapshot");
+
+                if (snapshot.players == null || snapshot.players.Count == 0)
+                {
+                    Debug.LogWarning("[NetworkInstaller] ⚠️ Snapshot sin jugadores");
+                    return;
+                }
+
+                foreach (var playerState in snapshot.players)
+                {
+
+                    if (playerState.playerId != clientState.PlayerId)
+                    {
+                        var movePacket = new MovePacket
+                        {
+                            type = "MOVE",
+                            playerId = playerState.playerId,
+                            posX = playerState.posX,
+                            posY = playerState.posY,
+                            posZ = playerState.posZ,
+                            rotX = playerState.rotX,
+                            rotY = playerState.rotY,
+                            rotZ = playerState.rotZ,
+                            rotW = playerState.rotW,
+                            velocityX = playerState.velocityX,
+                            velocityY = playerState.velocityY,
+                            velocityZ = playerState.velocityZ,
+                            isJumping = playerState.isJumping,
+                            timestamp = snapshot.timestamp
+                        };
+
+
+                        // ⭐ VERIFICAR que networkServices.OnRemotePlayerMoveReceived está asignado
+                        if (networkServices?.OnRemotePlayerMoveReceived != null)
+                        {
+                            networkServices.OnRemotePlayerMoveReceived.Invoke(movePacket);
+                        }
+                        else
+                        {
+                            Debug.LogError($"[NetworkInstaller] ❌ OnRemotePlayerMoveReceived es NULL - GameplayBootstrap no se ha inicializado?");
+                        }
+                    }
+                    else
+                    {
+                        Debug.Log($"[NetworkInstaller] ⏭️ Ignorando player local {playerState.playerId} en snapshot");
+                    }
+                }
+
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[NetworkInstaller] ❌ Error procesando PLAYER_STATE_SNAPSHOT: {e.Message}\n{e.StackTrace}");
             }
         });
 
@@ -278,6 +343,8 @@ public class NetworkInstaller
         networkServices.BroadcastService = broadcastService;
         networkServices.AdminService = adminService;
 
+        Debug.Log("[NetworkInstaller] ⭐ NetworkServices configurados completamente");
+
         return networkServices;
     }
 
@@ -297,7 +364,6 @@ public class NetworkServices
     public BroadcastService BroadcastService { get; set; }
     public AdminNetworkService AdminService { get; set; }
 
-    // ⭐ NUEVO: Callback para que GameplayBootstrap procese MOVEs remotos
     public Action<MovePacket> OnRemotePlayerMoveReceived { get; set; }
 
     private Action<string, IPEndPoint> CreateDisconnectHandler(bool isHost, LobbyManager lobbyManager)

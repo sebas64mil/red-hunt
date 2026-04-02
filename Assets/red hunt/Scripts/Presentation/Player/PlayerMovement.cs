@@ -21,7 +21,7 @@ public class PlayerMovement : MonoBehaviour
 
     private Rigidbody rb;
     private PlayerInputHandler inputHandler;
-    private Transform cameraTransform;
+    private Transform cameraHolder;  // ⭐ GameObject vacío que rota arriba/abajo
     private float xRotation = 0f;
     private bool isGrounded = true;
     
@@ -34,7 +34,26 @@ public class PlayerMovement : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         inputHandler = GetComponent<PlayerInputHandler>();
-        cameraTransform = Camera.main?.transform;
+        
+        // ⭐ CAMBIO: Buscar CameraHolder en lugar de Camera directamente
+        cameraHolder = transform.Find("CameraHolder");
+        if (cameraHolder == null)
+        {
+            Debug.LogWarning("[PlayerMovement] ⚠️ CameraHolder no encontrado. Creando uno...");
+            
+            // Si no existe, crear GameObject vacío
+            GameObject holderGO = new GameObject("CameraHolder");
+            holderGO.transform.SetParent(transform);
+            holderGO.transform.localPosition = Vector3.up * 0.6f;
+            holderGO.transform.localRotation = Quaternion.identity;
+            cameraHolder = holderGO.transform;
+            
+            Debug.Log("[PlayerMovement] ✅ CameraHolder creado automáticamente");
+        }
+        else
+        {
+            Debug.Log($"[PlayerMovement] ✅ CameraHolder encontrado: {cameraHolder.gameObject.name}");
+        }
 
         if (rb == null)
         {
@@ -46,9 +65,9 @@ public class PlayerMovement : MonoBehaviour
             Debug.LogWarning("[PlayerMovement] PlayerInputHandler no encontrado");
         }
 
-        if (cameraTransform == null)
+        if (cameraHolder == null)
         {
-            Debug.LogWarning("[PlayerMovement] Cámara principal no encontrada");
+            Debug.LogError("[PlayerMovement] ❌ CameraHolder no pudo ser creado");
         }
     }
 
@@ -97,11 +116,9 @@ public class PlayerMovement : MonoBehaviour
             return;
         }
 
-        // ⭐ DEBUG: Verificar input cada frame
         Vector2 moveInput = inputHandler.GetMoveInput();
         Vector2 lookInput = inputHandler.GetLookInput();
 
-        // Log una sola vez cuando hay input
         if (!hasLoggedInputCheck && (moveInput != Vector2.zero || lookInput != Vector2.zero))
         {
             Debug.Log($"[PlayerMovement] ✅ Input detectado: Move={moveInput}, Look={lookInput}");
@@ -127,8 +144,6 @@ public class PlayerMovement : MonoBehaviour
     {
         if (rb == null) return;
 
-
-
         Vector3 moveDirection = Vector3.zero;
 
         if (moveInput.y > 0) // W - Adelante
@@ -143,7 +158,7 @@ public class PlayerMovement : MonoBehaviour
         moveDirection = moveDirection.normalized;
 
         Vector3 moveVelocity = moveDirection * moveSpeed;
-        moveVelocity.y = rb.linearVelocity.y; // Preservar velocidad vertical
+        moveVelocity.y = rb.linearVelocity.y;
 
         rb.linearVelocity = moveVelocity;
     }
@@ -159,16 +174,20 @@ public class PlayerMovement : MonoBehaviour
 
     private void HandleLook(Vector2 lookInput)
     {
-        if (cameraTransform == null || lookInput == Vector2.zero) return;
+        if (cameraHolder == null || lookInput == Vector2.zero) return;
 
         float mouseX = lookInput.x * mouseSensitivity * Time.deltaTime;
         float mouseY = lookInput.y * mouseSensitivity * Time.deltaTime;
 
+        // ⭐ ROTACIÓN VERTICAL: Aplicar al CameraHolder (pitch)
         xRotation -= mouseY;
         xRotation = Mathf.Clamp(xRotation, -maxLookAngle, maxLookAngle);
-
-        cameraTransform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+        cameraHolder.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+        
+        // ⭐ ROTACIÓN HORIZONTAL: Aplicar al cuerpo del jugador (yaw)
         transform.Rotate(Vector3.up * mouseX);
+
+        Debug.Log($"[PlayerMovement] 📷 Look: xRot={xRotation:F1}°, mouseX={mouseX:F2}, mouseY={mouseY:F2}");
     }
 
     private void CheckGroundStatus()
@@ -185,9 +204,10 @@ public class PlayerMovement : MonoBehaviour
 
     private void UpdateCameraPosition()
     {
-        if (cameraTransform == null) return;
+        if (cameraHolder == null) return;
 
-        cameraTransform.position = transform.position + Vector3.up * 0.6f;
+        // ⭐ Mantener el CameraHolder en la posición correcta (0.6 arriba del jugador)
+        cameraHolder.localPosition = Vector3.up * 0.6f;
     }
 
     public bool GetIsGrounded() => isGrounded;

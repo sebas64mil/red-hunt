@@ -24,7 +24,6 @@ public class GameplayBootstrap : MonoBehaviour
         applicationBootstrap = application ?? throw new ArgumentNullException(nameof(application));
         presentationBootstrap = presentation ?? throw new ArgumentNullException(nameof(presentation));
 
-        // ⭐ Crear el manager de movimiento remoto
         remotePlayerMovementManager = new RemotePlayerMovementManager();
 
         if (networkBootstrap.Services?.ClientState != null)
@@ -129,12 +128,14 @@ public class GameplayBootstrap : MonoBehaviour
             var client = networkBootstrap.Services.Client;
             var broadcastService = networkBootstrap.Services.BroadcastService;
             var serializer = networkBootstrap.Services.Serializer;
+            var lobbyManager = applicationBootstrap?.Services?.LobbyManager;
             
             var isHost = networkBootstrap.Services.ClientState?.IsHost ?? false;
             
             Debug.Log($"[GameplayBootstrap] Estado de Client: isConnected={client?.isConnected}, isHost={isHost}");
             
-            playerNetworkService.Init(localPlayerId, client, serializer, isHost, broadcastService);
+            // ⭐ Pasar spawnManager y lobbyManager (la variable ya existe)
+            playerNetworkService.Init(localPlayerId, client, serializer, isHost, broadcastService, spawnManager, lobbyManager);
             Debug.Log("[GameplayBootstrap] ✅ PlayerNetworkService ACTIVADO");
         }
 
@@ -218,7 +219,6 @@ public class GameplayBootstrap : MonoBehaviour
             remoteSync.enabled = true;
             remoteSync.Init(remotePlayerId);
             
-            // ⭐ Registrar el RemotePlayerSync en el manager
             remotePlayerMovementManager.RegisterRemotePlayer(remotePlayerId, remoteSync);
             
             Debug.Log($"[GameplayBootstrap] RemotePlayerSync ACTIVADO para remoto {remotePlayerId}");
@@ -236,7 +236,6 @@ public class GameplayBootstrap : MonoBehaviour
 
     private void HandleRemotePlayerLeft(int playerId)
     {
-        // ⭐ Desregistrar del manager cuando se va
         remotePlayerMovementManager.UnregisterRemotePlayer(playerId);
         Debug.Log($"[GameplayBootstrap] 🎯 Jugador remoto {playerId} desregistrado");
     }

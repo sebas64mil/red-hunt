@@ -26,11 +26,11 @@ Transform:
   m_GameObject: {fileID: 1873817330882631859}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.47, z: 0.34}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 8516157230821310558}
+  m_Father: {fileID: 7797982159145054145}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1456733298392036930
 MonoBehaviour:
@@ -115,7 +115,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 353543799516123528}
-  - {fileID: 5211606367561979764}
+  - {fileID: 7797982159145054145}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &2877515853685773889
@@ -242,7 +242,7 @@ MonoBehaviour:
   groundDrag: 5
   airDrag: 2
   mouseSensitivity: 100
-  maxLookAngle: 90
+  maxLookAngle: 45
   groundLayer:
     serializedVersion: 2
     m_Bits: 0
@@ -261,6 +261,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerNetworkService
   syncRate: 0.1
+  snapshotRate: 0.1
+  connectionCheckInterval: 0.5
+  positionThreshold: 0.01
+  rotationThreshold: 0.5
 --- !u!114 &6103335313820004276
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -384,7 +388,7 @@ Transform:
   m_GameObject: {fileID: 3033240116556914006}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.475, z: 0.434}
+  m_LocalPosition: {x: 0, y: 0.475, z: 0.31}
   m_LocalScale: {x: 0.42999998, y: 0.22999999, z: 0.48}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -468,3 +472,35 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!1 &8440131205167043988
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7797982159145054145}
+  m_Layer: 0
+  m_Name: CameraHolder
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7797982159145054145
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8440131205167043988}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.445, z: 0.601}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 5211606367561979764}
+  m_Father: {fileID: 8516157230821310558}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
