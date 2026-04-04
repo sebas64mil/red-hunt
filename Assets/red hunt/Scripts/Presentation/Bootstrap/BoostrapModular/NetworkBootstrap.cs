@@ -37,32 +37,7 @@ public class NetworkBootstrap : MonoBehaviour
 
         lobbyNetworkService.OnLocalJoinAccepted += HandleLocalJoinAccepted;
 
-        // ⭐ NUEVO: Registrar LobbyNetworkService en PacketDispatcher para manejar paquetes del lobby
-        RegisterLobbyPacketHandlers();
-
         Debug.Log("[NetworkBootstrap] NetworkServices inicializados y eventos vinculados.");
-    }
-
-    // ⭐ NUEVO: Método para registrar handlers
-    private void RegisterLobbyPacketHandlers()
-    {
-        if (Services?.Dispatcher == null || lobbyNetworkService == null)
-        {
-            Debug.LogWarning("[NetworkBootstrap] No se puede registrar handlers: Dispatcher o LobbyNetworkService es NULL");
-            return;
-        }
-
-        var dispatcher = Services.Dispatcher;
-
-        // Registrar todos los tipos de paquetes del lobby
-        dispatcher.Register("PLAYER", (json, sender) => lobbyNetworkService.HandlePacketReceived(json));
-        dispatcher.Register("PLAYER_READY", (json, sender) => lobbyNetworkService.HandlePacketReceived(json));
-        dispatcher.Register("REMOVE_PLAYER", (json, sender) => lobbyNetworkService.HandlePacketReceived(json));
-        dispatcher.Register("LOBBY_STATE", (json, sender) => lobbyNetworkService.HandlePacketReceived(json));
-        dispatcher.Register("START_GAME", (json, sender) => lobbyNetworkService.HandlePacketReceived(json));
-        dispatcher.Register("ASSIGN_REJECT", (json, sender) => lobbyNetworkService.HandlePacketReceived(json));
-        dispatcher.Register("RETURN_TO_LOBBY", (json, sender) => lobbyNetworkService.HandlePacketReceived(json));  // ⭐ NUEVO
-
     }
 
     private void HandleClientDisconnected()
