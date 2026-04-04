@@ -37,11 +37,6 @@ public class PresentationInstaller
 
         spawnUI.Init(spawnManager);
 
-        Debug.Log("[PresentationInstaller] ✅ SpawnManager creado con spawnParents SEPARADOS");
-        Debug.Log($"  - Killer Parent: {killerSpawnParent.name}");
-        Debug.Log($"  - Escapist Parent: {escapistSpawnParent.name}");
-        Debug.Log($"  - Killer RotationY: {spawnUI.KillerRotationY}°");
-        Debug.Log($"  - Escapist RotationY: {spawnUI.EscapistRotationY}°");
 
         return new PresentationServices
         {

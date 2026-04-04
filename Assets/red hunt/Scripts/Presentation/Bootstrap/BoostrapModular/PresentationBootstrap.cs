@@ -13,6 +13,7 @@ public class PresentationBootstrap : MonoBehaviour
     private ApplicationBootstrap appBootstrap;
     private NetworkBootstrap networkBootstrap;
     private LobbyNetworkService lobbyNetworkService;
+    private UIBindingBootstrap uiBindingBootstrap;
 
     private AdminUI adminUI;
 
@@ -23,6 +24,11 @@ public class PresentationBootstrap : MonoBehaviour
         if (lobbyUI != null) queuedLobbyUI = lobbyUI;
         if (spawnUI != null) queuedSpawnUI = spawnUI;
         TryInstall();
+    }
+
+    public void AttachUIBinding(UIBindingBootstrap uiBinding)
+    {
+        uiBindingBootstrap = uiBinding ?? throw new ArgumentNullException(nameof(uiBinding));
     }
 
     public void RegisterSpawnUI(SpawnUI ui)
@@ -47,7 +53,6 @@ public class PresentationBootstrap : MonoBehaviour
         {
             int localPlayerId = network_bootstrap_clientstate_id_fallback();
 
-            // ⭐ CAMBIO: Usar nuevos parámetros separados
             var killerSpawnParent = ui.GetKillerSpawnParent();
             var escapistSpawnParent = ui.GetEscapistSpawnParent();
             var killerPrefab = ui.KillerPrefab;
@@ -195,8 +200,20 @@ public class PresentationBootstrap : MonoBehaviour
         try
         {
             Debug.Log($"[PresentationBootstrap] START_GAME recibido (cliente) -> cambiando a escena '{sceneName}'");
+            
             if (!string.IsNullOrEmpty(sceneName))
-                GameManager.ChangeScene(sceneName);
+            {
+                if (uiBindingBootstrap != null)
+                {
+                    Debug.Log("[PresentationBootstrap] Delegando a UIBindingBootstrap.HandleExternalStartRequest()");
+                    uiBindingBootstrap.HandleExternalStartRequest(sceneName);
+                }
+                else
+                {
+                    Debug.LogWarning("[PresentationBootstrap] UIBindingBootstrap no está asignado, cambiando escena sin desactivar cursor");
+                    GameManager.ChangeScene(sceneName);
+                }
+            }
         }
         catch (Exception e)
         {

@@ -99,6 +99,9 @@ public class PlayerMovement : MonoBehaviour
 
     private void Update()
     {
+        // Si el jugador local está en pausa, no procesar input ni look
+        if (LevelManager.IsLocallyPaused) return;
+
         if (inputHandler == null)
         {
             if (!hasLoggedInputCheck)
@@ -124,6 +127,8 @@ public class PlayerMovement : MonoBehaviour
 
     private void FixedUpdate()
     {
+        if (LevelManager.IsLocallyPaused) return;
+
         CheckGroundStatus();
         ApplyDrag();
     }
@@ -139,13 +144,13 @@ public class PlayerMovement : MonoBehaviour
 
         Vector3 moveDirection = Vector3.zero;
 
-        if (moveInput.y > 0) // W - Adelante
+        if (moveInput.y > 0) 
             moveDirection += transform.forward;
-        if (moveInput.y < 0) // S - Atrás
+        if (moveInput.y < 0) 
             moveDirection -= transform.forward;
-        if (moveInput.x > 0) // D - Derecha
+        if (moveInput.x > 0) 
             moveDirection += transform.right;
-        if (moveInput.x < 0) // A - Izquierda
+        if (moveInput.x < 0) 
             moveDirection -= transform.right;
 
         moveDirection = moveDirection.normalized;
@@ -158,6 +163,8 @@ public class PlayerMovement : MonoBehaviour
 
     private void HandleJump()
     {
+        if (LevelManager.IsLocallyPaused) return;
+
         if (rb == null || !isGrounded) return;
 
         Debug.Log("[PlayerMovement] JUMP activado");
@@ -167,19 +174,18 @@ public class PlayerMovement : MonoBehaviour
 
     private void HandleLook(Vector2 lookInput)
     {
+        if (LevelManager.IsLocallyPaused) return;
+
         if (cameraHolder == null || lookInput == Vector2.zero) return;
 
         float lookX = lookInput.x * mouseSensitivity * Time.deltaTime;
         float lookY = lookInput.y * mouseSensitivity * Time.deltaTime;
 
-        // ⭐ ROTACIÓN VERTICAL: Aplicar al CameraHolder (pitch)
         xRotation -= lookY;
         xRotation = Mathf.Clamp(xRotation, -maxLookAngle, maxLookAngle);
         cameraHolder.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
         
-        // ⭐ ROTACIÓN HORIZONTAL: Aplicar al cuerpo del jugador (yaw)
         transform.Rotate(Vector3.up * lookX);
-
     }
 
     private void CheckGroundStatus()
@@ -198,7 +204,6 @@ public class PlayerMovement : MonoBehaviour
     {
         if (cameraHolder == null) return;
 
-        // ⭐ Mantener el CameraHolder en la posición correcta (0.6 arriba del jugador)
         cameraHolder.localPosition = Vector3.up * 0.6f;
     }
 

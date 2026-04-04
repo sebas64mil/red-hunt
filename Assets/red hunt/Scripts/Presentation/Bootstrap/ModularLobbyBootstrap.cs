@@ -70,6 +70,8 @@ public class ModularLobbyBootstrap : MonoBehaviour
         uiBinding = gameObject.GetComponent<UIBindingBootstrap>() ?? gameObject.AddComponent<UIBindingBootstrap>();
         uiBinding.Bind(lobbyUI, adminUI, networkBoot, appBoot, presentationBoot);
 
+        presentationBoot.AttachUIBinding(uiBinding);
+
         // Suscribir UIBinding al evento público para recepcionar solicitudes externas de StartGame
         if (uiBinding != null)
         {
@@ -94,6 +96,29 @@ public class ModularLobbyBootstrap : MonoBehaviour
         }
 
         OnRequestStartGame?.Invoke(sceneName);
+    }
+
+    public LobbyManager GetLobbyManager()
+    {
+        try
+        {
+            return appBoot?.Services?.LobbyManager;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+    public LobbyNetworkService GetLobbyNetworkService()
+    {
+        try
+        {
+            return networkBoot?.GetLobbyNetworkService();
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     // -------------------- Registration API (delegan a bootstraps) --------------------

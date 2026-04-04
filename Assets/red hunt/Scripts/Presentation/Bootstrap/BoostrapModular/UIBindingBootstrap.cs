@@ -523,6 +523,7 @@ public class UIBindingBootstrap : MonoBehaviour
                 try
                 {
                     GameManager.ChangeScene(sceneName);
+                    GameManager.SetCursorVisible(false);
                 }
                 catch (Exception e)
                 {
@@ -543,7 +544,7 @@ public class UIBindingBootstrap : MonoBehaviour
             Debug.LogWarning("[UIBinding] HandleExternalStartRequest: sceneName vacío.");
             return;
         }
-
+         Debug.Log($"[UIBinding] HandleExternalStartRequest recibido para escena '{sceneName}'");
         _ = RequestStartGame(sceneName);
     }
 }

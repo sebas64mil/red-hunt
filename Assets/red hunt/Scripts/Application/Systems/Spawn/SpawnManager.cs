@@ -46,11 +46,6 @@ public class SpawnManager
         this.killerRotationY = killerRotationY;
         this.escapistRotationY = escapistRotationY;
 
-        Debug.Log($"[SpawnManager] ✅ Inicializado con spawnParents separados:");
-        Debug.Log($"  - Killer Parent: {(killerSpawnParent != null ? killerSpawnParent.name : "NULL")}");
-        Debug.Log($"  - Escapist Parent: {(escapistSpawnParent != null ? escapistSpawnParent.name : "NULL")}");
-        Debug.Log($"  - Killer RotationY: {killerRotationY}°");
-        Debug.Log($"  - Escapist RotationY: {escapistRotationY}°");
     }
 
     public SpawnManager(

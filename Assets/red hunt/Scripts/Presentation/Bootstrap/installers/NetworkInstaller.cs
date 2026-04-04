@@ -244,10 +244,7 @@ public class NetworkInstaller
                             Debug.LogError($"[NetworkInstaller] ❌ OnRemotePlayerMoveReceived es NULL - GameplayBootstrap no se ha inicializado?");
                         }
                     }
-                    else
-                    {
-                        Debug.Log($"[NetworkInstaller] ⏭️ Ignorando player local {playerState.playerId} en snapshot");
-                    }
+
                 }
 
             }

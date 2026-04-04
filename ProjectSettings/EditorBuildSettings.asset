@@ -12,5 +12,5 @@ EditorBuildSettings:
     path: Assets/red hunt/Scenes/Game.unity
     guid: d56b52971b4ff9848b05f3e6dcc5a88b
   m_configObjects:
-    com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+    com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 1f412752d847f8c45bff9fa783e84f92, type: 3}
   m_UseUCBPForAssetBundles: 0

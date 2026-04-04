@@ -200,7 +200,6 @@ public class LobbyNetworkService : MonoBehaviour
     {
         if (!isHost)
         {
-            Debug.LogWarning("[LobbyNetworkService] StartGame invocado en cliente - ignorando");
             return;
         }
 

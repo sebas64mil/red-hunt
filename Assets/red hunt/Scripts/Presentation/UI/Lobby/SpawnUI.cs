@@ -37,12 +37,7 @@ public class SpawnUI : MonoBehaviour
     public void Init(SpawnManager spawnManager)
     {
         this.spawnManager = spawnManager;
-        
-        Debug.Log("[SpawnUI] ✅ SpawnUI Inicializado");
-        Debug.Log($"  - Killer Parent: {(killerSpawnParent != null ? killerSpawnParent.name : "NO ASIGNADO")}");
-        Debug.Log($"  - Escapist Parent: {(escapistSpawnParent != null ? escapistSpawnParent.name : "NO ASIGNADO")}");
-        Debug.Log($"  - Killer RotationY: {killerRotationY}°");
-        Debug.Log($"  - Escapist RotationY: {escapistRotationY}°");
+       
     }
 
     private void OnEnable()
