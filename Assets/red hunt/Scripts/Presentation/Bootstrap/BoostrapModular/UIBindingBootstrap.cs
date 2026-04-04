@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -88,7 +88,7 @@ public class UIBindingBootstrap : MonoBehaviour
 
     private void HandleNetworkPlayerIdAssigned(int id)
     {
-        DebugLog($"Network asignó playerId {id}");
+        DebugLog($"Network asignÃ³ playerId {id}");
     }
 
     private void HandleNetworkLocalJoinAccepted(int id)
@@ -181,13 +181,13 @@ public class UIBindingBootstrap : MonoBehaviour
     {
         lobby_OnHostChosen = () =>
         {
-            DebugLog("OnHostChosen recibido (intención host)");
+            DebugLog("OnHostChosen recibido (intenciÃ³n host)");
             lastSelectionIsHost = true;
         };
 
         lobby_OnJoinChosen = () =>
         {
-            DebugLog("OnJoinChosen recibido (intención join)");
+            DebugLog("OnJoinChosen recibido (intenciÃ³n join)");
             lastSelectionIsHost = false;
         };
 
@@ -244,7 +244,7 @@ public class UIBindingBootstrap : MonoBehaviour
                 }
                 else
                 {
-                    DebugLog("Cliente ya conectado, usando conexión existente");
+                    DebugLog("Cliente ya conectado, usando conexiÃ³n existente");
                 }
             }
 
@@ -295,7 +295,7 @@ public class UIBindingBootstrap : MonoBehaviour
                     bool success = await network.ConnectToServer(ip, port);
                     if (!success)
                     {
-                        Debug.LogWarning("Conexión al servidor fallida en OnJoinLobby");
+                        Debug.LogWarning("ConexiÃ³n al servidor fallida en OnJoinLobby");
                         presentation.Presentation?.LobbyUI?.ResetAllToMain();
                         adminUI?.ClearAll();
                         clientConnected = false;
@@ -330,7 +330,7 @@ public class UIBindingBootstrap : MonoBehaviour
 
         lobby_OnLeaveLobby = async () =>
         {
-            DebugLog("Usuario solicitó abandonar el lobby (voluntario)");
+            DebugLog("Usuario solicitÃ³ abandonar el lobby (voluntario)");
 
             await lobbyNetworkService?.LeaveLobby();
 
@@ -358,7 +358,7 @@ public class UIBindingBootstrap : MonoBehaviour
 
         lobby_OnShutdownServer = async () =>
         {
-            DebugLog("Host solicitó apagar el servidor desde la UI");
+            DebugLog("Host solicitÃ³ apagar el servidor desde la UI");
 
             await lobbyNetworkService?.LeaveLobby();
 
@@ -401,10 +401,12 @@ public class UIBindingBootstrap : MonoBehaviour
 
         gameUI_OnLeaveLobby = async () =>
         {
-            DebugLog("GameUI: Cliente solicitó abandonar desde la escena de juego");
+            DebugLog("GameUI: Cliente solicitÃ³ abandonar desde la escena de juego");
             await lobbyNetworkService?.LeaveLobby();
             
-            presentation.Presentation?.LobbyUI?.ResetAllToMain();
+            // â­ NUEVO: Notificar que vamos a volver desde Game
+            presentation.SetReturningFromGameScene(true);
+            
             adminUI?.ClearAll();
             
             try
@@ -422,16 +424,16 @@ public class UIBindingBootstrap : MonoBehaviour
             }
 
             clientConnected = false;
+            lastSelectionIsHost = false;
             
             GameManager.SetCursorVisible(true);
-            
             GameManager.ChangeScene("Lobby");
+            
             UpdateStartButtonAvailability();
         };
 
         gameUI_OnReturnToLobby = async () =>
         {
-            
             if (lobbyNetworkService != null)
             {
                 lobbyNetworkService.ResetGameStarted();  
@@ -439,9 +441,17 @@ public class UIBindingBootstrap : MonoBehaviour
             
             await lobbyNetworkService?.ReturnAllPlayersToLobby();
             
+            presentation.SetReturningFromGameScene(false);
+            
+            if (gameUI != null)
+            {
+                gameUI.SetConnected(false);
+                gameUI.SetIsHost(false);
+            }
+            
+
             if (presentation.Presentation?.LobbyUI != null)
             {
-                presentation.Presentation.LobbyUI.ShowLobbyPanel();
                 presentation.Presentation.LobbyUI.SetConnected(true);
                 presentation.Presentation.LobbyUI.SetIsHost(true);
             }
@@ -637,7 +647,7 @@ public class UIBindingBootstrap : MonoBehaviour
     {
         if (string.IsNullOrWhiteSpace(sceneName))
         {
-            Debug.LogWarning("[UIBinding] HandleExternalStartRequest: sceneName vacío.");
+            Debug.LogWarning("[UIBinding] HandleExternalStartRequest: sceneName vacÃ­o.");
             return;
         }
          Debug.Log($"[UIBinding] HandleExternalStartRequest recibido para escena '{sceneName}'");

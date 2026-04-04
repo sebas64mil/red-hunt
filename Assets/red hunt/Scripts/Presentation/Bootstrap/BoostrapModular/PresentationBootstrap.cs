@@ -19,6 +19,8 @@ public class PresentationBootstrap : MonoBehaviour
 
     private Func<bool> shouldSuppressShowForLocal;
 
+    private bool isReturningFromGameScene = false;  // ⭐ NUEVO: Flag para saber si vienes desde Game
+
     public void Init(LobbyUI lobbyUI = null, SpawnUI spawnUI = null)
     {
         if (lobbyUI != null) queuedLobbyUI = lobbyUI;
@@ -60,6 +62,8 @@ public class PresentationBootstrap : MonoBehaviour
             var killerSpawnPos = ui.KillerSpawnPosition;
             var escapistBasePos = ui.EscapistBasePosition;
             var escapistSpacing = ui.EscapistSpacing;
+            var killerRotationY = ui.KillerRotationY;        // ⭐ NUEVO
+            var escapistRotationY = ui.EscapistRotationY;    // ⭐ NUEVO
 
             var newSpawnManager = new SpawnManager(
                 killerSpawnParent,
@@ -69,7 +73,9 @@ public class PresentationBootstrap : MonoBehaviour
                 localPlayerId,
                 killerSpawnPos,
                 escapistBasePos,
-                escapistSpacing
+                escapistSpacing,
+                killerRotationY,        // ⭐ NUEVO
+                escapistRotationY       // ⭐ NUEVO
             );
 
             Presentation.SpawnManager = newSpawnManager;
@@ -152,19 +158,31 @@ public class PresentationBootstrap : MonoBehaviour
             Presentation.LobbyUI.SetLocalPlayerId(playerId);
             Presentation.LobbyUI.ResetReadyState();
             
-            // ⭐ NUEVO: Mostrar LobbyPanel al registrarse
-            Presentation.LobbyUI.ShowLobbyPanel();
-            
             var isHost = networkBootstrap?.Services?.ClientState?.IsHost ?? false;
             Presentation.LobbyUI.SetIsHost(isHost);
             Presentation.LobbyUI.SetConnected(true);
+            
+            if (!isReturningFromGameScene)
+            {
+                Presentation.LobbyUI.ShowLobbyPanel();
+            }
+            else
+            {
+                Presentation.LobbyUI.ResetAllToMain();
+                isReturningFromGameScene = false;
+            }
 
-            Debug.Log("[PresentationBootstrap] ✅ LobbyUI re-registrada tras cambio de escena (LobbyPanel mostrado).");
+            Debug.Log("[PresentationBootstrap] ✅ LobbyUI re-registrada.");
         }
         catch (Exception e)
         {
             Debug.LogWarning($"[PresentationBootstrap] Error re-registrando LobbyUI: {e.Message}");
         }
+    }
+
+    public void SetReturningFromGameScene(bool value)
+    {
+        isReturningFromGameScene = value;
     }
 
     public void RegisterAdminUI(AdminUI admin)

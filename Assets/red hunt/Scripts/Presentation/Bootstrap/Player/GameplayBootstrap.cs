@@ -18,6 +18,7 @@ public class GameplayBootstrap : MonoBehaviour
 
     private int localPlayerId = -1;
     private bool initialized = false;
+    private string currentScene = "";
 
     public void Init(NetworkBootstrap network, ApplicationBootstrap application, PresentationBootstrap presentation, GameUI gameUIReference)
     {
@@ -53,11 +54,12 @@ public class GameplayBootstrap : MonoBehaviour
     public void SetGameUI(GameUI gameUIReference)
     {
         gameUI = gameUIReference;
+        Debug.Log("[GameplayBootstrap] GameUI asignado via SetGameUI()");
     }
 
     private void HandlePlayerIdAssigned(int id)
     {
-        if (initialized) return;
+        if (initialized && currentScene != "Game") return;
         
         localPlayerId = id;
         Debug.Log("[GameplayBootstrap] PlayerId asignado: " + localPlayerId);
@@ -69,18 +71,40 @@ public class GameplayBootstrap : MonoBehaviour
     {
         Debug.Log($"[GameplayBootstrap] Escena cargada: {scene.name}");
         
-        // ⭐ Si no tenemos GameUI, buscarlo en la nueva escena
-        if (gameUI == null && scene.name == "Game")
+        currentScene = scene.name;
+        
+        // ⭐ NUEVO: Si volvemos a Game, permitir reinicialización
+        if (scene.name == "Game")
         {
-            gameUI = FindFirstObjectByType<GameUI>();
-            if (gameUI != null)
+            if (initialized)
             {
-                Debug.Log("[GameplayBootstrap] ✅ GameUI encontrado en escena Game");
+                Debug.Log("[GameplayBootstrap] Reiniciando para nueva partida...");
+                initialized = false;
+                gameUI = null;
             }
-            else
+        }
+        
+        // ⭐ NUEVO: Si volvemos a Lobby, limpiar todo
+        if (scene.name == "Lobby")
+        {
+            Debug.Log("[GameplayBootstrap] Volviendo al Lobby - limpiando estado de gameplay");
+            initialized = false;
+            gameUI = null;
+            
+            if (applicationBootstrap != null)
             {
-                Debug.LogWarning("[GameplayBootstrap] ⚠️ GameUI no encontrado en escena Game");
+                applicationBootstrap.OnPlayerJoined -= HandleRemotePlayerJoined;
+                applicationBootstrap.OnPlayerLeft -= HandleRemotePlayerLeft;
             }
+
+            if (networkBootstrap?.Services != null && remotePlayerMovementManager != null)
+            {
+                networkBootstrap.Services.OnRemotePlayerMoveReceived -= remotePlayerMovementManager.ProcessMovePacket;
+            }
+
+            remotePlayerMovementManager?.Clear();
+            
+            return; // No inicializar si estamos en Lobby
         }
         
         if (localPlayerId > 0)
@@ -123,8 +147,13 @@ public class GameplayBootstrap : MonoBehaviour
     {
         if (gameUI == null)
         {
-            Debug.LogWarning("[GameplayBootstrap] GameUI no disponible");
-            return;
+            gameUI = FindFirstObjectByType<GameUI>();
+            if (gameUI == null)
+            {
+                Debug.LogWarning("[GameplayBootstrap] GameUI no encontrado en escena");
+                return;
+            }
+            Debug.Log("[GameplayBootstrap] ✅ GameUI encontrado en escena Game");
         }
 
         var isHost = networkBootstrap.Services.ClientState?.IsHost ?? false;

@@ -31,12 +31,11 @@ public class PresentationInstaller
             spawnUI.KillerSpawnPosition,
             spawnUI.EscapistBasePosition,
             spawnUI.EscapistSpacing,
-            spawnUI.KillerRotationY,
-            spawnUI.EscapistRotationY
+            spawnUI.KillerRotationY,      
+            spawnUI.EscapistRotationY    
         );
 
         spawnUI.Init(spawnManager);
-
 
         return new PresentationServices
         {
