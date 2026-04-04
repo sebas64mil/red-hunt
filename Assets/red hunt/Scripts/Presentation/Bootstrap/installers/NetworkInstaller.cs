@@ -271,6 +271,19 @@ public class NetworkInstaller
             }
         });
 
+        dispatcher.Register("RETURN_TO_LOBBY", (json, sender) =>
+        {
+            try
+            {
+                Debug.Log("[NetworkInstaller] RETURN_TO_LOBBY recibido");
+                lobbyNetworkService?.HandlePacketReceived(json);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[NetworkInstaller] Error procesando RETURN_TO_LOBBY: {e.Message}");
+            }
+        });
+
         if (isHost)
         {
             dispatcher.Register("DISCONNECT", async (json, sender) =>

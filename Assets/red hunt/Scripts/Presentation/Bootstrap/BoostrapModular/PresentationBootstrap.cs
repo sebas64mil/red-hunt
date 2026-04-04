@@ -151,8 +151,15 @@ public class PresentationBootstrap : MonoBehaviour
             var playerId = networkBootstrap?.Services?.ClientState?.PlayerId ?? -1;
             Presentation.LobbyUI.SetLocalPlayerId(playerId);
             Presentation.LobbyUI.ResetReadyState();
+            
+            // ⭐ NUEVO: Mostrar LobbyPanel al registrarse
+            Presentation.LobbyUI.ShowLobbyPanel();
+            
+            var isHost = networkBootstrap?.Services?.ClientState?.IsHost ?? false;
+            Presentation.LobbyUI.SetIsHost(isHost);
+            Presentation.LobbyUI.SetConnected(true);
 
-            Debug.Log("[PresentationBootstrap] LobbyUI re-registrada tras cambio de escena.");
+            Debug.Log("[PresentationBootstrap] ✅ LobbyUI re-registrada tras cambio de escena (LobbyPanel mostrado).");
         }
         catch (Exception e)
         {
@@ -182,7 +189,10 @@ public class PresentationBootstrap : MonoBehaviour
         networkBootstrap.OnClientDisconnected += HandleClientDisconnected;
 
         if (lobbyNetworkService != null)
+        {
             lobbyNetworkService.OnStartGameReceived += HandleStartGameReceived;
+            lobbyNetworkService.OnReturnToLobbyReceived += HandleReturnToLobby;  // ⭐ NUEVO
+        }
 
         if (installed && LobbyNetworkServiceValid())
         {
@@ -218,6 +228,26 @@ public class PresentationBootstrap : MonoBehaviour
         catch (Exception e)
         {
             Debug.LogWarning($"[PresentationBootstrap] Error en HandleStartGameReceived: {e.Message}");
+        }
+    }
+
+    // ⭐ NUEVO: Manejador para RETURN_TO_LOBBY
+    private void HandleReturnToLobby()
+    {
+        try
+        {
+            Debug.Log("[PresentationBootstrap] RETURN_TO_LOBBY recibido - cambiando a escena Lobby");
+            
+            // Cambiar escena
+            GameManager.ChangeScene("Lobby");
+
+            GameManager.SetCursorVisible(true);
+
+            Debug.Log("[PresentationBootstrap] ✅ Escena Lobby cargada, LobbyPanel se mostrará al registrarse");
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[PresentationBootstrap] Error en HandleReturnToLobby: {e.Message}");
         }
     }
 
@@ -379,6 +409,12 @@ public class PresentationBootstrap : MonoBehaviour
                 networkBootstrap.OnPlayerIdAssigned -= HandlePlayerIdAssigned;
                 networkBootstrap.OnLocalJoinAccepted -= HandleLocalJoinAccepted;
                 networkBootstrap.OnClientDisconnected -= HandleClientDisconnected;
+            }
+
+            if (lobbyNetworkService != null)
+            {
+                lobbyNetworkService.OnStartGameReceived -= HandleStartGameReceived;
+                lobbyNetworkService.OnReturnToLobbyReceived -= HandleReturnToLobby;  // ⭐ NUEVO
             }
         }
         catch { }

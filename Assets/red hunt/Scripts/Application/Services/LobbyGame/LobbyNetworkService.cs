@@ -15,16 +15,16 @@ public class LobbyNetworkService : MonoBehaviour
     private bool isHost;
     public bool IsHost => isHost;
 
+    public event Action<string> OnStartGameReceived;
+    public event Action<int> OnLocalJoinAccepted;
+    public event Action OnReturnToLobbyReceived;  // ⭐ EVENTO PARA RETURN_TO_LOBBY
+
     public bool GameStarted { get; private set; } = false;
 
     public SpawnManager SpawnManagerInstance { get; set; }
 
     private IServer server;
     private ClientConnectionManager connectionManager;
-
-
-    public event Action<string> OnStartGameReceived;
-    public event Action<int> OnLocalJoinAccepted;
 
 
     public void Init(
@@ -88,7 +88,7 @@ public class LobbyNetworkService : MonoBehaviour
                 : PlayerType.Escapist.ToString();
         }
 
-        Debug.Log($"[LobbyNetworkService] JoinLobby called. isHost={isHost}, resolvedType={resolvedType}");
+            Debug.Log($"[LobbyNetworkService] JoinLobby called. isHost={isHost}, resolvedType={resolvedType}");
 
         // Si el host ya inició la partida, no permitir joins
         if (GameStarted)
@@ -302,6 +302,10 @@ public class LobbyNetworkService : MonoBehaviour
             case "START_GAME":
                 HandleStartGamePacket(packetJson);
                 break;
+            case "RETURN_TO_LOBBY":
+                Debug.Log("[LobbyNetworkService] RETURN_TO_LOBBY recibido");
+                HandleReturnToLobbyPacket();  // ⭐ Llamar nuevo método
+                break;
 
             default:
                 Debug.LogWarning($"Paquete desconocido recibido: {packetType}");
@@ -429,7 +433,6 @@ public class LobbyNetworkService : MonoBehaviour
         {
             Debug.LogWarning($"[LobbyNetworkService] Player {playerPacket.id} no pudo ser añadido (lobby lleno u error)");
             
-            // ⭐ NUEVO: Enviar ASSIGN_REJECT al cliente
             try
             {
                 var rejectPacket = packetBuilder.CreateAssignReject(playerPacket.id, "Lobby full or internal error");
@@ -547,5 +550,59 @@ public class LobbyNetworkService : MonoBehaviour
         return type == PlayerType.Killer.ToString()
             ? PlayerType.Killer
             : PlayerType.Escapist;
+    }
+
+    public async Task ReturnAllPlayersToLobby()
+    {
+        if (!isHost)
+        {
+            Debug.LogWarning("[LobbyNetworkService] ReturnAllPlayersToLobby: solo el host puede usarlo");
+            return;
+        }
+
+        Debug.Log("[LobbyNetworkService] Enviando RETURN_TO_LOBBY a todos los clientes");
+
+        try
+        {
+            var returnPacket = packetBuilder.CreateReturnToLobby();
+            await broadcastService.SendToAll(returnPacket);
+            
+            Debug.Log("[LobbyNetworkService] RETURN_TO_LOBBY enviado a todos los clientes");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LobbyNetworkService] Error en ReturnAllPlayersToLobby: {e.Message}");
+        }
+    }
+    private void HandleReturnToLobbyPacket()
+    {
+        try
+        { 
+            GameStarted = false;
+            
+            try
+            {
+                var players = lobbyManager.GetAllPlayers().ToList();
+                foreach (var p in players)
+                {
+                    SpawnManagerInstance?.RemovePlayer(p.Id);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[LobbyNetworkService] Error limpiando players: {e.Message}");
+            }
+            
+            OnReturnToLobbyReceived?.Invoke();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[LobbyNetworkService] Error en HandleReturnToLobbyPacket: {e.Message}");
+        }
+    }
+
+    public void ResetGameStarted()
+    {
+        GameStarted = false;
     }
 }

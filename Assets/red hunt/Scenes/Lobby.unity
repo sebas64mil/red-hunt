@@ -2587,6 +2587,7 @@ MonoBehaviour:
   lobbyUI: {fileID: 1174263334}
   spawnUI: {fileID: 1174263336}
   adminUI: {fileID: 1174263337}
+  gameUI: {fileID: 0}
 --- !u!114 &1214679115
 MonoBehaviour:
   m_ObjectHideFlags: 0

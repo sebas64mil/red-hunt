@@ -99,6 +99,15 @@ public class PacketBuilder
         return serializer.Serialize(packet);
     }
 
+    public string CreateReturnToLobby()
+    {
+        var packet = new ReturnToLobbyPacket
+        {
+            type = "RETURN_TO_LOBBY",
+            message = "Host is returning to lobby"
+        };
+        return serializer.Serialize(packet);
+    }
 
     public string GetPacketType(string json)
     {

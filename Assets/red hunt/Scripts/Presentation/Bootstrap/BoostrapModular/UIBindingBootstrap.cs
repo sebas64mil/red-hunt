@@ -11,6 +11,7 @@ public class UIBindingBootstrap : MonoBehaviour
     private PresentationBootstrap presentation;
     private ApplicationBootstrap appServicesProvider;
     private LobbyNetworkService lobbyNetworkService;
+    private GameUI gameUI;
 
     private bool serverStarted = false;
     private bool clientConnected = false;
@@ -24,6 +25,8 @@ public class UIBindingBootstrap : MonoBehaviour
     private Action lobby_OnLeaveLobby;
     private Action lobby_OnShutdownServer;
     private Action<int> admin_OnKickRequested;
+    private Action gameUI_OnLeaveLobby;
+    private Action gameUI_OnReturnToLobby;
 
     private void DebugLog(string msg) => Debug.Log($"[UIBinding] {msg}");
 
@@ -200,6 +203,7 @@ public class UIBindingBootstrap : MonoBehaviour
                     try
                     {
                         await StartHostFlow(presentation.Presentation.LobbyUI.Port);
+                        presentation.Presentation.LobbyUI.SetIsHost(true);
                         presentation.Presentation.LobbyUI.ShowLobbyPanel();
                     }
                     catch (Exception ex)
@@ -214,6 +218,7 @@ public class UIBindingBootstrap : MonoBehaviour
                 else
                 {
                     DebugLog("Host ya iniciado, no reiniciando server");
+                    presentation.Presentation.LobbyUI.SetIsHost(true);
                     presentation.Presentation.LobbyUI.ShowLobbyPanel();
                 }
             }
@@ -393,6 +398,58 @@ public class UIBindingBootstrap : MonoBehaviour
                 await network.Services.AdminService.KickPlayer(targetId);
             }
         };
+
+        gameUI_OnLeaveLobby = async () =>
+        {
+            DebugLog("GameUI: Cliente solicitó abandonar desde la escena de juego");
+            await lobbyNetworkService?.LeaveLobby();
+            
+            presentation.Presentation?.LobbyUI?.ResetAllToMain();
+            adminUI?.ClearAll();
+            
+            try
+            {
+                var players = appServicesProvider?.Services?.LobbyManager?.GetAllPlayers();
+                if (players != null)
+                {
+                    foreach (var p in players)
+                        presentation.Presentation?.SpawnUI?.HandlePlayerDisconnected(p.Id);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"Error limpiando spawns: {e.Message}");
+            }
+
+            clientConnected = false;
+            
+            GameManager.SetCursorVisible(true);
+            
+            GameManager.ChangeScene("Lobby");
+            UpdateStartButtonAvailability();
+        };
+
+        gameUI_OnReturnToLobby = async () =>
+        {
+            
+            if (lobbyNetworkService != null)
+            {
+                lobbyNetworkService.ResetGameStarted();  
+            }
+            
+            await lobbyNetworkService?.ReturnAllPlayersToLobby();
+            
+            if (presentation.Presentation?.LobbyUI != null)
+            {
+                presentation.Presentation.LobbyUI.ShowLobbyPanel();
+                presentation.Presentation.LobbyUI.SetConnected(true);
+                presentation.Presentation.LobbyUI.SetIsHost(true);
+            }
+            
+            GameManager.ChangeScene("Lobby");
+            
+            DebugLog("Host y clientes volviendo al lobby");
+        };
     }
 
     private void BindLobbyUI(LobbyUI ui)
@@ -463,6 +520,45 @@ public class UIBindingBootstrap : MonoBehaviour
         try
         {
             ui.OnKickRequested -= admin_OnKickRequested;
+        }
+        catch { }
+    }
+
+    public void SetGameUI(GameUI ui)
+    {
+        if (ui == null)
+        {
+            UnbindGameUI(gameUI);
+            gameUI = null;
+            return;
+        }
+
+        gameUI = ui;
+        BindGameUI(gameUI);
+    }
+
+    private void BindGameUI(GameUI ui)
+    {
+        if (ui == null) return;
+
+        UnbindGameUI(ui);
+
+        ui.OnLeaveLobby -= gameUI_OnLeaveLobby;
+        ui.OnLeaveLobby += gameUI_OnLeaveLobby;
+
+        ui.OnReturnToLobby -= gameUI_OnReturnToLobby;
+        ui.OnReturnToLobby += gameUI_OnReturnToLobby;
+
+        DebugLog("GameUI eventos vinculados");
+    }
+
+    private void UnbindGameUI(GameUI ui)
+    {
+        if (ui == null) return;
+        try
+        {
+            ui.OnLeaveLobby -= gameUI_OnLeaveLobby;
+            ui.OnReturnToLobby -= gameUI_OnReturnToLobby;
         }
         catch { }
     }

@@ -797,10 +797,10 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 402444432}
-  - component: {fileID: 402444431}
   - component: {fileID: 402444430}
   - component: {fileID: 402444429}
   - component: {fileID: 402444433}
+  - component: {fileID: 402444434}
   m_Layer: 0
   m_Name: UIControllers
   m_TagString: Untagged
@@ -844,32 +844,6 @@ MonoBehaviour:
   escapistSpacing: 2.5
   killerRotationY: 0
   escapistRotationY: 0
---- !u!114 &402444431
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 402444427}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3345c929fde26bc4790763e9ae336679, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LobbyUI
-  ipAddress: 192.168.20.4
-  port: 5004
-  leaveButton: {fileID: 798027804}
-  shutdownButton: {fileID: 281615919}
-  mainPanel: {fileID: 0}
-  rolePanel: {fileID: 0}
-  lobbyPanel: {fileID: 0}
-  hostButton: {fileID: 0}
-  joinButton: {fileID: 0}
-  chooseKillerButton: {fileID: 0}
-  chooseEscapistButton: {fileID: 0}
-  readyButton: {fileID: 0}
-  startButton: {fileID: 0}
-  roleBackButton: {fileID: 0}
 --- !u!4 &402444432
 Transform:
   m_ObjectHideFlags: 0
@@ -899,6 +873,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LevelManager
   pausePanel: {fileID: 1304974620}
   pauseActionReference: {fileID: 4244900616885543450, guid: 1f412752d847f8c45bff9fa783e84f92, type: 3}
+--- !u!114 &402444434
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 402444427}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3129e026bbe1a7a4ba6ab2442517058b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameUI
+  leaveButton: {fileID: 798027804}
+  shutdownButton: {fileID: 281615919}
 --- !u!1 &462577452
 GameObject:
   m_ObjectHideFlags: 0

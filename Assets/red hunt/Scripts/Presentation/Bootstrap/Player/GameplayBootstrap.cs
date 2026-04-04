@@ -8,6 +8,7 @@ public class GameplayBootstrap : MonoBehaviour
     private PlayerMovement playerMovement;
     private PlayerNetworkService playerNetworkService;
     private RemotePlayerSync remotePlayerSync;
+    private GameUI gameUI;
 
     private NetworkBootstrap networkBootstrap;
     private ApplicationBootstrap applicationBootstrap;
@@ -18,11 +19,12 @@ public class GameplayBootstrap : MonoBehaviour
     private int localPlayerId = -1;
     private bool initialized = false;
 
-    public void Init(NetworkBootstrap network, ApplicationBootstrap application, PresentationBootstrap presentation)
+    public void Init(NetworkBootstrap network, ApplicationBootstrap application, PresentationBootstrap presentation, GameUI gameUIReference)
     {
         networkBootstrap = network ?? throw new ArgumentNullException(nameof(network));
         applicationBootstrap = application ?? throw new ArgumentNullException(nameof(application));
         presentationBootstrap = presentation ?? throw new ArgumentNullException(nameof(presentation));
+        gameUI = gameUIReference;
 
         remotePlayerMovementManager = new RemotePlayerMovementManager();
 
@@ -48,6 +50,11 @@ public class GameplayBootstrap : MonoBehaviour
         SceneManager.sceneLoaded += HandleSceneLoaded;
     }
 
+    public void SetGameUI(GameUI gameUIReference)
+    {
+        gameUI = gameUIReference;
+    }
+
     private void HandlePlayerIdAssigned(int id)
     {
         if (initialized) return;
@@ -61,6 +68,20 @@ public class GameplayBootstrap : MonoBehaviour
     private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         Debug.Log($"[GameplayBootstrap] Escena cargada: {scene.name}");
+        
+        // ⭐ Si no tenemos GameUI, buscarlo en la nueva escena
+        if (gameUI == null && scene.name == "Game")
+        {
+            gameUI = FindFirstObjectByType<GameUI>();
+            if (gameUI != null)
+            {
+                Debug.Log("[GameplayBootstrap] ✅ GameUI encontrado en escena Game");
+            }
+            else
+            {
+                Debug.LogWarning("[GameplayBootstrap] ⚠️ GameUI no encontrado en escena Game");
+            }
+        }
         
         if (localPlayerId > 0)
         {
@@ -81,9 +102,37 @@ public class GameplayBootstrap : MonoBehaviour
 
         initialized = true;
         Debug.Log("[GameplayBootstrap] ===== INICIALIZANDO GAMEPLAY =====");
+        SetupGameUI();
+        
+        if (gameUI != null)
+        {
+            var uiBinding = GetComponent<UIBindingBootstrap>();
+            if (uiBinding != null)
+            {
+                uiBinding.SetGameUI(gameUI);
+                Debug.Log("[GameplayBootstrap] ✅ GameUI vinculado a UIBindingBootstrap");
+            }
+        }
+        
         SetupLocalPlayerMovement();
         SetupRemotePlayerSyncing();
         Debug.Log("[GameplayBootstrap] Inicializado para PlayerId " + localPlayerId);
+    }
+
+    private void SetupGameUI()
+    {
+        if (gameUI == null)
+        {
+            Debug.LogWarning("[GameplayBootstrap] GameUI no disponible");
+            return;
+        }
+
+        var isHost = networkBootstrap.Services.ClientState?.IsHost ?? false;
+        gameUI.SetIsHost(isHost);
+        gameUI.SetConnected(true);
+        gameUI.SetLobbyUI(presentationBootstrap?.Presentation?.LobbyUI);
+
+        Debug.Log($"[GameplayBootstrap] ✅ GameUI configurado - IsHost: {isHost}, Connected: true");
     }
 
     private void SetupLocalPlayerMovement()
@@ -133,7 +182,6 @@ public class GameplayBootstrap : MonoBehaviour
             
             Debug.Log($"[GameplayBootstrap] Estado de Client: isConnected={client?.isConnected}, isHost={isHost}");
             
-            // ⭐ Pasar spawnManager y lobbyManager (la variable ya existe)
             playerNetworkService.Init(localPlayerId, client, serializer, isHost, broadcastService, spawnManager, lobbyManager);
             Debug.Log("[GameplayBootstrap] ✅ PlayerNetworkService ACTIVADO");
         }
@@ -149,7 +197,6 @@ public class GameplayBootstrap : MonoBehaviour
 
     private void SetupRemotePlayerSyncing()
     {
-        // ⭐ Registrar todos los jugadores remotos en el manager
         if (applicationBootstrap?.Services?.LobbyManager != null)
         {
             var allPlayers = applicationBootstrap.Services.LobbyManager.GetAllPlayers();
@@ -166,7 +213,6 @@ public class GameplayBootstrap : MonoBehaviour
             applicationBootstrap.OnPlayerLeft += HandleRemotePlayerLeft;
         }
 
-        // ⭐ Vincular el callback de red al manager
         if (networkBootstrap?.Services != null)
         {
             networkBootstrap.Services.OnRemotePlayerMoveReceived += remotePlayerMovementManager.ProcessMovePacket;

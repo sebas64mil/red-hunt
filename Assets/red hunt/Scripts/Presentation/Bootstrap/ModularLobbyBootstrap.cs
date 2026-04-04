@@ -9,6 +9,7 @@ public class ModularLobbyBootstrap : MonoBehaviour
     [SerializeField] private LobbyUI lobbyUI;
     [SerializeField] private SpawnUI spawnUI;
     [SerializeField] private AdminUI adminUI;
+    [SerializeField] private GameUI gameUI;
 
     public event Action<string> OnRequestStartGame;
 
@@ -79,9 +80,12 @@ public class ModularLobbyBootstrap : MonoBehaviour
             OnRequestStartGame += uiBinding.HandleExternalStartRequest;
         }
 
-        // Agregar GameplayBootstrap
+        // Agregar GameplayBootstrap con GameUI inyectado
         gameplayBootstrap = gameObject.AddComponent<GameplayBootstrap>();
-        gameplayBootstrap.Init(networkBoot, appBoot, presentationBoot);
+        gameplayBootstrap.Init(networkBoot, appBoot, presentationBoot, gameUI);
+
+        if (uiBinding != null)
+            uiBinding.SetGameUI(gameUI);
 
         Debug.Log("[ModularLobbyBootstrap] GameplayBootstrap inicializado");
     }
@@ -109,6 +113,7 @@ public class ModularLobbyBootstrap : MonoBehaviour
             return null;
         }
     }
+
     public LobbyNetworkService GetLobbyNetworkService()
     {
         try
@@ -197,6 +202,35 @@ public class ModularLobbyBootstrap : MonoBehaviour
 
         adminUI = null;
         Debug.Log("[ModularBootstrap] AdminUI desregistrada (delegada)");
+    }
+
+    public void RegisterGameUI(GameUI ui)
+    {
+        if (ui == null) return;
+        gameUI = ui;
+
+        if (gameplayBootstrap != null)
+            gameplayBootstrap.SetGameUI(gameUI);
+
+        if (uiBinding != null)
+            uiBinding.SetGameUI(gameUI);
+
+        Debug.Log("[ModularBootstrap] GameUI registrada (delegada)");
+    }
+
+    public void UnregisterGameUI(GameUI ui)
+    {
+        if (ui == null) return;
+        if (gameUI != ui) return;
+
+        if (gameplayBootstrap != null)
+            gameplayBootstrap.SetGameUI(null);
+
+        if (uiBinding != null)
+            uiBinding.SetGameUI(null);
+
+        gameUI = null;
+        Debug.Log("[ModularBootstrap] GameUI desregistrada (delegada)");
     }
 
     private void OnDestroy()
