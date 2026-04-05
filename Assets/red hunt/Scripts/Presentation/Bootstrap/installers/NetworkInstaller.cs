@@ -335,6 +335,35 @@ public class NetworkInstaller
             });
         }
 
+        // === LATENCY PING/PONG SYSTEM ===
+        var adminPacketBuilder = new AdminPacketBuilder(serializer);
+        var latencyHandler = new LatencyHandler(connectionManager, serializer);
+        var clientPingHandler = new ClientPingHandler(client, serializer, adminPacketBuilder, clientState);
+
+        dispatcher.Register("ADMIN_PONG", (json, sender) =>
+        {
+            try
+            {
+                latencyHandler.HandlePong(json, sender);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[NetworkInstaller] Error procesando ADMIN_PONG: {e.Message}");
+            }
+        });
+
+        dispatcher.Register("ADMIN_PING", (json, sender) =>
+        {
+            try
+            {
+                clientPingHandler.HandlePing(json, sender);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[NetworkInstaller] Error procesando ADMIN_PING: {e.Message}");
+            }
+        });
+
         Debug.Log("[NetworkInstaller] Network inicializado");
 
         lobbyNetworkService?.Init(lobbyManager, broadcastService, builder, isHost, clientState, clientPacketHandler, server, connectionManager);
@@ -350,6 +379,15 @@ public class NetworkInstaller
         networkServices.ClientState = clientState;
         networkServices.BroadcastService = broadcastService;
         networkServices.AdminService = adminService;
+
+        // === Inicializar LatencyService (solo en servidor/host) ===
+        if (isHost)
+        {
+            var latencyService = new GameObject("[LatencyService]").AddComponent<LatencyService>();
+            latencyService.Init(server, adminPacketBuilder, connectionManager);
+            networkServices.LatencyService = latencyService;
+            Debug.Log("[NetworkInstaller] LatencyService inicializado en el host");
+        }
 
         Debug.Log("[NetworkInstaller] ⭐ NetworkServices configurados completamente");
 
@@ -371,6 +409,7 @@ public class NetworkServices
     public ClientState ClientState { get; set; }
     public BroadcastService BroadcastService { get; set; }
     public AdminNetworkService AdminService { get; set; }
+    public LatencyService LatencyService { get; set; }
 
     public Action<MovePacket> OnRemotePlayerMoveReceived { get; set; }
 
