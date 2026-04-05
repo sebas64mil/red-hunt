@@ -395,6 +395,32 @@ public class NetworkInstaller
     }
 
     private ClientConnectionManager connection_manager_fallback(ClientConnectionManager manager) => manager;
+
+    public LatencyService CreateAndInitializeLatencyService(
+        IServer server,
+        AdminPacketBuilder adminBuilder,
+        ClientConnectionManager connectionManager)
+    {
+        try
+        {
+            if (server == null)
+            {
+                Debug.LogError("[NetworkInstaller] IServer es NULL, no se puede crear LatencyService");
+                return null;
+            }
+
+            var latencyService = new GameObject("[LatencyService]").AddComponent<LatencyService>();
+            latencyService.Init(server, adminBuilder, connectionManager);
+
+            Debug.Log("[NetworkInstaller] ✅ LatencyService creado on-demand para HOST");
+            return latencyService;
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[NetworkInstaller] Error creando LatencyService on-demand: {e.Message}");
+            return null;
+        }
+    }
 }
 
 public class NetworkServices

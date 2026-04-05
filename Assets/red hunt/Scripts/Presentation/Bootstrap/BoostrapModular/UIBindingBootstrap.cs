@@ -149,6 +149,31 @@ public class UIBindingBootstrap : MonoBehaviour
         presentation.Presentation.LobbyUI.SetConnected(true);
         network.Services.SwitchToHost(appServicesProvider.Services.LobbyManager);
 
+        // === Inicializar LatencyService para el HOST ===
+        try
+        {
+            if (network?.Services != null && network.Services.LatencyService == null)
+            {
+                var installer = new NetworkInstaller();
+                var latencyService = installer.CreateAndInitializeLatencyService(
+                    network.Services.Server,
+                    new AdminPacketBuilder(network.Services.Serializer),
+                    network.Services.ConnectionManager
+                );
+
+                if (latencyService != null)
+                {
+                    network.Services.LatencyService = latencyService;
+                    adminUI?.SetLatencyService(latencyService);
+                    DebugLog("✅ LatencyService inicializado y conectado a AdminUI");
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            DebugLog($"⚠️ Error inicializando LatencyService: {e.Message}");
+        }
+
         UpdateStartButtonAvailability();
     }
 
