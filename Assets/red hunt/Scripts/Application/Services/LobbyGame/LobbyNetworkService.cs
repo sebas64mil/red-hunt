@@ -17,7 +17,8 @@ public class LobbyNetworkService : MonoBehaviour
 
     public event Action<string> OnStartGameReceived;
     public event Action<int> OnLocalJoinAccepted;
-    public event Action OnReturnToLobbyReceived;  // ⭐ EVENTO PARA RETURN_TO_LOBBY
+    public event Action OnReturnToLobbyReceived; 
+    public event Action<int, string, bool> OnGameWinReceived; 
 
     public bool GameStarted { get; private set; } = false;
 
@@ -302,14 +303,74 @@ public class LobbyNetworkService : MonoBehaviour
             case "START_GAME":
                 HandleStartGamePacket(packetJson);
                 break;
+
             case "RETURN_TO_LOBBY":
                 Debug.Log("[LobbyNetworkService] RETURN_TO_LOBBY recibido");
-                HandleReturnToLobbyPacket();  // ⭐ Llamar nuevo método
+                HandleReturnToLobbyPacket();
+                break;
+
+            case "WIN_GAME":  // ⭐ NUEVO
+                HandleWinGamePacket(packetJson);
                 break;
 
             default:
                 Debug.LogWarning($"Paquete desconocido recibido: {packetType}");
                 break;
+        }
+    }
+
+    // ⭐ Manejador para el paquete WIN (cuando el HOST lo recibe de un cliente)
+    private void HandleWinGamePacket(string json)
+    {
+        var packet = packetBuilder.Serializer.Deserialize<WinGamePacket>(json);
+        if (packet == null)
+        {
+            Debug.LogWarning("[LobbyNetworkService] WIN_GAME packet inválido");
+            return;
+        }
+
+        Debug.Log($"[LobbyNetworkService] WIN_GAME recibido: winnerId={packet.winnerId}, winnerType={packet.winnerType}, isKillerWin={packet.isKillerWin}");
+
+        // ✅ SI SOY HOST: REBROADCASTEAR A TODOS (incluyendo al cliente que lo envió)
+        if (isHost)
+        {
+            Debug.Log($"[LobbyNetworkService] 📡 Soy HOST - rebroadcasteando WIN_GAME a todos los clientes");
+            _ = BroadcastGameWin(packet.winnerId, packet.winnerType, packet.isKillerWin);
+        }
+
+        // ✅ INVOCAR EVENTO PARA QUE TODOS PROCESEN (host y cliente)
+        try
+        {
+            OnGameWinReceived?.Invoke(packet.winnerId, packet.winnerType, packet.isKillerWin);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[LobbyNetworkService] Error invocando OnGameWinReceived: {e.Message}");
+        }
+    }
+
+    // ⭐ NUEVO: Método auxiliar para rebroadcastear WIN_GAME
+    private async Task BroadcastGameWin(int winnerId, string winnerType, bool isKillerWin)
+    {
+        if (!isHost || broadcastService == null) return;
+
+        try
+        {
+            var winPacket = packetBuilder.CreateWinGame(winnerId, winnerType, isKillerWin);
+            
+            Debug.Log($"[LobbyNetworkService] 📤 Reenviando WIN_GAME a todos: winnerId={winnerId}");
+            
+            // ✅ Esperar a que se envíe a todos
+            await broadcastService.SendToAll(winPacket);
+            
+            // ✅ Después de enviar, esperar un poco para asegurar recepción
+            await Task.Delay(100);
+            
+            Debug.Log("[LobbyNetworkService] ✅ WIN_GAME reenviado a todos los clientes");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[LobbyNetworkService] ❌ Error rebroadcasteando WIN_GAME: {e.Message}");
         }
     }
 
@@ -604,5 +665,82 @@ public class LobbyNetworkService : MonoBehaviour
     public void ResetGameStarted()
     {
         GameStarted = false;
+    }
+
+
+
+    // ⭐ NUEVO: Versión async de SendGameWinToHost
+    public async Task SendGameWinToHostAsync(int winnerId, string winnerType, bool isKillerWin)
+    {
+        if (isHost)
+        {
+            Debug.LogWarning("[LobbyNetworkService] SendGameWinToHostAsync: Solo clientes deben usar esto");
+            return;
+        }
+
+        if (clientPacketHandler == null)
+        {
+            Debug.LogError("[LobbyNetworkService] SendGameWinToHostAsync: ClientPacketHandler no disponible");
+            return;
+        }
+
+        try
+        {
+            await clientPacketHandler.SendGameWin(winnerId, winnerType, isKillerWin);
+            Debug.Log($"[LobbyNetworkService] ✅ WIN_GAME enviado AL HOST (async)");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[LobbyNetworkService] Error enviando WIN_GAME al host: {e.Message}");
+        }
+    }
+
+    // ⭐ HOST: Enviar WIN_GAME a TODOS y esperar antes de cambiar escena
+    public async Task SendGameWinAsync(int winnerId, string winnerType, bool isKillerWin)
+    {
+        if (!isHost)
+        {
+            Debug.LogWarning("[LobbyNetworkService] SendGameWinAsync: Solo el host puede enviar WIN_GAME a todos");
+            return;
+        }
+
+        if (broadcastService == null)
+        {
+            Debug.LogError("[LobbyNetworkService] SendGameWinAsync: BroadcastService no disponible");
+            return;
+        }
+
+        try
+        {
+            var winPacket = packetBuilder.CreateWinGame(winnerId, winnerType, isKillerWin);
+            
+            Debug.Log($"[LobbyNetworkService] 📡 Enviando WIN_GAME a TODOS: winnerId={winnerId}, winnerType={winnerType}");
+            
+            // ✅ ESPERAR a que se envíe a todos los clientes
+            await broadcastService.SendToAll(winPacket);
+            
+            // ✅ DESPUÉS de enviar, procesar localmente
+            HandleWinGamePacket(winPacket);
+            
+            
+            Debug.Log("[LobbyNetworkService] ✅ WIN_GAME enviado a todos los clientes - seguro cambiar escena");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[LobbyNetworkService] ❌ Error en SendGameWinAsync: {e.Message}\n{e.StackTrace}");
+        }
+    }
+
+    // ⭐ Mantener para compatibilidad
+    public async void SendGameWin(int winnerId, string winnerType, bool isKillerWin)
+    {
+        await SendGameWinAsync(winnerId, winnerType, isKillerWin);
+    }
+
+    // ⭐ NUEVO: Método para resetear el estado de win (usado al volver al lobby)
+    public void ResetGameWin()
+    {
+        GameStarted = false;
+        Debug.Log("[LobbyNetworkService] Game win state resetted");
     }
 }

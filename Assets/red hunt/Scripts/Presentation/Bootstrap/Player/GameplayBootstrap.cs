@@ -73,7 +73,13 @@ public class GameplayBootstrap : MonoBehaviour
         
         currentScene = scene.name;
         
-        // ⭐ NUEVO: Si volvemos a Game, permitir reinicialización
+        if (scene.name == "Win")
+        {
+            Debug.Log("[GameplayBootstrap] Escena Win detectada - desactivando movimiento");
+            DisableAllMovement();
+            return;
+        }
+        
         if (scene.name == "Game")
         {
             if (initialized)
@@ -84,10 +90,10 @@ public class GameplayBootstrap : MonoBehaviour
             }
         }
         
-        // ⭐ NUEVO: Si volvemos a Lobby, limpiar todo
         if (scene.name == "Lobby")
         {
             Debug.Log("[GameplayBootstrap] Volviendo al Lobby - limpiando estado de gameplay");
+            DisableAllMovement();
             initialized = false;
             gameUI = null;
             
@@ -104,12 +110,44 @@ public class GameplayBootstrap : MonoBehaviour
 
             remotePlayerMovementManager?.Clear();
             
-            return; // No inicializar si estamos en Lobby
+            return;
         }
         
         if (localPlayerId > 0)
         {
             TryInitializeIfReady();
+        }
+    }
+
+    private void DisableAllMovement()
+    {
+        try
+        {
+            var spawnManager = presentationBootstrap?.Presentation?.SpawnManager;
+            if (spawnManager == null) return;
+
+            var allPlayers = applicationBootstrap?.Services?.LobbyManager?.GetAllPlayers();
+            if (allPlayers == null) return;
+
+            foreach (var player in allPlayers)
+            {
+                var playerGO = spawnManager.GetPlayerGameObject(player.Id);
+                if (playerGO == null) continue;
+
+                var playerMovement = playerGO.GetComponent<PlayerMovement>();
+                var playerInputHandler = playerGO.GetComponent<PlayerInputHandler>();
+
+                if (playerMovement != null)
+                    playerMovement.enabled = false;
+                if (playerInputHandler != null)
+                    playerInputHandler.enabled = false;
+
+                Debug.Log($"[GameplayBootstrap] ✅ Movimiento desactivado para player {player.Id}");
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[GameplayBootstrap] Error desactivando movimiento: {e.Message}");
         }
     }
 

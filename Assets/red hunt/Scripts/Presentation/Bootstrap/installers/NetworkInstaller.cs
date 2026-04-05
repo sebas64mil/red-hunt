@@ -284,6 +284,19 @@ public class NetworkInstaller
             }
         });
 
+        // ⭐ NUEVO: Handler para WIN_GAME
+        dispatcher.Register("WIN_GAME", (json, sender) =>
+        {
+            try
+            {
+                lobbyNetworkService?.HandlePacketReceived(json);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[NetworkInstaller] Error procesando WIN_GAME: {e.Message}");
+            }
+        });
+
         if (isHost)
         {
             dispatcher.Register("DISCONNECT", async (json, sender) =>
