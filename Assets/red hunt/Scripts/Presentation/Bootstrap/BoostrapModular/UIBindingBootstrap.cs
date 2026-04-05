@@ -12,7 +12,7 @@ public class UIBindingBootstrap : MonoBehaviour
     private ApplicationBootstrap appServicesProvider;
     private LobbyNetworkService lobbyNetworkService;
     private GameUI gameUI;
-    private WinBootstrap winBootstrap;  // ⭐ NUEVO
+    private WinBootstrap winBootstrap;
 
     private bool serverStarted = false;
     private bool clientConnected = false;
@@ -28,6 +28,8 @@ public class UIBindingBootstrap : MonoBehaviour
     private Action<int> admin_OnKickRequested;
     private Action gameUI_OnLeaveLobby;
     private Action gameUI_OnReturnToLobby;
+    private Action winUI_OnLeaveLobby;
+    private Action winUI_OnReturnToLobby;
 
     private void DebugLog(string msg) => Debug.Log($"[UIBinding] {msg}");
 
@@ -463,9 +465,67 @@ public class UIBindingBootstrap : MonoBehaviour
             
             DebugLog("Host y clientes volviendo al lobby");
         };
+
+        // ⭐ NUEVOS: Handlers para WinUI
+        winUI_OnLeaveLobby = async () =>
+        {
+            DebugLog("WinUI: Cliente solicitó abandonar desde la escena de Win");
+            await lobbyNetworkService?.LeaveLobby();
+            
+            // ⭐ CRÍTICO: Usar SetReturningFromGameScene(true) para que ResetAllToMain() se ejecute
+            presentation.SetReturningFromGameScene(true);
+            
+            adminUI?.ClearAll();
+            
+            try
+            {
+                var players = appServicesProvider?.Services?.LobbyManager?.GetAllPlayers();
+                if (players != null)
+                {
+                    foreach (var p in players)
+                        presentation.Presentation?.SpawnUI?.HandlePlayerDisconnected(p.Id);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"Error limpiando spawns en WinUI: {e.Message}");
+            }
+
+            clientConnected = false;
+            lastSelectionIsHost = false;
+            
+            GameManager.SetCursorVisible(true);
+            GameManager.ChangeScene("Lobby");
+            
+            UpdateStartButtonAvailability();
+        };
+
+        winUI_OnReturnToLobby = async () =>
+        {
+            DebugLog("WinUI: Host solicitó volver al lobby desde Win");
+            
+            if (lobbyNetworkService != null)
+            {
+                lobbyNetworkService.ResetGameStarted();  
+            }
+            
+            await lobbyNetworkService?.ReturnAllPlayersToLobby();
+            
+            presentation.SetReturningFromGameScene(false);
+            
+            if (presentation.Presentation?.LobbyUI != null)
+            {
+                presentation.Presentation.LobbyUI.SetConnected(true);
+                presentation.Presentation.LobbyUI.SetIsHost(true);
+            }
+            
+            GameManager.SetCursorVisible(true);
+            GameManager.ChangeScene("Lobby");
+            
+            DebugLog("Host y clientes volviendo al lobby desde Win");
+        };
     }
 
-    // ⭐ NUEVO: Manejador para evento WIN - Inicializa WinBootstrap
     private async void HandleGameWin(int winnerId, string winnerType, bool isKillerWin)
     {
         DebugLog($"🎮 WIN_GAME recibido: {winnerType} ganó (winnerId={winnerId}, isKillerWin={isKillerWin})");
@@ -485,7 +545,6 @@ public class UIBindingBootstrap : MonoBehaviour
         }
     }
 
-    // ⭐ Mismo código para Host y Clientes
     private void InitializeWinScene(int winnerId, string winnerType, bool isKillerWin)
     {
         try
@@ -522,9 +581,12 @@ public class UIBindingBootstrap : MonoBehaviour
             winBootstrap.SetWinUIAndCamera(winUI, winCameraManager);
             DebugLog("✅ WinUI y WinCameraManager asignados");
 
-            // ⭐ TODOS reciben los datos correctamente
             winBootstrap.SetWinData(winnerId, winnerType, isKillerWin);
             DebugLog($"✅ Datos de victoria establecidos: {winnerType} ganó (isKillerWin={isKillerWin})");
+
+            // ⭐ NUEVO: Vincular eventos de WinUI
+            BindWinUI(winUI);
+            DebugLog("✅ Eventos de WinUI vinculados");
 
             DebugLog("🎉 Escena Win completamente inicializada");
         }
@@ -532,6 +594,34 @@ public class UIBindingBootstrap : MonoBehaviour
         {
             Debug.LogError($"[UIBinding] ❌ Error inicializando escena Win: {e.Message}\n{e.StackTrace}");
         }
+    }
+
+    // ⭐ NUEVO: Método para vincular eventos de WinUI
+    private void BindWinUI(WinUI ui)
+    {
+        if (ui == null) return;
+
+        UnbindWinUI(ui);
+
+        ui.OnLeaveLobby -= winUI_OnLeaveLobby;
+        ui.OnLeaveLobby += winUI_OnLeaveLobby;
+
+        ui.OnReturnToLobby -= winUI_OnReturnToLobby;
+        ui.OnReturnToLobby += winUI_OnReturnToLobby;
+
+        DebugLog("WinUI eventos vinculados");
+    }
+
+    // ⭐ NUEVO: Método para desvincular eventos de WinUI
+    private void UnbindWinUI(WinUI ui)
+    {
+        if (ui == null) return;
+        try
+        {
+            ui.OnLeaveLobby -= winUI_OnLeaveLobby;
+            ui.OnReturnToLobby -= winUI_OnReturnToLobby;
+        }
+        catch { }
     }
 
     private void BindLobbyUI(LobbyUI ui)

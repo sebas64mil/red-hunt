@@ -133,13 +133,12 @@ public class WinBootstrap : MonoBehaviour
         catch { }
     }
 
-    private async void HandleLeaveLobby()
+    private void HandleLeaveLobby()
     {
-
         try
         {
-            await lobbyNetworkService?.LeaveLobby();
-
+            // ⭐ NO hacer LeaveLobby aquí - lo hace UIBindingBootstrap
+            // Solo cambiar escena
             GameManager.SetCursorVisible(true);
             GameManager.ChangeScene("Lobby");
         }
@@ -149,18 +148,13 @@ public class WinBootstrap : MonoBehaviour
         }
     }
 
-    private async void HandleReturnToLobby()
+    private void HandleReturnToLobby()
     {
         Debug.Log("[WinBootstrap] 🔄 Host presionó Return to Lobby desde Win");
 
         try
         {
-            if (lobbyNetworkService != null)
-            {
-                lobbyNetworkService.ResetGameStarted();
-                await lobbyNetworkService.ReturnAllPlayersToLobby();
-            }
-
+            GameManager.SetCursorVisible(true);
             GameManager.ChangeScene("Lobby");
         }
         catch (Exception e)
