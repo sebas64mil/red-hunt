@@ -362,6 +362,35 @@ public class NetworkInstaller
             });
         }
 
+        // === LATENCY PING/PONG SYSTEM ===
+        var adminPacketBuilder = new AdminPacketBuilder(serializer);
+        var latencyHandler = new LatencyHandler(connectionManager, serializer);
+        var clientPingHandler = new ClientPingHandler(client, serializer, adminPacketBuilder, clientState);
+
+        dispatcher.Register("ADMIN_PONG", (json, sender) =>
+        {
+            try
+            {
+                latencyHandler.HandlePong(json, sender);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[NetworkInstaller] Error procesando ADMIN_PONG: {e.Message}");
+            }
+        });
+
+        dispatcher.Register("ADMIN_PING", (json, sender) =>
+        {
+            try
+            {
+                clientPingHandler.HandlePing(json, sender);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[NetworkInstaller] Error procesando ADMIN_PING: {e.Message}");
+            }
+        });
+
         Debug.Log("[NetworkInstaller] Network inicializado");
 
         lobbyNetworkService?.Init(lobbyManager, broadcastService, builder, isHost, clientState, clientPacketHandler, server, connectionManager);
@@ -378,12 +407,47 @@ public class NetworkInstaller
         networkServices.BroadcastService = broadcastService;
         networkServices.AdminService = adminService;
 
+        // === Inicializar LatencyService (solo en servidor/host) ===
+        if (isHost)
+        {
+            var latencyService = new GameObject("[LatencyService]").AddComponent<LatencyService>();
+            latencyService.Init(server, adminPacketBuilder, connectionManager);
+            networkServices.LatencyService = latencyService;
+            Debug.Log("[NetworkInstaller] LatencyService inicializado en el host");
+        }
+
         Debug.Log("[NetworkInstaller] ⭐ NetworkServices configurados completamente");
 
         return networkServices;
     }
 
     private ClientConnectionManager connection_manager_fallback(ClientConnectionManager manager) => manager;
+
+    public LatencyService CreateAndInitializeLatencyService(
+        IServer server,
+        AdminPacketBuilder adminBuilder,
+        ClientConnectionManager connectionManager)
+    {
+        try
+        {
+            if (server == null)
+            {
+                Debug.LogError("[NetworkInstaller] IServer es NULL, no se puede crear LatencyService");
+                return null;
+            }
+
+            var latencyService = new GameObject("[LatencyService]").AddComponent<LatencyService>();
+            latencyService.Init(server, adminBuilder, connectionManager);
+
+            Debug.Log("[NetworkInstaller] ✅ LatencyService creado on-demand para HOST");
+            return latencyService;
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[NetworkInstaller] Error creando LatencyService on-demand: {e.Message}");
+            return null;
+        }
+    }
 }
 
 public class NetworkServices
@@ -398,6 +462,7 @@ public class NetworkServices
     public ClientState ClientState { get; set; }
     public BroadcastService BroadcastService { get; set; }
     public AdminNetworkService AdminService { get; set; }
+    public LatencyService LatencyService { get; set; }
 
     public Action<MovePacket> OnRemotePlayerMoveReceived { get; set; }
 

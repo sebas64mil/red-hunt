@@ -156,6 +156,31 @@ public class UIBindingBootstrap : MonoBehaviour
         presentation.Presentation.LobbyUI.SetConnected(true);
         network.Services.SwitchToHost(appServicesProvider.Services.LobbyManager);
 
+        // === Inicializar LatencyService para el HOST ===
+        try
+        {
+            if (network?.Services != null && network.Services.LatencyService == null)
+            {
+                var installer = new NetworkInstaller();
+                var latencyService = installer.CreateAndInitializeLatencyService(
+                    network.Services.Server,
+                    new AdminPacketBuilder(network.Services.Serializer),
+                    network.Services.ConnectionManager
+                );
+
+                if (latencyService != null)
+                {
+                    network.Services.LatencyService = latencyService;
+                    adminUI?.SetLatencyService(latencyService);
+                    DebugLog("✅ LatencyService inicializado y conectado a AdminUI");
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            DebugLog($"⚠️ Error inicializando LatencyService: {e.Message}");
+        }
+
         UpdateStartButtonAvailability();
     }
 
@@ -678,6 +703,17 @@ public class UIBindingBootstrap : MonoBehaviour
 
         ui.OnKickRequested -= admin_OnKickRequested;
         ui.OnKickRequested += admin_OnKickRequested;
+
+        // === Conectar LatencyService ===
+        if (network?.Services?.LatencyService != null)
+        {
+            ui.SetLatencyService(network.Services.LatencyService);
+            DebugLog("LatencyService conectado a AdminUI");
+        }
+        else
+        {
+            DebugLog("⚠️ LatencyService no disponible en AdminUI");
+        }
 
         DebugLog("AdminUI eventos vinculados");
     }
