@@ -10,6 +10,7 @@ public class AdminUI : MonoBehaviour
     [SerializeField] private GameObject playerEntryPrefab;
 
     private readonly Dictionary<int, AdminPlayerEntry> entries = new();
+    private LatencyService latencyService;
 
     public event Action<int> OnKickRequested;
 
@@ -18,6 +19,20 @@ public class AdminUI : MonoBehaviour
         if (rootPanel != null)
             rootPanel.SetActive(false);
 
+    }
+
+    private void Update()
+    {
+        if (latencyService == null || entries.Count == 0) return;
+
+        foreach (var kvp in entries)
+        {
+            int playerId = kvp.Key;
+            var entry = kvp.Value;
+
+            int latency = latencyService.GetClientLatency(playerId);
+            entry.UpdateLatency(latency);
+        }
     }
 
     private void OnEnable()
@@ -164,5 +179,10 @@ public class AdminUI : MonoBehaviour
         }
 
         entries.Clear();
+    }
+
+    public void SetLatencyService(LatencyService latencyService)
+    {
+        this.latencyService = latencyService;
     }
 }

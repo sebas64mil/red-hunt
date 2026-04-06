@@ -1,4 +1,6 @@
 using System;
+using UnityEngine;
+
 public class AdminPacketBuilder
 {
     private readonly ISerializer serializer;
@@ -17,5 +19,34 @@ public class AdminPacketBuilder
         };
 
         return serializer.Serialize(packet);
+    }
+
+    public string CreatePing(int clientId)
+    {
+        var packet = new PingPacket
+        {
+            type = "ADMIN_PING",
+            pingTimestamp = GetCurrentTimestampMs(),
+            clientId = clientId
+        };
+
+        return serializer.Serialize(packet);
+    }
+
+    public string CreatePong(long pingTimestamp, int clientId)
+    {
+        var packet = new PongPacket
+        {
+            type = "ADMIN_PONG",
+            pingTimestamp = pingTimestamp,
+            clientId = clientId
+        };
+
+        return serializer.Serialize(packet);
+    }
+
+    private long GetCurrentTimestampMs()
+    {
+        return System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     }
 }

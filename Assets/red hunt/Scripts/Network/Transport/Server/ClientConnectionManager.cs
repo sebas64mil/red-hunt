@@ -25,7 +25,7 @@ public class ClientConnectionManager
 
         if (clients.Count >= maxClients)
         {
-            Debug.LogWarning($"[ConnectionManager] Límite de clientes alcanzado ({maxClients}). Rechazando {endpoint}");
+            Debug.LogWarning($"[ConnectionManager] Lï¿½mite de clientes alcanzado ({maxClients}). Rechazando {endpoint}");
             return -1;
         }
 
@@ -97,5 +97,14 @@ public class ClientConnectionManager
 
         endpoint = null;
         return false;
+    }
+
+    public ClientConnection GetClientConnection(IPEndPoint endpoint)
+    {
+        if (clients.TryGetValue(endpoint, out var connection))
+        {
+            return connection;
+        }
+        return null;
     }
 }
