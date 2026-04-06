@@ -88,16 +88,14 @@ public class SpawnManager
 
         Debug.Log($"[SpawnManager] 👤 Agregando player {id} de tipo {type}");
 
+        // ✅ NUEVO: Calcular índice basado en cuántos Escapists ya existen
         int escapistIndex = 0;
         if (type == PlayerType.Escapist)
         {
-            escapistIndex = id - 2;
+            // Contar cuántos Escapists ya están spawnead os
+            escapistIndex = playerTypes.Values.Count(t => t == PlayerType.Escapist);
             
-            if (escapistIndex < 0)
-            {
-                Debug.LogWarning($"[SpawnManager] ⚠️ Índice negativo calculado para Escapista {id}. Usando 0.");
-                escapistIndex = 0;
-            }
+            Debug.Log($"[SpawnManager] 📍 Escapista {id} con índice {escapistIndex} (basado en {escapistIndex} Escapistas ya spawnead os)");
         }
 
         GameObject prefab = type == PlayerType.Killer ? killerPrefab : escapistPrefab;
@@ -117,7 +115,6 @@ public class SpawnManager
         GameObject playerGO = GameObject.Instantiate(prefab, spawnPos, spawnRotation, parentTransform);
         playerGO.name = $"{type}_{id}";
 
-
         var rb = playerGO.GetComponent<Rigidbody>();
         if (rb != null)
         {
@@ -132,10 +129,10 @@ public class SpawnManager
         var view = playerGO.GetComponent<PlayerView>();
         if (view != null)
         {
-            bool isLocal = id == localPlayerId;
+            bool playerIsLocal = id == localPlayerId;
             bool isHostPlayer = id == 1;
             view.Init(id, isHostPlayer);
-            view.SetLocal(isLocal);
+            view.SetLocal(playerIsLocal);
 
             try
             {
@@ -148,6 +145,32 @@ public class SpawnManager
         {
             Debug.LogWarning($"[SpawnManager] PlayerView no encontrado en {playerGO.name}");
         }
+
+        // ✅ El collider del player debe ser NORMAL (no trigger)
+        // El player necesita colisionar con la física
+        Collider playerCollider = playerGO.GetComponent<Collider>();
+        if (playerCollider != null)
+        {
+            // Asegurar que NO es trigger (para física normal)
+            playerCollider.isTrigger = false;
+            Debug.Log($"[SpawnManager] ✅ Collider configurado para player {id} (física normal, NO trigger)");
+        }
+        else
+        {
+            Debug.LogWarning($"[SpawnManager] ⚠️ Player {id} no tiene Collider - asignar uno en el prefab");
+        }
+
+        // Adjuntar script de trigger
+        // El PlayerWinTrigger detectará colisiones con objetos que SEAN triggers
+        var winTrigger = playerGO.AddComponent<PlayerWinTrigger>();
+
+        // Obtener servicios necesarios
+        var netService = ModularLobbyBootstrap.Instance?.GetLobbyNetworkService();
+        var lobbyManager = ModularLobbyBootstrap.Instance?.GetLobbyManager();
+        bool isHost = id == 1; 
+        bool triggerPlayerIsLocal = id == localPlayerId;
+
+        winTrigger.Init(id, isHost, triggerPlayerIsLocal, netService, lobbyManager);
 
         players[id] = playerGO;
         playerTypes[id] = type;

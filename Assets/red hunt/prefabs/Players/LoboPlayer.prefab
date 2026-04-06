@@ -94,6 +94,7 @@ GameObject:
   - component: {fileID: 6103335313820004276}
   - component: {fileID: 2888992299801903063}
   - component: {fileID: 5027574769873813883}
+  - component: {fileID: 7498870711626544111}
   m_Layer: 0
   m_Name: LoboPlayer
   m_TagString: Player
@@ -354,11 +355,27 @@ MonoBehaviour:
       m_Calls: []
     m_ActionId: 641cd816-40e6-41b4-8c3d-04687c349290
     m_ActionName: 'Player/Sprint[/Keyboard/leftShift,/DualShock4GamepadHID/leftStickPress]'
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: b306b04b-28dc-4fae-bfd4-c2e427870d58
+    m_ActionName: 'UI/Pause[/Keyboard/escape]'
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: Player
   m_SplitScreenIndex: -1
   m_Camera: {fileID: 0}
+--- !u!114 &7498870711626544111
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2850871068998057502}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5bc0e4356a9713542962ebdadab0a8c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerWinTrigger
 --- !u!1 &3033240116556914006
 GameObject:
   m_ObjectHideFlags: 0

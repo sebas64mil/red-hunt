@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using UnityEngine;
@@ -284,6 +285,19 @@ public class NetworkInstaller
             }
         });
 
+        // ⭐ NUEVO: Handler para WIN_GAME
+        dispatcher.Register("WIN_GAME", (json, sender) =>
+        {
+            try
+            {
+                lobbyNetworkService?.HandlePacketReceived(json);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[NetworkInstaller] Error procesando WIN_GAME: {e.Message}");
+            }
+        });
+
         if (isHost)
         {
             dispatcher.Register("DISCONNECT", async (json, sender) =>
@@ -296,19 +310,32 @@ public class NetworkInstaller
 
                     if (clientId <= 0)
                     {
-                        Debug.LogWarning("ClientId inválido en DISCONNECT");
+                        Debug.LogWarning($"[NetworkInstaller] ⚠️ ClientId inválido ({clientId}) para sender {sender} - cliente ya fue removido");
                         return;
                     }
 
-                    connectionManager.RemoveClient(sender);
+                    try
+                    {
+                        connectionManager.RemoveClient(sender);
+                    }
+                    catch (KeyNotFoundException ex)
+                    {
+                        Debug.LogWarning($"[NetworkInstaller] ⚠️ Cliente {sender} ya removido del ConnectionManager: {ex.Message}");
+                    }
+                    
                     lobbyManager.RemovePlayerRemote(clientId);
 
                     var removePacket = builder.CreateRemovePlayer(clientId);
                     await broadcastService.SendToAll(removePacket);
+                    
+                }
+                catch (KeyNotFoundException ex)
+                {
+                    Debug.LogWarning($"[NetworkInstaller] ⚠️ DISCONNECT: Clave {sender} no encontrada. Error: {ex.Message}");
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[NetworkInstaller] Error en DISCONNECT (servidor): {e.Message}");
+                    Debug.LogError($"[NetworkInstaller] ❌ Error en DISCONNECT (servidor): {e.Message}");
                 }
             });
         }
@@ -450,21 +477,36 @@ public class NetworkServices
                     Debug.Log("[NetworkServices] DISCONNECT recibido (servidor)");
 
                     var clientId = ConnectionManager.GetClientId(sender);
+                    
                     if (clientId <= 0)
                     {
-                        Debug.LogWarning("ClientId inválido en DISCONNECT");
+                        Debug.LogWarning($"[NetworkServices] ⚠️ ClientId inválido ({clientId}) para sender {sender} - cliente ya fue removido");
                         return;
                     }
 
-                    ConnectionManager.RemoveClient(sender);
+                    try
+                    {
+                        ConnectionManager.RemoveClient(sender);
+                    }
+                    catch (KeyNotFoundException ex)
+                    {
+                        Debug.LogWarning($"[NetworkServices] ⚠️ Cliente {sender} ya removido del ConnectionManager: {ex.Message}");
+                    }
+                    
                     lobbyManager.RemovePlayerRemote(clientId);
 
                     var packet = Builder.CreateRemovePlayer(clientId);
                     await BroadcastService.SendToAll(packet);
+                    
+                    Debug.Log($"[NetworkServices] ✅ DISCONNECT procesado para cliente {clientId}");
+                }
+                catch (KeyNotFoundException ex)
+                {
+                    Debug.LogWarning($"[NetworkServices] ⚠️ DISCONNECT: Clave {sender} no encontrada. Error: {ex.Message}");
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[NetworkServices] Error en DISCONNECT (servidor): {e.Message}");
+                    Debug.LogError($"[NetworkServices] ❌ Error en DISCONNECT (servidor): {e.Message}");
                 }
             };
         }

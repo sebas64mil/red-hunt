@@ -109,6 +109,18 @@ public class PacketBuilder
         return serializer.Serialize(packet);
     }
 
+    public string CreateWinGame(int winnerId, string winnerType, bool isKillerWin)
+    {
+        var packet = new WinGamePacket
+        {
+            type = "WIN_GAME",
+            winnerId = winnerId,
+            winnerType = winnerType,
+            isKillerWin = isKillerWin
+        };
+        return serializer.Serialize(packet);
+    }
+
     public string GetPacketType(string json)
     {
         if (string.IsNullOrEmpty(json)) return string.Empty;

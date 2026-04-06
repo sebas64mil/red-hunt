@@ -51,7 +51,6 @@ public class RemotePlayerMovementManager
 
         if (remoteSync == null)
         {
-            Debug.LogWarning($"[RemotePlayerMovementManager] ⚠️ RemotePlayerSync es NULL para player {playerId}");
             remotePlayerSyncMap.Remove(playerId);
             return;
         }

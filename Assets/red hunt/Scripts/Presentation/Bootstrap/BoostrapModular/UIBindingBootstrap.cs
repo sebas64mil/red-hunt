@@ -12,6 +12,7 @@ public class UIBindingBootstrap : MonoBehaviour
     private ApplicationBootstrap appServicesProvider;
     private LobbyNetworkService lobbyNetworkService;
     private GameUI gameUI;
+    private WinBootstrap winBootstrap;
 
     private bool serverStarted = false;
     private bool clientConnected = false;
@@ -27,9 +28,10 @@ public class UIBindingBootstrap : MonoBehaviour
     private Action<int> admin_OnKickRequested;
     private Action gameUI_OnLeaveLobby;
     private Action gameUI_OnReturnToLobby;
+    private Action winUI_OnLeaveLobby;
+    private Action winUI_OnReturnToLobby;
 
     private void DebugLog(string msg) => Debug.Log($"[UIBinding] {msg}");
-
 
     public void Bind(LobbyUI ui, AdminUI admin, NetworkBootstrap networkBootstrap, ApplicationBootstrap appBootstrap, PresentationBootstrap presentationBootstrap)
     {
@@ -44,7 +46,6 @@ public class UIBindingBootstrap : MonoBehaviour
         CreateNamedHandlers();
 
         presentation.RegisterShowSuppressionPredicate(() => lastSelectionIsHost);
-
 
         network.OnClientDisconnected -= HandleNetworkDisconnected;
         network.OnClientDisconnected += HandleNetworkDisconnected;
@@ -66,9 +67,15 @@ public class UIBindingBootstrap : MonoBehaviour
 
         if (adminUI != null)
             BindAdminUI(adminUI);
+        
         UpdateStartButtonAvailability();
 
         DebugLog("Bind completado.");
+
+        if (lobbyNetworkService != null)
+        {
+            lobbyNetworkService.OnGameWinReceived += HandleGameWin;
+        }
     }
 
     private void HandleNetworkDisconnected()
@@ -429,7 +436,6 @@ public class UIBindingBootstrap : MonoBehaviour
             DebugLog("GameUI: Cliente solicitó abandonar desde la escena de juego");
             await lobbyNetworkService?.LeaveLobby();
             
-            // ⭐ NUEVO: Notificar que vamos a volver desde Game
             presentation.SetReturningFromGameScene(true);
             
             adminUI?.ClearAll();
@@ -474,7 +480,6 @@ public class UIBindingBootstrap : MonoBehaviour
                 gameUI.SetIsHost(false);
             }
             
-
             if (presentation.Presentation?.LobbyUI != null)
             {
                 presentation.Presentation.LobbyUI.SetConnected(true);
@@ -485,6 +490,163 @@ public class UIBindingBootstrap : MonoBehaviour
             
             DebugLog("Host y clientes volviendo al lobby");
         };
+
+        // ⭐ NUEVOS: Handlers para WinUI
+        winUI_OnLeaveLobby = async () =>
+        {
+            DebugLog("WinUI: Cliente solicitó abandonar desde la escena de Win");
+            await lobbyNetworkService?.LeaveLobby();
+            
+            // ⭐ CRÍTICO: Usar SetReturningFromGameScene(true) para que ResetAllToMain() se ejecute
+            presentation.SetReturningFromGameScene(true);
+            
+            adminUI?.ClearAll();
+            
+            try
+            {
+                var players = appServicesProvider?.Services?.LobbyManager?.GetAllPlayers();
+                if (players != null)
+                {
+                    foreach (var p in players)
+                        presentation.Presentation?.SpawnUI?.HandlePlayerDisconnected(p.Id);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"Error limpiando spawns en WinUI: {e.Message}");
+            }
+
+            clientConnected = false;
+            lastSelectionIsHost = false;
+            
+            GameManager.SetCursorVisible(true);
+            GameManager.ChangeScene("Lobby");
+            
+            UpdateStartButtonAvailability();
+        };
+
+        winUI_OnReturnToLobby = async () =>
+        {
+            DebugLog("WinUI: Host solicitó volver al lobby desde Win");
+            
+            if (lobbyNetworkService != null)
+            {
+                lobbyNetworkService.ResetGameStarted();  
+            }
+            
+            await lobbyNetworkService?.ReturnAllPlayersToLobby();
+            
+            presentation.SetReturningFromGameScene(false);
+            
+            if (presentation.Presentation?.LobbyUI != null)
+            {
+                presentation.Presentation.LobbyUI.SetConnected(true);
+                presentation.Presentation.LobbyUI.SetIsHost(true);
+            }
+            
+            GameManager.SetCursorVisible(true);
+            GameManager.ChangeScene("Lobby");
+            
+            DebugLog("Host y clientes volviendo al lobby desde Win");
+        };
+    }
+
+    private async void HandleGameWin(int winnerId, string winnerType, bool isKillerWin)
+    {
+        DebugLog($"🎮 WIN_GAME recibido: {winnerType} ganó (winnerId={winnerId}, isKillerWin={isKillerWin})");
+        
+        try
+        {
+            GameManager.ChangeScene("Win");
+            GameManager.SetCursorVisible(true);
+
+            await Task.Delay(200);
+            
+            InitializeWinScene(winnerId, winnerType, isKillerWin);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[UIBinding] Error cambiando a escena Win: {e.Message}");
+        }
+    }
+
+    private void InitializeWinScene(int winnerId, string winnerType, bool isKillerWin)
+    {
+        try
+        {
+            DebugLog("🎯 Inicializando escena Win...");
+
+            if (winBootstrap == null)
+            {
+                winBootstrap = GetComponent<WinBootstrap>();
+                if (winBootstrap == null)
+                {
+                    Debug.LogError("[UIBinding] ❌ WinBootstrap no encontrado");
+                    return;
+                }
+            }
+
+            winBootstrap.Init(network, appServicesProvider, presentation);
+            DebugLog("✅ WinBootstrap inicializado");
+
+            var winUI = FindFirstObjectByType<WinUI>();
+            if (winUI == null)
+            {
+                Debug.LogError("[UIBinding] ❌ WinUI no encontrado en escena Win");
+                return;
+            }
+
+            var winCameraManager = FindFirstObjectByType<WinCameraManager>();
+            if (winCameraManager == null)
+            {
+                Debug.LogError("[UIBinding] ❌ WinCameraManager no encontrado en escena Win");
+                return;
+            }
+
+            winBootstrap.SetWinUIAndCamera(winUI, winCameraManager);
+            DebugLog("✅ WinUI y WinCameraManager asignados");
+
+            winBootstrap.SetWinData(winnerId, winnerType, isKillerWin);
+            DebugLog($"✅ Datos de victoria establecidos: {winnerType} ganó (isKillerWin={isKillerWin})");
+
+            // ⭐ NUEVO: Vincular eventos de WinUI
+            BindWinUI(winUI);
+            DebugLog("✅ Eventos de WinUI vinculados");
+
+            DebugLog("🎉 Escena Win completamente inicializada");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[UIBinding] ❌ Error inicializando escena Win: {e.Message}\n{e.StackTrace}");
+        }
+    }
+
+    // ⭐ NUEVO: Método para vincular eventos de WinUI
+    private void BindWinUI(WinUI ui)
+    {
+        if (ui == null) return;
+
+        UnbindWinUI(ui);
+
+        ui.OnLeaveLobby -= winUI_OnLeaveLobby;
+        ui.OnLeaveLobby += winUI_OnLeaveLobby;
+
+        ui.OnReturnToLobby -= winUI_OnReturnToLobby;
+        ui.OnReturnToLobby += winUI_OnReturnToLobby;
+
+        DebugLog("WinUI eventos vinculados");
+    }
+
+    // ⭐ NUEVO: Método para desvincular eventos de WinUI
+    private void UnbindWinUI(WinUI ui)
+    {
+        if (ui == null) return;
+        try
+        {
+            ui.OnLeaveLobby -= winUI_OnLeaveLobby;
+            ui.OnReturnToLobby -= winUI_OnReturnToLobby;
+        }
+        catch { }
     }
 
     private void BindLobbyUI(LobbyUI ui)
@@ -508,8 +670,6 @@ public class UIBindingBootstrap : MonoBehaviour
         ui.OnJoinLobby -= lobby_OnJoinLobby;
         ui.OnJoinLobby += lobby_OnJoinLobby;
 
-
-
         ui.OnLeaveLobby -= lobby_OnLeaveLobby;
         ui.OnLeaveLobby += lobby_OnLeaveLobby;
 
@@ -529,8 +689,6 @@ public class UIBindingBootstrap : MonoBehaviour
             ui.OnConfirmRole -= lobby_OnConfirmRole;
             ui.OnCreateLobby -= lobby_OnCreateLobby;
             ui.OnJoinLobby -= lobby_OnJoinLobby;
-
-
             ui.OnLeaveLobby -= lobby_OnLeaveLobby;
             ui.OnShutdownServer -= lobby_OnShutdownServer;
         }
@@ -648,6 +806,11 @@ public class UIBindingBootstrap : MonoBehaviour
             {
                 appServicesProvider.OnPlayerLeft -= HandleAppPlayerLeft;
                 appServicesProvider.OnPlayerJoined -= HandleAppPlayerJoined;
+            }
+
+            if (lobbyNetworkService != null)
+            {
+                lobbyNetworkService.OnGameWinReceived -= HandleGameWin;
             }
         }
         catch { }

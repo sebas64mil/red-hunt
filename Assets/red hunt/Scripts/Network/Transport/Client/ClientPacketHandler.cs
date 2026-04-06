@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Threading.Tasks;
 
 public class ClientPacketHandler
@@ -26,7 +26,7 @@ public class ClientPacketHandler
 
         if (packet == null)
         {
-            Debug.LogWarning("[Client] ASSIGN_PLAYER inv�lido");
+            Debug.LogWarning("[Client] ASSIGN_PLAYER inválido");
             return;
         }
 
@@ -58,14 +58,13 @@ public class ClientPacketHandler
         }
     }
 
-
     public void HandleAssignReject(string json)
     {
         var packet = serializer.Deserialize<AssignRejectPacket>(json);
 
         if (packet == null)
         {
-            Debug.LogWarning("[Client] ASSIGN_REJECT inv�lido");
+            Debug.LogWarning("[Client] ASSIGN_REJECT inválido");
             return;
         }
 
@@ -88,5 +87,21 @@ public class ClientPacketHandler
 
         var packet = builder.CreateDisconnect();
         await client.SendMessageAsync(packet);
+    }
+
+    public async Task SendGameWin(int winnerId, string winnerType, bool isKillerWin)
+    {
+        Debug.Log($"[ClientPacketHandler] Enviando WIN_GAME: winnerId={winnerId}, winnerType={winnerType}");
+
+        try
+        {
+            var packet = builder.CreateWinGame(winnerId, winnerType, isKillerWin);
+            await client.SendMessageAsync(packet);
+            Debug.Log("[ClientPacketHandler] ✅ WIN_GAME enviado al host");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ClientPacketHandler] Error enviando WIN_GAME: {e.Message}");
+        }
     }
 }

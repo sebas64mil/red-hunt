@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using UnityEngine;
 
 public class ModularLobbyBootstrap : MonoBehaviour
@@ -18,6 +18,7 @@ public class ModularLobbyBootstrap : MonoBehaviour
     private PresentationBootstrap presentationBoot;
     private UIBindingBootstrap uiBinding;
     private GameplayBootstrap gameplayBootstrap;
+    private WinBootstrap winBootstrap;
 
     private void Awake()
     {
@@ -51,7 +52,7 @@ public class ModularLobbyBootstrap : MonoBehaviour
         appBoot = gameObject.GetComponent<ApplicationBootstrap>() ?? gameObject.AddComponent<ApplicationBootstrap>();
         appBoot.Init();
 
-        // 2) Network - NetworkBootstrap gestiona sus propios Server/Client (autónomo)
+        // 2) Network - NetworkBootstrap gestiona sus propios Server/Client (autÃ³nomo)
         networkBoot = gameObject.GetComponent<NetworkBootstrap>() ?? gameObject.AddComponent<NetworkBootstrap>();
         networkBoot.Init(appBoot.Services);
 
@@ -73,7 +74,7 @@ public class ModularLobbyBootstrap : MonoBehaviour
 
         presentationBoot.AttachUIBinding(uiBinding);
 
-        // Suscribir UIBinding al evento público para recepcionar solicitudes externas de StartGame
+        // Suscribir UIBinding al evento pÃºblico para recepcionar solicitudes externas de StartGame
         if (uiBinding != null)
         {
             OnRequestStartGame -= uiBinding.HandleExternalStartRequest;
@@ -88,14 +89,19 @@ public class ModularLobbyBootstrap : MonoBehaviour
             uiBinding.SetGameUI(gameUI);
 
         Debug.Log("[ModularLobbyBootstrap] GameplayBootstrap inicializado");
+
+        // Agregar WinBootstrap
+        winBootstrap = gameObject.AddComponent<WinBootstrap>();
+        winBootstrap.Init(networkBoot, appBoot, presentationBoot);
+
+        Debug.Log("[ModularLobbyBootstrap] WinBootstrap inicializado");
     }
 
-    // Nuevo: método público para que otros objetos soliciten el StartGame sin invocar directamente el event.
     public void RequestStartGame(string sceneName)
     {
         if (string.IsNullOrWhiteSpace(sceneName))
         {
-            Debug.LogWarning("[ModularLobbyBootstrap] RequestStartGame: sceneName vacío.");
+            Debug.LogWarning("[ModularLobbyBootstrap] RequestStartGame: sceneName vacÃ­o.");
             return;
         }
 
@@ -126,17 +132,14 @@ public class ModularLobbyBootstrap : MonoBehaviour
         }
     }
 
-    // -------------------- Registration API (delegan a bootstraps) --------------------
     public void RegisterLobbyUI(LobbyUI ui)
     {
         if (ui == null) return;
         lobbyUI = ui;
 
-        // Delegar a PresentationBootstrap
         if (presentationBoot != null)
             presentationBoot.RegisterLobbyUI(ui);
 
-        // Re-bind UIBinding para garantizar enlaces si Register se llama después de Bind
         if (uiBinding != null && appBoot != null && networkBoot != null && presentationBoot != null)
             uiBinding.Bind(lobbyUI, adminUI, networkBoot, appBoot, presentationBoot);
 
@@ -185,7 +188,6 @@ public class ModularLobbyBootstrap : MonoBehaviour
         if (presentationBoot != null)
             presentationBoot.RegisterAdminUI(adminUI);
 
-        // Re-bind to ensure UIBinding subscribes admin events
         if (uiBinding != null && appBoot != null && networkBoot != null && presentationBoot != null)
             uiBinding.Bind(lobbyUI, adminUI, networkBoot, appBoot, presentationBoot);
 
@@ -233,9 +235,28 @@ public class ModularLobbyBootstrap : MonoBehaviour
         Debug.Log("[ModularBootstrap] GameUI desregistrada (delegada)");
     }
 
+    public void RegisterWinUI(WinUI ui)
+    {
+        if (ui == null) return;
+
+        if (winBootstrap != null)
+            winBootstrap.SetWinUI(ui);
+
+        Debug.Log("[ModularBootstrap] WinUI registrada (delegada)");
+    }
+
+    public void RegisterWinCameraManager(WinCameraManager manager)
+    {
+        if (manager == null) return;
+
+        if (winBootstrap != null)
+            winBootstrap.SetWinCameraManager(manager);
+
+        Debug.Log("[ModularBootstrap] WinCameraManager registrado (delegado)");
+    }
+
     private void OnDestroy()
     {
-
         if (Instance == this) Instance = null;
     }
 }
