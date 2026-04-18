@@ -3262,7 +3262,7 @@ MonoBehaviour:
   killerSpawnParent: {fileID: 190956537}
   escapistSpawnParent: {fileID: 103630655}
   killerSpawnPosition: {x: -15.04, y: -0.06, z: -13.58}
-  escapistBasePosition: {x: -4.2, y: -0.06, z: -5.9}
+  escapistBasePosition: {x: -7.16, y: 0.36, z: -4.81}
   escapistSpacing: 2.5
   killerRotationY: 180
   escapistRotationY: 180

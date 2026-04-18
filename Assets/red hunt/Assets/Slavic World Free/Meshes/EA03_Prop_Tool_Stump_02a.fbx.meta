@@ -1,7 +1,14 @@
 fileFormatVersion: 2
 guid: 69b9fb8b93ab03b43b08cb7d05ad286e
+AssetOrigin:
+  serializedVersion: 1
+  productId: 167010
+  packageName: FREE Slavic Medieval Environment Town Interior and exterior
+  packageVersion: 1.6
+  assetPath: Assets/red hunt/Assets/EmaceArt/Slavic World Free/Meshes/EA03_Prop_Tool_Stump_02a.fbx
+  uploadId: 832988
 ModelImporter:
-  serializedVersion: 22200
+  serializedVersion: 24200
   internalIDToNameTable:
   - first:
       1: 100000
@@ -60,7 +67,12 @@ ModelImporter:
   - first:
       205: 20500000
     second: //RootNode
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: EA_Slavica.001
+    second: {fileID: 2100000, guid: b481e7ffe886010488e5c917b97f7d4d, type: 2}
   materials:
     materialImportMode: 1
     materialName: 0
@@ -73,8 +85,6 @@ ModelImporter:
     optimizeGameObjects: 0
     removeConstantScaleCurves: 0
     motionNodeName: 
-    rigImportErrors: 
-    rigImportWarnings: 
     animationImportErrors: 
     animationImportWarnings: 
     animationRetargetingWarnings: 
@@ -118,6 +128,9 @@ ModelImporter:
     maxBonesPerVertex: 4
     minBoneWeight: 0.001
     optimizeBones: 1
+    generateMeshLods: 0
+    meshLodGenerationFlags: 0
+    maximumMeshLod: -1
     meshOptimizationFlags: -1
     indexFormat: 0
     secondaryUVAngleDistortion: 8
@@ -167,10 +180,3 @@ ModelImporter:
   userData: 
   assetBundleName: 
   assetBundleVariant: 
-AssetOrigin:
-  serializedVersion: 1
-  productId: 167010
-  packageName: FREE Slavic Medieval Environment Town Interior and exterior
-  packageVersion: 1.6
-  assetPath: Assets/red hunt/Assets/EmaceArt/Slavic World Free/Meshes/EA03_Prop_Tool_Stump_02a.fbx
-  uploadId: 832988

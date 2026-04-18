@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 6075155838382831309}
   - component: {fileID: 7196912292531665256}
   - component: {fileID: 4901155340339187106}
-  - component: {fileID: 6846767348704259192}
+  - component: {fileID: 1960873829546400672}
   m_Layer: 0
   m_Name: PP_Tree_10
   m_TagString: Untagged
@@ -62,6 +62,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -83,12 +85,14 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!64 &6846767348704259192
-MeshCollider:
+--- !u!65 &1960873829546400672
+BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -105,7 +109,6 @@ MeshCollider:
   m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 1
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 5006698605598939749, guid: a3ccb41ae53c6bf4bb0a5bfc470bf069, type: 3}
+  serializedVersion: 3
+  m_Size: {x: 0.7955206, y: 6.1635313, z: 0.90200925}
+  m_Center: {x: 0.033766538, y: 3.0817657, z: 0.0076180547}
