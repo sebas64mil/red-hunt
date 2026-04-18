@@ -1850,9 +1850,13 @@ GameObject:
   - component: {fileID: 4141346148825146417}
   - component: {fileID: 1646667009369531190}
   - component: {fileID: 5581275300311083198}
+  - component: {fileID: 9011260425794852858}
+  - component: {fileID: 3155428393720589794}
+  - component: {fileID: 347840576517588045}
+  - component: {fileID: 2018241949686161364}
   m_Layer: 0
   m_Name: Caperuza
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1926,7 +1930,7 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 0
+  m_Constraints: 112
   m_CollisionDetection: 0
 --- !u!114 &4413808211995506803
 MonoBehaviour:
@@ -2025,7 +2029,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e15a3ddc495525b4b925469ada682c8e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
-  moveSpeed: 5
+  moveSpeed: 7
   jumpForce: 5
   groundDrag: 5
   airDrag: 2
@@ -2035,6 +2039,10 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   groundCheckDistance: 0.2
+  cameraHolder: {fileID: 3605681086702223356}
+  cameraPositionIdle: {x: 0, y: 1.18, z: 0.249}
+  cameraPositionWalk: {x: 0.106, y: 0.991, z: 0.528}
+  cameraSmoothSpeed: 1
 --- !u!114 &4141346148825146417
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2078,6 +2086,81 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5bc0e4356a9713542962ebdadab0a8c0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerWinTrigger
+--- !u!114 &9011260425794852858
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8585273875156819028}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 204686d694a8a344496d7c27006136de, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EscapistHealth
+  maxHealth: 3
+--- !u!136 &3155428393720589794
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8585273875156819028}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.63
+  m_Height: 1.4720953
+  m_Direction: 1
+  m_Center: {x: -0, y: 0.72845596, z: -0.02809069}
+--- !u!95 &347840576517588045
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8585273875156819028}
+  m_Enabled: 1
+  m_Avatar: {fileID: 9000000, guid: 73e74c9cb5c4874449eaa89d6c3f4d3d, type: 3}
+  m_Controller: {fileID: 9100000, guid: 667b8e19b59345b4f81e16f69fc87bed, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &2018241949686161364
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8585273875156819028}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f5aa6f62a90886741ba3a09207d71f3a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimationController
+  animator: {fileID: 347840576517588045}
+  movementParameterName: Mov
+  isDeadParameterName: IsDead
+  isAttackParameterName: IsAttack
+  movementThreshold: 0.1
 --- !u!1 &8668333708137204287
 GameObject:
   m_ObjectHideFlags: 0
@@ -2135,9 +2218,9 @@ Transform:
   m_GameObject: {fileID: 8694152098969869677}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.007, y: 1.18, z: 0.181}
-  m_LocalScale: {x: 0.31172723, y: 0.31172723, z: 0.31172723}
-  m_ConstrainProportionsScale: 0
+  m_LocalPosition: {x: 0.106, y: 0.991, z: 0.528}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 4403594306673469680}
   m_Father: {fileID: 273514583266260602}

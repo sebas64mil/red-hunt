@@ -298,6 +298,36 @@ public class NetworkInstaller
             }
         });
 
+        // ⭐ NUEVO: Handler para HEALTH_UPDATE (después del handler de WIN_GAME)
+        dispatcher.Register("HEALTH_UPDATE", async (json, sender) =>
+        {
+            try
+            {
+                var packet = serializer.Deserialize<HealthUpdatePacket>(json);
+                if (packet == null)
+                {
+                    Debug.LogWarning("[NetworkInstaller] ❌ HEALTH_UPDATE packet inválido");
+                    return;
+                }
+
+                Debug.Log($"[NetworkInstaller] HEALTH_UPDATE recibido: playerId={packet.playerId}, health={packet.currentHealth}/{packet.maxHealth}");
+
+                // ✅ SI SOY HOST: Rebroadcastear a todos
+                if (isHost && broadcastService != null)
+                {
+                    Debug.Log($"[NetworkInstaller] 📡 HOST rebroadcasteando HEALTH_UPDATE a todos");
+                    await broadcastService.SendToAll(json);
+                }
+
+                // ✅ Pasar a LobbyNetworkService para procesar localmente
+                lobbyNetworkService?.HandlePacketReceived(json);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[NetworkInstaller] ❌ Error procesando HEALTH_UPDATE: {e.Message}");
+            }
+        });
+
         if (isHost)
         {
             dispatcher.Register("DISCONNECT", async (json, sender) =>

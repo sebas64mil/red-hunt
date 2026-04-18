@@ -20,12 +20,20 @@ public class GameplayBootstrap : MonoBehaviour
     private bool initialized = false;
     private string currentScene = "";
 
-    public void Init(NetworkBootstrap network, ApplicationBootstrap application, PresentationBootstrap presentation, GameUI gameUIReference)
+    private HealthUIDisplay healthUIDisplay;
+
+    public void Init(
+        NetworkBootstrap network, 
+        ApplicationBootstrap application, 
+        PresentationBootstrap presentation, 
+        GameUI gameUIReference,
+        HealthUIDisplay healthUIDisplayReference = null)
     {
         networkBootstrap = network ?? throw new ArgumentNullException(nameof(network));
         applicationBootstrap = application ?? throw new ArgumentNullException(nameof(application));
         presentationBootstrap = presentation ?? throw new ArgumentNullException(nameof(presentation));
         gameUI = gameUIReference;
+        healthUIDisplay = healthUIDisplayReference;
 
         remotePlayerMovementManager = new RemotePlayerMovementManager();
 
@@ -259,7 +267,109 @@ public class GameplayBootstrap : MonoBehaviour
             Debug.Log("[GameplayBootstrap] ⭕ RemotePlayerSync DESACTIVADO");
         }
 
+        // ⭐ CRÍTICO: Inicializar KillerAttack con isLocal = true
+        var killerAttack = playerGO.GetComponent<KillerAttack>();
+        if (killerAttack != null)
+        {
+            killerAttack.Init(localPlayerId, true);
+            Debug.Log("[GameplayBootstrap] ✅ KillerAttack.Init() llamado con isLocal=true");
+        }
+
+        // ⭐ Configurar KillerAttack con servicios de red
+        SetupKillerAttack(playerGO);
+
+        // ⭐ NUEVO: Inicializar AnimationController
+        SetupAnimationController(playerGO);
+
+        // ⭐ Configurar Health UI
+        SetupHealthUI(playerGO);
+
         Debug.Log("[GameplayBootstrap] ===== LOCAL PLAYER CONFIGURADO =====");
+    }
+
+    // ⭐ NUEVO: Método para inicializar PlayerAnimationController
+    private void SetupAnimationController(GameObject playerGO)
+    {
+        if (playerGO == null) return;
+
+        var animController = playerGO.GetComponent<PlayerAnimationController>();
+        if (animController == null)
+        {
+            Debug.LogWarning("[GameplayBootstrap] ⚠️ PlayerAnimationController no encontrado, agregando componente...");
+            animController = playerGO.AddComponent<PlayerAnimationController>();
+        }
+
+        try
+        {
+            animController.Init(localPlayerId);
+            Debug.Log("[GameplayBootstrap] ✅ PlayerAnimationController inicializado");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[GameplayBootstrap] ❌ Error en SetupAnimationController: {ex.Message}");
+        }
+    }
+
+    // ⭐ MODIFICADO: Usar .Builder en lugar de .PacketBuilder
+    private void SetupKillerAttack(GameObject playerGO)
+    {
+        if (playerGO == null) return;
+
+        var killerAttack = playerGO.GetComponent<KillerAttack>();
+        if (killerAttack == null)
+        {
+            Debug.Log("[GameplayBootstrap] ℹ️ KillerAttack no presente (no es Killer)");
+            return;
+        }
+
+        try
+        {
+            var client = networkBootstrap.Services.Client;
+            var broadcastService = networkBootstrap.Services.BroadcastService;
+            var packetBuilder = networkBootstrap.Services.Builder;  // ⭐ Usar .Builder
+            var isHost = networkBootstrap.Services.ClientState?.IsHost ?? false;
+
+            killerAttack.InitNetworkServices(broadcastService, client, packetBuilder, isHost);
+            Debug.Log("[GameplayBootstrap] ✅ KillerAttack con servicios de red inicializado");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[GameplayBootstrap] ❌ Error en SetupKillerAttack: {ex.Message}");
+        }
+    }
+
+    private void SetupHealthUI(GameObject playerGO)
+    {
+        if (playerGO == null) return;
+
+        var escapistHealth = playerGO.GetComponent<EscapistHealth>();
+        var killerAttack = playerGO.GetComponent<KillerAttack>();
+        
+        // Buscar HealthUIDisplay en la escena actual de Game
+        var healthUIDisplay = FindFirstObjectByType<HealthUIDisplay>();
+        if (healthUIDisplay == null)
+        {
+            Debug.LogWarning("[GameplayBootstrap] ⚠️ HealthUIDisplay no encontrado en escena Game");
+            return;
+        }
+
+        // Si es Killer (tiene KillerAttack y NO tiene EscapistHealth), desactivar la UI
+        if (killerAttack != null && escapistHealth == null)
+        {
+            healthUIDisplay.DisableForKiller();
+            Debug.Log("[GameplayBootstrap] 🔪 Player es Killer - Health UI desactivada");
+            return;
+        }
+
+        // Si es Escapist (tiene EscapistHealth), inicializar con su salud
+        if (escapistHealth != null)
+        {
+            healthUIDisplay.Init(escapistHealth, localPlayerId);
+            Debug.Log("[GameplayBootstrap] ✅ HealthUIDisplay configurado para Escapist");
+            return;
+        }
+
+        Debug.LogWarning("[GameplayBootstrap] ⚠️ Player no es ni Killer ni Escapist - estado desconocido");
     }
 
     private void SetupRemotePlayerSyncing()
@@ -333,6 +443,23 @@ public class GameplayBootstrap : MonoBehaviour
             remotePlayerMovementManager.RegisterRemotePlayer(remotePlayerId, remoteSync);
             
             Debug.Log($"[GameplayBootstrap] RemotePlayerSync ACTIVADO para remoto {remotePlayerId}");
+        }
+
+        // ⭐ NUEVO: Inicializar AnimationController para jugadores remotos
+        var animController = remotePlayerGO.GetComponent<PlayerAnimationController>();
+        if (animController == null)
+        {
+            animController = remotePlayerGO.AddComponent<PlayerAnimationController>();
+        }
+
+        try
+        {
+            animController.Init(remotePlayerId);
+            Debug.Log($"[GameplayBootstrap] ✅ PlayerAnimationController inicializado para remoto {remotePlayerId}");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[GameplayBootstrap] ❌ Error inicializando AnimationController para remoto: {ex.Message}");
         }
     }
 

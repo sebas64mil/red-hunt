@@ -4792,8 +4792,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58f9bccf7b4a6024a94ef6b189999baa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpawnUI
-  killerPrefab: {fileID: 2850871068998057502, guid: 11c19b00056ed624e99610e1c460e4b1, type: 3}
-  escapistPrefab: {fileID: 4877026484939899116, guid: 8490170555ab8b8419729d51e00d5951, type: 3}
+  killerPrefab: {fileID: 8814703758678826745, guid: caa8f274c2d99d24c926a31e60226a60, type: 3}
+  escapistPrefab: {fileID: 8585273875156819028, guid: c19fe902b4854f44d988dba7d65032d7, type: 3}
   killerSpawnParent: {fileID: 1837156036}
   escapistSpawnParent: {fileID: 1365089791}
   killerSpawnPosition: {x: 24.3, y: -0.06, z: 29}

@@ -3216,7 +3216,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3345c929fde26bc4790763e9ae336679, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LobbyUI
-  ipAddress: 192.168.1.15
+  ipAddress: 192.168.20.4
   port: 5001
   leaveButton: {fileID: 1649728405}
   shutdownButton: {fileID: 1724378603}
@@ -3311,6 +3311,7 @@ GameObject:
   - component: {fileID: 1214679115}
   - component: {fileID: 1214679116}
   - component: {fileID: 1214679117}
+  - component: {fileID: 1214679118}
   m_Layer: 0
   m_Name: Network
   m_TagString: Untagged
@@ -3438,6 +3439,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9a0059eba32ec347b9a64fe8df781ce, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WinBootstrap
+--- !u!114 &1214679118
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1214679107}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4da080f65c70d24b85feab4bca2acd4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameStateManager
 --- !u!1 &1227456167 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 6630159080587278172, guid: 33c1b32ab9a181643951a02a0cae6855, type: 3}

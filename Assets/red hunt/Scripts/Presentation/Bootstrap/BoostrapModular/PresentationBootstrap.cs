@@ -19,7 +19,10 @@ public class PresentationBootstrap : MonoBehaviour
 
     private Func<bool> shouldSuppressShowForLocal;
 
-    private bool isReturningFromGameScene = false;  // ⭐ NUEVO: Flag para saber si vienes desde Game
+    private bool isReturningFromGameScene = false;
+    
+    // ⭐ NUEVO: Referencia al GameStateManager
+    private GameStateManager gameStateManager;
 
     public void Init(LobbyUI lobbyUI = null, SpawnUI spawnUI = null)
     {
@@ -62,8 +65,8 @@ public class PresentationBootstrap : MonoBehaviour
             var killerSpawnPos = ui.KillerSpawnPosition;
             var escapistBasePos = ui.EscapistBasePosition;
             var escapistSpacing = ui.EscapistSpacing;
-            var killerRotationY = ui.KillerRotationY;        // ⭐ NUEVO
-            var escapistRotationY = ui.EscapistRotationY;    // ⭐ NUEVO
+            var killerRotationY = ui.KillerRotationY;        
+            var escapistRotationY = ui.EscapistRotationY;    
 
             var newSpawnManager = new SpawnManager(
                 killerSpawnParent,
@@ -74,8 +77,8 @@ public class PresentationBootstrap : MonoBehaviour
                 killerSpawnPos,
                 escapistBasePos,
                 escapistSpacing,
-                killerRotationY,        // ⭐ NUEVO
-                escapistRotationY       // ⭐ NUEVO
+                killerRotationY,       
+                escapistRotationY   
             );
 
             Presentation.SpawnManager = newSpawnManager;
@@ -87,7 +90,6 @@ public class PresentationBootstrap : MonoBehaviour
 
             Debug.Log("[PresentationBootstrap] ✅ SpawnUI re-registrada con spawnParents SEPARADOS");
 
-            // Solo repoblar players que aún no estén en el SpawnManager
             try
             {
                 var players = appBootstrap?.Services?.LobbyManager?.GetAllPlayers();
@@ -209,7 +211,7 @@ public class PresentationBootstrap : MonoBehaviour
         if (lobbyNetworkService != null)
         {
             lobbyNetworkService.OnStartGameReceived += HandleStartGameReceived;
-            lobbyNetworkService.OnReturnToLobbyReceived += HandleReturnToLobby;  // ⭐ NUEVO
+            lobbyNetworkService.OnReturnToLobbyReceived += HandleReturnToLobby;  
         }
 
         if (installed && LobbyNetworkServiceValid())
@@ -249,14 +251,12 @@ public class PresentationBootstrap : MonoBehaviour
         }
     }
 
-    // ⭐ NUEVO: Manejador para RETURN_TO_LOBBY
     private void HandleReturnToLobby()
     {
         try
         {
             Debug.Log("[PresentationBootstrap] RETURN_TO_LOBBY recibido - cambiando a escena Lobby");
             
-            // Cambiar escena
             GameManager.ChangeScene("Lobby");
 
             GameManager.SetCursorVisible(true);
@@ -272,6 +272,28 @@ public class PresentationBootstrap : MonoBehaviour
     public void RegisterShowSuppressionPredicate(Func<bool> predicate)
     {
         shouldSuppressShowForLocal = predicate;
+    }
+
+    // ⭐ NUEVO: Crear GameStateManager cuando sea necesario
+    public GameStateManager GetOrCreateGameStateManager()
+    {
+        if (gameStateManager == null)
+        {
+            gameStateManager = FindFirstObjectByType<GameStateManager>();
+            
+            if (gameStateManager == null)
+            {
+                var gsManagerGO = new GameObject("[GameStateManager]");
+                gameStateManager = gsManagerGO.AddComponent<GameStateManager>();
+                Debug.Log("[PresentationBootstrap] ✅ GameStateManager creado en escena");
+            }
+            else
+            {
+                Debug.Log("[PresentationBootstrap] ✅ GameStateManager encontrado en escena");
+            }
+        }
+
+        return gameStateManager;
     }
 
     private void TryInstall()
@@ -318,7 +340,6 @@ public class PresentationBootstrap : MonoBehaviour
             Debug.Log($"[PresentationBootstrap] Player Left: {playerId}");
             Presentation?.SpawnUI?.HandlePlayerDisconnected(playerId);
 
-            // actualizar AdminUI si está registrada
             adminUI?.RemovePlayerEntry(playerId);
         }
         catch (Exception e)
@@ -432,7 +453,7 @@ public class PresentationBootstrap : MonoBehaviour
             if (lobbyNetworkService != null)
             {
                 lobbyNetworkService.OnStartGameReceived -= HandleStartGameReceived;
-                lobbyNetworkService.OnReturnToLobbyReceived -= HandleReturnToLobby;  // ⭐ NUEVO
+                lobbyNetworkService.OnReturnToLobbyReceived -= HandleReturnToLobby; 
             }
         }
         catch { }

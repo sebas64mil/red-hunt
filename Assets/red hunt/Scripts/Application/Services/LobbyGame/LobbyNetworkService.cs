@@ -309,13 +309,56 @@ public class LobbyNetworkService : MonoBehaviour
                 HandleReturnToLobbyPacket();
                 break;
 
-            case "WIN_GAME":  // ⭐ NUEVO
+            case "WIN_GAME": 
                 HandleWinGamePacket(packetJson);
+                break;
+
+            case "HEALTH_UPDATE":  // ⭐ NUEVO
+                HandleHealthUpdatePacket(packetJson);
                 break;
 
             default:
                 Debug.LogWarning($"Paquete desconocido recibido: {packetType}");
                 break;
+        }
+    }
+
+    // ⭐ NUEVO: Manejador para HEALTH_UPDATE
+    private void HandleHealthUpdatePacket(string json)
+    {
+        var packet = packetBuilder.DeserializeHealthUpdate(json);
+        if (packet == null)
+        {
+            Debug.LogWarning("[LobbyNetworkService] HEALTH_UPDATE packet inválido");
+            return;
+        }
+
+        Debug.Log($"[LobbyNetworkService] HEALTH_UPDATE recibido: playerId={packet.playerId}, health={packet.currentHealth}/{packet.maxHealth}");
+
+        // ✅ SI SOY HOST: Rebroadcastear a todos los clientes
+        if (isHost && broadcastService != null)
+        {
+            Debug.Log($"[LobbyNetworkService] 📡 Soy HOST - rebroadcasteando HEALTH_UPDATE a todos");
+            _ = broadcastService.SendToAll(json);
+        }
+
+        // ✅ Aplicar el update localmente (todos procesan)
+        try
+        {
+            var targetPlayerGO = SpawnManagerInstance?.GetPlayerGameObject(packet.playerId);
+            if (targetPlayerGO != null)
+            {
+                var escapistHealth = targetPlayerGO.GetComponent<EscapistHealth>();
+                if (escapistHealth != null)
+                {
+                    escapistHealth.SetHealth(packet.currentHealth);
+                    Debug.Log($"[LobbyNetworkService] ✅ Salud actualizada localmente para player {packet.playerId}: {packet.currentHealth}/{packet.maxHealth}");
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[LobbyNetworkService] Error actualizando salud local: {e.Message}");
         }
     }
 

@@ -121,6 +121,23 @@ public class PacketBuilder
         return serializer.Serialize(packet);
     }
 
+    public string CreateHealthUpdate(int playerId, int currentHealth, int maxHealth)
+    {
+        var packet = new HealthUpdatePacket
+        {
+            type = "HEALTH_UPDATE",
+            playerId = playerId,
+            currentHealth = currentHealth,
+            maxHealth = maxHealth
+        };
+        return serializer.Serialize(packet);
+    }
+
+    public HealthUpdatePacket DeserializeHealthUpdate(string json)
+    {
+        return serializer.Deserialize<HealthUpdatePacket>(json);
+    }
+
     public string GetPacketType(string json)
     {
         if (string.IsNullOrEmpty(json)) return string.Empty;
