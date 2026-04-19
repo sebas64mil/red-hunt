@@ -37,7 +37,7 @@ public class AdminPacketHandler
             var basePkt = packetBuilder.Serializer.Deserialize<BasePacket>(json);
             if (basePkt == null || string.IsNullOrEmpty(basePkt.type))
             {
-                Debug.LogWarning("[AdminPacketHandler] Paquete admin inválido");
+                Debug.LogWarning("[AdminPacketHandler] Paquete admin invï¿½lido");
                 return;
             }
 
@@ -45,6 +45,10 @@ public class AdminPacketHandler
             {
                 case "ADMIN_KICK":
                     HandleKick(json, sender);
+                    break;
+
+                case "ADMIN_PAUSE":
+                    HandlePause(json, sender);
                     break;
 
                 default:
@@ -65,7 +69,7 @@ public class AdminPacketHandler
             var pkt = packetBuilder.Serializer.Deserialize<KickPacket>(json);
             if (pkt == null)
             {
-                Debug.LogWarning("[AdminPacketHandler] KickPacket inválido");
+                Debug.LogWarning("[AdminPacketHandler] KickPacket invï¿½lido");
                 return;
             }
 
@@ -82,6 +86,28 @@ public class AdminPacketHandler
         catch (System.Exception e)
         {
             Debug.LogError($"[AdminPacketHandler] Error en HandleKick: {e.Message}");
+        }
+    }
+
+    private void HandlePause(string json, IPEndPoint sender)
+    {
+        try
+        {
+            var pkt = packetBuilder.Serializer.Deserialize<PausePacket>(json);
+            if (pkt == null)
+            {
+                Debug.LogWarning("[AdminPacketHandler] PausePacket invÃ¡lido");
+                return;
+            }
+
+            Debug.Log($"[AdminPacketHandler] ADMIN_PAUSE recibido: {pkt.isPaused}");
+
+            // Aplicar pausa localmente
+            GameManager.SetPause(pkt.isPaused);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[AdminPacketHandler] Error en HandlePause: {e.Message}");
         }
     }
 

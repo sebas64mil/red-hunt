@@ -97,7 +97,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void Update()
     {
-        if (LevelManager.IsLocallyPaused) return;
+        if (GameManager.IsPaused) return;
 
         if (inputHandler == null)
         {
@@ -130,7 +130,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (LevelManager.IsLocallyPaused) return;
+        if (GameManager.IsPaused) return;
 
         CheckGroundStatus();
         ApplyDrag();

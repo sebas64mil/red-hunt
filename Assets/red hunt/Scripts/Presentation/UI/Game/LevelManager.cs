@@ -48,6 +48,15 @@ public class LevelManager : MonoBehaviour
         UnregisterPauseActionInternal();
     }
 
+    private void Update()
+    {
+        // Sincronizar el panel de pausa con la pausa global
+        if (GameManager.IsPaused != isLocallyPaused)
+        {
+            SetLocalPauseInstance(GameManager.IsPaused);
+        }
+    }
+
     private void OnDestroy()
     {
         if (Instance == this) Instance = null;
@@ -78,7 +87,14 @@ public class LevelManager : MonoBehaviour
 
     public void ToggleLocalPauseInstance()
     {
-        SetLocalPauseInstance(!isLocallyPaused);
+        if (GameManager.IsHost)
+        {
+            GameManager.TogglePause();
+        }
+        else
+        {
+            Debug.LogWarning("Solo el host puede continuar el juego");
+        }
     }
 
     public void SetLocalPauseInstance(bool pause)

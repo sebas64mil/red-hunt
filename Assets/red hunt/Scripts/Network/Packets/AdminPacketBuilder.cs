@@ -45,6 +45,17 @@ public class AdminPacketBuilder
         return serializer.Serialize(packet);
     }
 
+    public string CreatePause(bool isPaused)
+    {
+        var packet = new PausePacket
+        {
+            type = "ADMIN_PAUSE",
+            isPaused = isPaused
+        };
+
+        return serializer.Serialize(packet);
+    }
+
     private long GetCurrentTimestampMs()
     {
         return System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();

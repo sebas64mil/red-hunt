@@ -287,6 +287,7 @@ public class GameplayBootstrap : MonoBehaviour
         }
 
         var isHost = networkBootstrap.Services.ClientState?.IsHost ?? false;
+        GameManager.IsHost = isHost;
         gameUI.SetIsHost(isHost);
         gameUI.SetConnected(true);
         gameUI.SetLobbyUI(presentationBootstrap?.Presentation?.LobbyUI);
@@ -338,6 +339,7 @@ public class GameplayBootstrap : MonoBehaviour
             var lobbyManager = applicationBootstrap?.Services?.LobbyManager;
             
             var isHost = networkBootstrap.Services.ClientState?.IsHost ?? false;
+            GameManager.IsHost = isHost;
             
             Debug.Log($"[GameplayBootstrap] Estado de Client: isConnected={client?.isConnected}, isHost={isHost}");
             
