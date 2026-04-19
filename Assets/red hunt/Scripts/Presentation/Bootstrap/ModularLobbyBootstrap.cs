@@ -1,5 +1,6 @@
 ﻿using System;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class ModularLobbyBootstrap : MonoBehaviour
 {
@@ -253,6 +254,46 @@ public class ModularLobbyBootstrap : MonoBehaviour
             winBootstrap.SetWinCameraManager(manager);
 
         Debug.Log("[ModularBootstrap] WinCameraManager registrado (delegado)");
+    }
+
+    // ==================== CURSOR MONITORING ====================
+
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        Debug.Log("[CursorMonitor] Monitoreo de cursor activado");
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        Debug.Log($"[CursorMonitor] Escena cargada: {scene.name}");
+        LogCursorStatus("OnSceneLoaded");
+    }
+
+    private void Update()
+    {
+        // Verificar cambios en el cursor cada frame (solo en desarrollo)
+        if (Application.isEditor && Time.frameCount % 120 == 0) // Cada ~2 segundos a 60 FPS
+        {
+            LogCursorStatus("PeriodicCheck");
+        }
+    }
+
+    private void LogCursorStatus(string context)
+    {
+        string status = $"[CursorMonitor:{context}] IsHost={GameManager.IsHost}, Cursor.visible={Cursor.visible}, Cursor.lockState={Cursor.lockState}, Scene={SceneManager.GetActiveScene().name}";
+        Debug.Log(status);
+    }
+
+    // Método público para forzar log desde otros scripts
+    public void LogCursorStatus()
+    {
+        LogCursorStatus("Manual");
     }
 
     private void OnDestroy()

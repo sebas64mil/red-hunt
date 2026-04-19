@@ -11,6 +11,7 @@ public class AdminUI : MonoBehaviour
 
     private readonly Dictionary<int, AdminPlayerEntry> entries = new();
     private LatencyService latencyService;
+    private bool latencyServiceSearched = false;
 
     public event Action<int> OnKickRequested;
 
@@ -23,6 +24,17 @@ public class AdminUI : MonoBehaviour
 
     private void Update()
     {
+        // Buscar LatencyService si no se ha encontrado aún
+        if (latencyService == null && !latencyServiceSearched)
+        {
+            latencyService = FindFirstObjectByType<LatencyService>();
+            latencyServiceSearched = true;
+            if (latencyService != null)
+            {
+                Debug.Log("[AdminUI] LatencyService encontrado en Update");
+            }
+        }
+
         if (latencyService == null || entries.Count == 0) return;
 
         foreach (var kvp in entries)
@@ -43,6 +55,20 @@ public class AdminUI : MonoBehaviour
 
             DetectAndApplyHostStatus();
             RepopulatePlayersFromLobby();
+
+            // Buscar LatencyService
+            if (latencyService == null)
+            {
+                latencyService = FindFirstObjectByType<LatencyService>();
+                if (latencyService != null)
+                {
+                    Debug.Log("[AdminUI] LatencyService encontrado en escena");
+                }
+                else
+                {
+                    Debug.Log("[AdminUI] LatencyService no encontrado, se buscará en Update");
+                }
+            }
         }
         catch (Exception ex)
         {
