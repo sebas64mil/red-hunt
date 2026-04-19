@@ -3197,6 +3197,7 @@ GameObject:
   - component: {fileID: 1174263336}
   - component: {fileID: 1174263337}
   - component: {fileID: 1174263338}
+  - component: {fileID: 1174263339}
   m_Layer: 0
   m_Name: UIControllers
   m_TagString: Untagged
@@ -3294,6 +3295,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SceneChanger
   sceneName: Game
+--- !u!114 &1174263339
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1174263333}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 79f89a1510107444dace012c08801377, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LobbyCameraManager
+  lobbySceneName: Lobby
+  killerLobbyCameraObject: {fileID: 57493954}
+  escapistLobbyCameraObject: {fileID: 1361953885}
 --- !u!1 &1214679107
 GameObject:
   m_ObjectHideFlags: 0
