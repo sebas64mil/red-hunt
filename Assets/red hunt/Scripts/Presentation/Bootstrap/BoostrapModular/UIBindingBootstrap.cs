@@ -706,14 +706,29 @@ public class UIBindingBootstrap : MonoBehaviour
         ui.OnKickRequested += admin_OnKickRequested;
 
         // === Conectar LatencyService ===
+        LatencyService latencyService = null;
         if (network?.Services?.LatencyService != null)
         {
-            ui.SetLatencyService(network.Services.LatencyService);
-            DebugLog("LatencyService conectado a AdminUI");
+            latencyService = network.Services.LatencyService;
+            DebugLog("✅ LatencyService conectado a AdminUI desde networkServices");
         }
         else
         {
-            DebugLog("⚠️ LatencyService no disponible en AdminUI");
+            // Buscar en la escena
+            latencyService = FindFirstObjectByType<LatencyService>();
+            if (latencyService != null)
+            {
+                DebugLog("✅ LatencyService encontrado en escena y conectado a AdminUI");
+            }
+            else
+            {
+                DebugLog("⚠️ LatencyService no disponible (se buscará automáticamente en AdminUI)");
+            }
+        }
+
+        if (latencyService != null)
+        {
+            ui.SetLatencyService(latencyService);
         }
 
         DebugLog("AdminUI eventos vinculados");

@@ -3216,7 +3216,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3345c929fde26bc4790763e9ae336679, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LobbyUI
-  ipAddress: 192.168.20.4
+  ipAddress: 192.168.20.62
   port: 5001
   leaveButton: {fileID: 1649728405}
   shutdownButton: {fileID: 1724378603}
@@ -7633,11 +7633,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2899877495292988624, guid: 33c1b32ab9a181643951a02a0cae6855, type: 3}
       propertyPath: m_Pivot.x
-      value: 0.5
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2899877495292988624, guid: 33c1b32ab9a181643951a02a0cae6855, type: 3}
       propertyPath: m_Pivot.y
-      value: 0.5
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2899877495292988624, guid: 33c1b32ab9a181643951a02a0cae6855, type: 3}
       propertyPath: m_AnchorMax.x
@@ -7657,11 +7657,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2899877495292988624, guid: 33c1b32ab9a181643951a02a0cae6855, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 543.4
+      value: 600
       objectReference: {fileID: 0}
     - target: {fileID: 2899877495292988624, guid: 33c1b32ab9a181643951a02a0cae6855, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 294.3
+      value: 300
       objectReference: {fileID: 0}
     - target: {fileID: 2899877495292988624, guid: 33c1b32ab9a181643951a02a0cae6855, type: 3}
       propertyPath: m_LocalPosition.x
@@ -7693,11 +7693,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2899877495292988624, guid: 33c1b32ab9a181643951a02a0cae6855, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: -271.7
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2899877495292988624, guid: 33c1b32ab9a181643951a02a0cae6855, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -147.15
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2899877495292988624, guid: 33c1b32ab9a181643951a02a0cae6855, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x

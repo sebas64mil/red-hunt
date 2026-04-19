@@ -21,8 +21,11 @@ public class LatencyService : MonoBehaviour
         this.adminBuilder = adminBuilder ?? throw new ArgumentNullException(nameof(adminBuilder));
         this.connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
 
+        // Hacer persistente entre escenas
+        DontDestroyOnLoad(gameObject);
+
         lastPingTime = Time.time;
-        Debug.Log("[LatencyService] Inicializado");
+        Debug.Log("[LatencyService] Inicializado y marcado como DontDestroyOnLoad");
     }
 
     private void Update()

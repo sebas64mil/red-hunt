@@ -10,8 +10,12 @@ public static class GameManager
     // ----------------- Enable or disable cursor ------------------
     public static void SetCursorVisible(bool state)
     {
-        Cursor.visible = state;
-        Cursor.lockState = state ? CursorLockMode.None : CursorLockMode.Locked;
+        // Host siempre tiene cursor visible
+        bool actualState = IsHost ? true : state;
+        Cursor.visible = actualState;
+        Cursor.lockState = actualState ? CursorLockMode.None : CursorLockMode.Locked;
+        
+        Debug.Log($"[GameManager] Cursor visibility set: requested={state}, IsHost={IsHost}, actual={actualState}, visible={Cursor.visible}, locked={Cursor.lockState}");
     }
 
     // ----------------- Change scene ------------------
@@ -37,22 +41,9 @@ public static class GameManager
     }
 
     // ----------------- Toggle Pause ------------------
-    public static async void TogglePause()
+    public static void TogglePause()
     {
-        if (IsHost && AdminService != null)
-        {
-            bool newPause = !IsPaused;
-            await AdminService.SetGlobalPause(newPause);
-            SetPause(newPause); // Aplicar localmente también
-        }
-        else if (!IsHost)
-        {
-            Debug.LogWarning("Solo el host puede pausar el juego");
-        }
-        else
-        {
-            Debug.LogWarning("AdminService no inicializado");
-        }
+        SetPause(!IsPaused);
     }
 
     // ----------------- Restart current scene ------------------
