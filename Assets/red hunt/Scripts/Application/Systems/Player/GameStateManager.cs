@@ -22,6 +22,13 @@ public class GameStateManager : MonoBehaviour
         public bool IsAlive => CurrentHealth > 0;
     }
 
+    public void ResetState()
+    {
+        playerHealthStates.Clear();
+        allEscapistsDeadNotified = false;
+        Debug.Log("[GameStateManager] 🔄 Estado reseteado");
+    }
+
     public void InitializePlayer(int playerId, int maxHealth, PlayerType playerType = PlayerType.Escapist)
     {
         if (playerHealthStates.ContainsKey(playerId))
@@ -74,7 +81,6 @@ public class GameStateManager : MonoBehaviour
         }
     }
 
-    // Mantener compatibilidad (si alguien lo llama)
     public void NotifyEscapistKilled()
     {
         Debug.Log("[GameStateManager] 💀 Un escapista ha sido asesinado");
@@ -91,7 +97,7 @@ public class GameStateManager : MonoBehaviour
             if (state.PlayerType == PlayerType.Escapist)
             {
                 UpdatePlayerHealth(playerId, 0);
-                return; // UpdatePlayerHealth ya dispara OnEscapistKilled + check
+                return;
             }
         }
         else
@@ -99,7 +105,6 @@ public class GameStateManager : MonoBehaviour
             Debug.LogWarning($"[GameStateManager] ⚠️ NotifyEscapistKilled(playerId={playerId}) pero no está inicializado en el diccionario");
         }
 
-        // Fallback: mantener comportamiento anterior
         OnEscapistKilled?.Invoke();
         CheckAllEscapistsDead();
     }

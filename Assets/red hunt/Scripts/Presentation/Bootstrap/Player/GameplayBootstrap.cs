@@ -106,11 +106,11 @@ public class GameplayBootstrap : MonoBehaviour
                 initialized = false;
                 gameUI = null;
             }
-            
-            // ⭐ Reinicializar GameStateManager para nueva partida
+
             gameStateManager = FindFirstObjectByType<GameStateManager>();
             if (gameStateManager != null)
             {
+                gameStateManager.ResetState();
                 InitializeGameState();
             }
         }
