@@ -411,20 +411,19 @@ public class GameplayBootstrap : MonoBehaviour
             Debug.Log($"[GameplayBootstrap] ✅ ClueCollector using registry: {clueRegistry.GetHashCode()}");
             
             // ⭐ NUEVO: Suscribir ClueCollector a los eventos de red de pistas
-            var lobbyNetworkService = networkBootstrap.GetLobbyNetworkService();
-            if (lobbyNetworkService != null)
+            var gameNetworkService = networkBootstrap.GetGameNetworkService();
+            if (gameNetworkService != null)
             {
-                // Evento 1: Snapshot de todas las pistas - ⭐ CRÍTICO: Sincronizar registro local
-                lobbyNetworkService.OnEscapistsCluesSnapshot -= HandleCluesSnapshot;
-                lobbyNetworkService.OnEscapistsCluesSnapshot += HandleCluesSnapshot;
+                // Evento 1: Snapshot de todas las pistas
+                gameNetworkService.OnEscapistsCluesSnapshot -= HandleCluesSnapshot;
+                gameNetworkService.OnEscapistsCluesSnapshot += HandleCluesSnapshot;
 
                 // Evento 2: Pista individual recolectada
-                lobbyNetworkService.OnEscapistClueCollected -= HandleClueCollectedFromNetwork;
-                lobbyNetworkService.OnEscapistClueCollected += HandleClueCollectedFromNetwork;
+                gameNetworkService.OnEscapistClueCollected -= HandleClueCollectedFromNetwork;
+                gameNetworkService.OnEscapistClueCollected += HandleClueCollectedFromNetwork;
 
                 void HandleCluesSnapshot(IReadOnlyDictionary<int, IReadOnlyCollection<string>> cluesByEscapist)
                 {
-                    // ⭐ NUEVO: mantener targets en el registry que usa la UI
                     clueRegistry.SetTargetEscapists(applicationBootstrap.Services.LobbyManager
                         .GetAllPlayers()
                         .Where(p => p.PlayerType == PlayerType.Escapist.ToString() && p.IsConnected)
@@ -444,7 +443,7 @@ public class GameplayBootstrap : MonoBehaviour
                 void HandleClueCollectedFromNetwork(int escapistId, string clueId)
                 {
                     Debug.Log($"[GameplayBootstrap] 🔑 Evento individual: Escapist {escapistId} recolectó {clueId}");
-                    
+
                     if (escapistId == localPlayerId)
                     {
                         clueCollector.OnClueCollectedFromNetwork(clueId);
@@ -495,12 +494,12 @@ public class GameplayBootstrap : MonoBehaviour
                 Debug.Log($"[GameplayBootstrap] ✅ EscapistCluesDisplay using registry: {clueRegistry.GetHashCode()}");
                 
                 // ⭐ NUEVO: Suscribir a snapshots DESPUÉS de inicializar
-                var lobbyNetworkService = networkBootstrap.GetLobbyNetworkService();
-                if (lobbyNetworkService != null)
+                var gameNetworkService = networkBootstrap.GetGameNetworkService();
+                if (gameNetworkService != null)
                 {
-                    lobbyNetworkService.OnEscapistsCluesSnapshot -= cluesDisplay.OnSnapshotReceived;
-                    lobbyNetworkService.OnEscapistsCluesSnapshot += cluesDisplay.OnSnapshotReceived;
-                    Debug.Log("[GameplayBootstrap] ✅ EscapistCluesDisplay suscrito a snapshots");
+                    gameNetworkService.OnEscapistsCluesSnapshot -= cluesDisplay.OnSnapshotReceived;
+                    gameNetworkService.OnEscapistsCluesSnapshot += cluesDisplay.OnSnapshotReceived;
+                    Debug.Log("[GameplayBootstrap] ✅ EscapistCluesDisplay suscrito a snapshots (GameNetworkService)");
                 }
             }
             return;

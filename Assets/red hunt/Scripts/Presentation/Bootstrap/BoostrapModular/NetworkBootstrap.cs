@@ -10,28 +10,26 @@ public class NetworkBootstrap : MonoBehaviour
 
     public NetworkServices Services { get; private set; }
 
-    // Eventos de la capa Network
     public event Action OnClientDisconnected;
     public event Action<int> OnPlayerIdAssigned;
     public event Action<int> OnLocalJoinAccepted;
 
     private LobbyNetworkService lobbyNetworkService;
+    private GameNetworkService gameNetworkService;
 
-
-    public void Init(ApplicationServices appServices, Server serverOverride = null, Client clientOverride = null, LobbyNetworkService lobbyNetwork = null)
+    public void Init(ApplicationServices appServices, bool isHost, Server serverOverride = null, Client clientOverride = null, LobbyNetworkService lobbyNetwork = null)
     {
         if (Services != null) return;
 
-        // utilizar overrides si se proporcionan (esto permite que ModularLobbyBootstrap pase sus referencias)
         if (serverOverride != null) server = serverOverride;
         if (clientOverride != null) client = clientOverride;
 
         lobbyNetworkService = lobbyNetwork ?? GetComponent<LobbyNetworkService>() ?? gameObject.AddComponent<LobbyNetworkService>();
+        gameNetworkService = GetComponent<GameNetworkService>() ?? gameObject.AddComponent<GameNetworkService>();
 
         Services = new NetworkInstaller()
-            .Install(server, client, appServices.LobbyManager, lobbyNetworkService, false);
+            .Install(server, client, appServices.LobbyManager, lobbyNetworkService, gameNetworkService, isHost);
 
-        // Wire interno -> reexponer mediante eventos públicos
         Services.Client.OnDisconnected += HandleClientDisconnected;
         Services.ClientState.OnPlayerIdAssigned += HandlePlayerIdAssigned;
 
@@ -92,6 +90,8 @@ public class NetworkBootstrap : MonoBehaviour
     }
 
     public LobbyNetworkService GetLobbyNetworkService() => lobbyNetworkService;
+
+    public GameNetworkService GetGameNetworkService() => gameNetworkService;
 
     private void OnDestroy()
     {

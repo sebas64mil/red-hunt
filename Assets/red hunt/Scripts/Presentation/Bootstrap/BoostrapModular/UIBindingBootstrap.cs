@@ -12,6 +12,7 @@ public class UIBindingBootstrap : MonoBehaviour
     private PresentationBootstrap presentation;
     private ApplicationBootstrap appServicesProvider;
     private LobbyNetworkService lobbyNetworkService;
+    private GameNetworkService gameNetworkService;
     private GameUI gameUI;
     private WinBootstrap winBootstrap;
 
@@ -43,6 +44,7 @@ public class UIBindingBootstrap : MonoBehaviour
         appServicesProvider = appBootstrap ?? throw new ArgumentNullException(nameof(appBootstrap));
 
         lobbyNetworkService = network.GetLobbyNetworkService();
+        gameNetworkService = network.GetGameNetworkService();
 
         CreateNamedHandlers();
 
@@ -73,9 +75,10 @@ public class UIBindingBootstrap : MonoBehaviour
 
         DebugLog("Bind completado.");
 
-        if (lobbyNetworkService != null)
+        if (gameNetworkService != null)
         {
-            lobbyNetworkService.OnGameWinReceived += HandleGameWin;
+            gameNetworkService.OnGameWinReceived -= HandleGameWin;
+            gameNetworkService.OnGameWinReceived += HandleGameWin;
         }
     }
 
@@ -150,6 +153,10 @@ public class UIBindingBootstrap : MonoBehaviour
         serverStarted = true;
 
         lobbyNetworkService?.SetIsHost(true);
+        gameNetworkService?.SetIsHost(true);
+
+        network.Services.ClientState?.SetIsHost(true);
+
         presentation.Presentation.LobbyUI.SetIsHost(true);
         adminUI?.SetIsHost(true);
 
@@ -198,7 +205,12 @@ public class UIBindingBootstrap : MonoBehaviour
         }
 
         clientConnected = true;
+
         lobbyNetworkService?.SetIsHost(false);
+        gameNetworkService?.SetIsHost(false);
+
+        network.Services.ClientState?.SetIsHost(false);
+
         presentation.Presentation.LobbyUI.SetIsHost(false);
         adminUI?.SetIsHost(false);
 
@@ -763,9 +775,9 @@ public class UIBindingBootstrap : MonoBehaviour
     // ⭐ REEMPLAZAR el método BindCluesUI() COMPLETO
     private void BindCluesUI()
     {
-        if (lobbyNetworkService == null)
+        if (gameNetworkService == null)
         {
-            Debug.LogWarning("[UIBinding] ⚠️ LobbyNetworkService no disponible para CluesUI");
+            Debug.LogWarning("[UIBinding] ⚠️ GameNetworkService no disponible para CluesUI");
             return;
         }
 
@@ -778,13 +790,11 @@ public class UIBindingBootstrap : MonoBehaviour
                 return;
             }
 
-            // Desuscribir si había suscripción anterior
-            lobbyNetworkService.OnEscapistsCluesSnapshot -= cluesDisplay.OnSnapshotReceived;
-            lobbyNetworkService.OnEscapistsCluesSnapshot += cluesDisplay.OnSnapshotReceived;
+            gameNetworkService.OnEscapistsCluesSnapshot -= cluesDisplay.OnSnapshotReceived;
+            gameNetworkService.OnEscapistsCluesSnapshot += cluesDisplay.OnSnapshotReceived;
 
-            // Desuscribir evento de clue individual
-            lobbyNetworkService.OnEscapistClueCollected -= HandleEscapistClueCollected;
-            lobbyNetworkService.OnEscapistClueCollected += HandleEscapistClueCollected;
+            gameNetworkService.OnEscapistClueCollected -= HandleEscapistClueCollected;
+            gameNetworkService.OnEscapistClueCollected += HandleEscapistClueCollected;
 
             void HandleEscapistClueCollected(int escapistId, string clueId)
             {
@@ -803,7 +813,7 @@ public class UIBindingBootstrap : MonoBehaviour
                 }
             }
 
-            DebugLog("✅ EscapistCluesDisplay conectado a eventos de pistas");
+            DebugLog("✅ EscapistCluesDisplay conectado a eventos de pistas (GameNetworkService)");
         }
         catch (Exception e)
         {
@@ -878,9 +888,9 @@ public class UIBindingBootstrap : MonoBehaviour
                 appServicesProvider.OnPlayerJoined -= HandleAppPlayerJoined;
             }
 
-            if (lobbyNetworkService != null)
+            if (gameNetworkService != null)
             {
-                lobbyNetworkService.OnGameWinReceived -= HandleGameWin;
+                gameNetworkService.OnGameWinReceived -= HandleGameWin;
             }
         }
         catch { }

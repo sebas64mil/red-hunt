@@ -11,24 +11,22 @@ public class NetworkInstaller
         Client client,
         LobbyManager lobbyManager,
         LobbyNetworkService lobbyNetworkService,
+        GameNetworkService gameNetworkService,
         bool isHost)
     {
         Debug.Log("[NetworkInstaller] Iniciando instalación de Network...");
 
-        // --- Serializador y builders ---
         var serializer = new JsonSerializer();
         var builder = new PacketBuilder(serializer);
         var playerPacketBuilder = new PlayerPacketBuilder(serializer);
         var dispatcher = new PacketDispatcher(serializer);
 
-        // --- Transportes ---
         var transportServer = new UdpTransport();
         var transportClient = new UdpTransport();
 
         server.Init(transportServer, dispatcher, serializer);
         client.Init(transportClient, dispatcher);
 
-        // --- Connection Manager y Handler ---
         var connectionManager = new ClientConnectionManager(3);
         var connectionHandler = new ConnectionHandler(connectionManager, server, builder, lobbyManager, lobbyNetworkService);
 
@@ -42,7 +40,6 @@ public class NetworkInstaller
 
         var adminService = AdminInstaller.Install(dispatcher, serializer, server, client, builder, broadcastService, connectionManager, lobbyManager, lobbyNetworkService?.SpawnManagerInstance, lobbyNetworkService, isHost, clientState);
 
-        // ⭐ CREAR networkServices ANTES de registrar handlers que lo usen
         var networkServices = new NetworkServices();
 
         dispatcher.Register("ASSIGN_PLAYER", (json, sender) =>
@@ -107,7 +104,7 @@ public class NetworkInstaller
 
                 lobbyManager?.AddPlayerRemote(packet.id, packet.playerType);
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
                 Debug.LogError($"[NetworkInstaller] Error procesando PLAYER: {e.Message}");
             }
@@ -120,11 +117,9 @@ public class NetworkInstaller
                 var packet = serializer.Deserialize<PlayerReadyPacket>(json);
                 if (packet == null) return;
 
-                Debug.Log($"[NetworkInstaller] PLAYER_READY recibido id:{packet.id}");
-
                 lobbyNetworkService?.HandlePacketReceived(json);
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
                 Debug.LogError($"[NetworkInstaller] Error procesando PLAYER_READY: {e.Message}");
             }
@@ -134,7 +129,6 @@ public class NetworkInstaller
         {
             try
             {
-                Debug.Log("[NetworkInstaller] REMOVE_PLAYER recibido");
                 lobbyNetworkService?.HandlePacketReceived(json);
             }
             catch (Exception e)
@@ -154,7 +148,6 @@ public class NetworkInstaller
                     return;
                 }
 
-
                 if (isHost)
                 {
                     await broadcastService.SendToAllExcept(json, sender);
@@ -162,14 +155,12 @@ public class NetworkInstaller
                 else
                 {
                     int myPlayerId = clientState.PlayerId;
-                    
-                    
+
                     if (movePacket.playerId != myPlayerId)
                     {
-                        
                         if (networkServices.OnRemotePlayerMoveReceived == null)
                         {
-                            Debug.LogWarning($"[NetworkInstaller] ⚠️ OnRemotePlayerMoveReceived aún es NULL");
+                            Debug.LogWarning("[NetworkInstaller] ⚠️ OnRemotePlayerMoveReceived aún es NULL");
                         }
                         else
                         {
@@ -285,12 +276,13 @@ public class NetworkInstaller
             }
         });
 
-        // ⭐ NUEVO: Handler para WIN_GAME
+        // ===================== GAME PACKETS =====================
+
         dispatcher.Register("WIN_GAME", (json, sender) =>
         {
             try
             {
-                lobbyNetworkService?.HandlePacketReceived(json);
+                gameNetworkService?.HandlePacketReceived(json);
             }
             catch (Exception e)
             {
@@ -298,7 +290,6 @@ public class NetworkInstaller
             }
         });
 
-        // ⭐ NUEVO: Handler para HEALTH_UPDATE (después del handler de WIN_GAME)
         dispatcher.Register("HEALTH_UPDATE", async (json, sender) =>
         {
             try
@@ -310,17 +301,12 @@ public class NetworkInstaller
                     return;
                 }
 
-                Debug.Log($"[NetworkInstaller] HEALTH_UPDATE recibido: playerId={packet.playerId}, health={packet.currentHealth}/{packet.maxHealth}");
-
-                // ✅ SI SOY HOST: Rebroadcastear a todos
                 if (isHost && broadcastService != null)
                 {
-                    Debug.Log($"[NetworkInstaller] 📡 HOST rebroadcasteando HEALTH_UPDATE a todos");
                     await broadcastService.SendToAll(json);
                 }
 
-                // ✅ Pasar a LobbyNetworkService para procesar localmente
-                lobbyNetworkService?.HandlePacketReceived(json);
+                gameNetworkService?.HandlePacketReceived(json);
             }
             catch (Exception e)
             {
@@ -332,7 +318,7 @@ public class NetworkInstaller
         {
             try
             {
-                lobbyNetworkService?.HandlePacketReceived(json);
+                gameNetworkService?.HandlePacketReceived(json);
             }
             catch (Exception e)
             {
@@ -344,7 +330,7 @@ public class NetworkInstaller
         {
             try
             {
-                lobbyNetworkService?.HandlePacketReceived(json);
+                gameNetworkService?.HandlePacketReceived(json);
             }
             catch (Exception e)
             {
@@ -352,7 +338,6 @@ public class NetworkInstaller
             }
         });
 
-        // ⭐ NUEVO: Handler para ESCAPIST_CLUE_COLLECTED
         dispatcher.Register("ESCAPIST_CLUE_COLLECTED", async (json, sender) =>
         {
             try
@@ -364,17 +349,12 @@ public class NetworkInstaller
                     return;
                 }
 
-                Debug.Log($"[NetworkInstaller] ESCAPIST_CLUE_COLLECTED recibido: escapistId={packet.escapistId}, clueId={packet.clueId}");
-
-                // ✅ SI SOY HOST: Rebroadcastear a todos
                 if (isHost && broadcastService != null)
                 {
-                    Debug.Log($"[NetworkInstaller] 📡 HOST rebroadcasteando ESCAPIST_CLUE_COLLECTED a todos");
                     await broadcastService.SendToAll(json);
                 }
 
-                // ✅ Pasar a LobbyNetworkService para procesar localmente
-                lobbyNetworkService?.HandlePacketReceived(json);
+                gameNetworkService?.HandlePacketReceived(json);
             }
             catch (Exception e)
             {
@@ -382,13 +362,11 @@ public class NetworkInstaller
             }
         });
 
-        // ⭐ NUEVO: Handler para ESCAPISTS_CLUES_SNAPSHOT
         dispatcher.Register("ESCAPISTS_CLUES_SNAPSHOT", (json, sender) =>
         {
             try
             {
-                Debug.Log("[NetworkInstaller] ESCAPISTS_CLUES_SNAPSHOT recibido");
-                lobbyNetworkService?.HandlePacketReceived(json);
+                gameNetworkService?.HandlePacketReceived(json);
             }
             catch (Exception e)
             {
@@ -492,6 +470,7 @@ public class NetworkInstaller
         Debug.Log("[NetworkInstaller] Network inicializado");
 
         lobbyNetworkService?.Init(lobbyManager, broadcastService, builder, isHost, clientState, clientPacketHandler, server, connectionManager);
+        gameNetworkService?.Init(lobbyManager, broadcastService, builder, isHost, clientState, clientPacketHandler);
 
         // ⭐ Configurar networkServices AL FINAL
         networkServices.Server = server;

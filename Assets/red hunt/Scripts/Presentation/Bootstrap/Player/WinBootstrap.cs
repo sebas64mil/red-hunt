@@ -8,15 +8,15 @@ public class WinBootstrap : MonoBehaviour
     private ApplicationBootstrap applicationBootstrap;
     private PresentationBootstrap presentationBootstrap;
 
-    private LobbyNetworkService lobbyNetworkService;
+    private GameNetworkService gameNetworkService;
     private WinUI winUI;
     private WinCameraManager winCameraManager;
 
     private int winnerId = -1;
     private string winnerType = "";
     private bool isKillerWin = false;
-    private bool hasUpdatedDisplay = false;  
-    
+    private bool hasUpdatedDisplay = false;
+
     private int externalWinnerId = -1;
     private string externalWinnerType = "";
     private bool externalIsKillerWin = false;
@@ -27,10 +27,10 @@ public class WinBootstrap : MonoBehaviour
         applicationBootstrap = application ?? throw new ArgumentNullException(nameof(application));
         presentationBootstrap = presentation ?? throw new ArgumentNullException(nameof(presentation));
 
-        lobbyNetworkService = network.GetLobbyNetworkService();
+        gameNetworkService = network.GetGameNetworkService();
 
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
         SceneManager.sceneLoaded += HandleSceneLoaded;
-
     }
 
     private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -45,10 +45,9 @@ public class WinBootstrap : MonoBehaviour
     {
         winUI = ui ?? throw new ArgumentNullException(nameof(ui));
         winCameraManager = camera ?? throw new ArgumentNullException(nameof(camera));
-        
 
         BindWinUIEvents();
-        
+
         if (winnerId > 0 && !hasUpdatedDisplay)
         {
             UpdateWinDisplay();
@@ -60,7 +59,7 @@ public class WinBootstrap : MonoBehaviour
         winUI = ui ?? throw new ArgumentNullException(nameof(ui));
 
         BindWinUIEvents();
-        
+
         if (!hasUpdatedDisplay && winCameraManager != null)
         {
             UpdateWinDisplay();
@@ -80,27 +79,26 @@ public class WinBootstrap : MonoBehaviour
 
     public void SetWinData(int winnerId, string winnerType, bool isKillerWin)
     {
-        
-        this.externalWinnerId = winnerId;
-        this.externalWinnerType = winnerType;
-        this.externalIsKillerWin = isKillerWin;
+        externalWinnerId = winnerId;
+        externalWinnerType = winnerType;
+        externalIsKillerWin = isKillerWin;
 
         if (!hasUpdatedDisplay && winUI != null && winCameraManager != null)
         {
-            hasUpdatedDisplay = false; 
             UpdateWinDisplay();
         }
     }
 
     private void SubscribeToWinEvent()
     {
-        if (lobbyNetworkService != null)
+        if (gameNetworkService != null)
         {
-            lobbyNetworkService.OnGameWinReceived += HandleGameWin;
+            gameNetworkService.OnGameWinReceived -= HandleGameWin;
+            gameNetworkService.OnGameWinReceived += HandleGameWin;
         }
         else
         {
-            Debug.LogError("[WinBootstrap] ❌ lobbyNetworkService es NULL");
+            Debug.LogError("[WinBootstrap] ❌ gameNetworkService es NULL");
         }
     }
 
@@ -120,12 +118,12 @@ public class WinBootstrap : MonoBehaviour
         GameManager.IsHost = isHost;
         winUI.SetIsHost(isHost);
         winUI.SetConnected(true);
-
     }
 
     private void UnbindWinUIEvents()
     {
         if (winUI == null) return;
+
         try
         {
             winUI.OnLeaveLobby -= HandleLeaveLobby;
@@ -138,8 +136,6 @@ public class WinBootstrap : MonoBehaviour
     {
         try
         {
-            // ⭐ NO hacer LeaveLobby aquí - lo hace UIBindingBootstrap
-            // Solo cambiar escena
             GameManager.SetCursorVisible(true);
             GameManager.ChangeScene("Lobby");
         }
@@ -166,12 +162,11 @@ public class WinBootstrap : MonoBehaviour
 
     private void HandleGameWin(int winnerId, string winnerType, bool isKillerWin)
     {
-
         this.winnerId = winnerId;
         this.winnerType = winnerType;
         this.isKillerWin = isKillerWin;
 
-        if (winCameraManager != null)
+        if (winCameraManager != null && winUI != null)
         {
             hasUpdatedDisplay = false;
             UpdateWinDisplay();
@@ -179,16 +174,13 @@ public class WinBootstrap : MonoBehaviour
         }
         else
         {
-            Debug.Log("[WinBootstrap] ⏳ WinCameraManager aún no asignado, esperando SetWinUIAndCamera()...");
+            Debug.Log("[WinBootstrap] ⏳ WinUI/WinCameraManager aún no asignados, esperando SetWinUIAndCamera()...");
         }
     }
 
     private void UpdateWinDisplay()
     {
-        if (hasUpdatedDisplay)
-        {
-            return;
-        }
+        if (hasUpdatedDisplay) return;
 
         if (winCameraManager == null)
         {
@@ -202,8 +194,7 @@ public class WinBootstrap : MonoBehaviour
             return;
         }
 
-        bool killerWins = false;
-        
+        bool killerWins;
         if (winnerId > 0)
         {
             killerWins = isKillerWin;
@@ -218,9 +209,6 @@ public class WinBootstrap : MonoBehaviour
             return;
         }
 
-
-
-        
         if (killerWins)
         {
             winCameraManager.ShowKillerCamera();
@@ -241,8 +229,8 @@ public class WinBootstrap : MonoBehaviour
         {
             SceneManager.sceneLoaded -= HandleSceneLoaded;
 
-            if (lobbyNetworkService != null)
-                lobbyNetworkService.OnGameWinReceived -= HandleGameWin;
+            if (gameNetworkService != null)
+                gameNetworkService.OnGameWinReceived -= HandleGameWin;
 
             UnbindWinUIEvents();
         }

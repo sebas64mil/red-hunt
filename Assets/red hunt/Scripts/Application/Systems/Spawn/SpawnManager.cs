@@ -144,7 +144,6 @@ public class SpawnManager
             Debug.LogWarning($"[SpawnManager] PlayerView no encontrado en {playerGO.name}");
         }
 
-        // ✅ NUEVO: inicializar EscapistHealth con el ID correcto (esto arregla el -1)
         var escapistHealth = playerGO.GetComponent<EscapistHealth>();
         if (escapistHealth != null)
         {
@@ -166,7 +165,7 @@ public class SpawnManager
 
         var winTrigger = playerGO.AddComponent<PlayerWinTrigger>();
 
-        var netService = ModularLobbyBootstrap.Instance?.GetLobbyNetworkService();
+        var netService = ModularLobbyBootstrap.Instance?.GetGameNetworkService();
         var lobbyManager = ModularLobbyBootstrap.Instance?.GetLobbyManager();
         bool isHost = id == 1;
         bool triggerPlayerIsLocal = id == localPlayerId;

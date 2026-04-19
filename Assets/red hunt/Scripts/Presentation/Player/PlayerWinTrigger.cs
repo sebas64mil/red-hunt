@@ -10,7 +10,7 @@ public class PlayerWinTrigger : MonoBehaviour
     private bool isLocal = false;
     private bool gameWon = false;
 
-    private LobbyNetworkService lobbyNetworkService;
+    private GameNetworkService gameNetworkService;
     private LobbyManager lobbyManager;
     private GameStateManager gameStateManager;
 
@@ -22,12 +22,12 @@ public class PlayerWinTrigger : MonoBehaviour
         Debug.Log($"[PlayerWinTrigger] Inicializado para player {playerId}");
     }
 
-    public void Init(int pid, bool hostFlag, bool localFlag, LobbyNetworkService netService, LobbyManager manager)
+    public void Init(int pid, bool hostFlag, bool localFlag, GameNetworkService netService, LobbyManager manager)
     {
         playerId = pid;
         isHost = hostFlag;
         isLocal = localFlag;
-        lobbyNetworkService = netService;
+        gameNetworkService = netService;
         lobbyManager = manager;
 
         gameStateManager = FindFirstObjectByType<GameStateManager>();
@@ -40,14 +40,13 @@ public class PlayerWinTrigger : MonoBehaviour
             return;
         }
 
-        // ✅ Nombre correcto del evento (GameStateManager)
         gameStateManager.OnAllEscapistsDead -= HandleAllEscapistsDead;
         gameStateManager.OnAllEscapistsDead += HandleAllEscapistsDead;
 
-        if (lobbyNetworkService != null)
+        if (gameNetworkService != null)
         {
-            lobbyNetworkService.OnEscapistsPassedSnapshot -= HandleEscapistsPassedSnapshot;
-            lobbyNetworkService.OnEscapistsPassedSnapshot += HandleEscapistsPassedSnapshot;
+            gameNetworkService.OnEscapistsPassedSnapshot -= HandleEscapistsPassedSnapshot;
+            gameNetworkService.OnEscapistsPassedSnapshot += HandleEscapistsPassedSnapshot;
         }
     }
 
@@ -55,13 +54,12 @@ public class PlayerWinTrigger : MonoBehaviour
     {
         if (gameStateManager != null)
         {
-            // ✅ Nombre correcto del evento (GameStateManager)
             gameStateManager.OnAllEscapistsDead -= HandleAllEscapistsDead;
         }
 
-        if (lobbyNetworkService != null)
+        if (gameNetworkService != null)
         {
-            lobbyNetworkService.OnEscapistsPassedSnapshot -= HandleEscapistsPassedSnapshot;
+            gameNetworkService.OnEscapistsPassedSnapshot -= HandleEscapistsPassedSnapshot;
         }
     }
 
@@ -97,9 +95,9 @@ public class PlayerWinTrigger : MonoBehaviour
             return;
         }
 
-        if (lobbyNetworkService == null)
+        if (gameNetworkService == null)
         {
-            Debug.LogError("[PlayerWinTrigger] ❌ LobbyNetworkService es NULL");
+            Debug.LogError("[PlayerWinTrigger] ❌ GameNetworkService es NULL");
             return;
         }
 
@@ -107,11 +105,11 @@ public class PlayerWinTrigger : MonoBehaviour
         {
             if (isHost)
             {
-                await lobbyNetworkService.SendEscapistPassedAsync(playerId);
+                await gameNetworkService.SendEscapistPassedAsync(playerId);
             }
             else if (isLocal)
             {
-                await lobbyNetworkService.SendEscapistPassedToHostAsync(playerId);
+                await gameNetworkService.SendEscapistPassedToHostAsync(playerId);
             }
         }
         catch (Exception e)
@@ -135,23 +133,20 @@ public class PlayerWinTrigger : MonoBehaviour
 
         Debug.Log($"[PlayerWinTrigger] 📸 Snapshot recibido -> passed={passedEscapists.Count}/{targetEscapists.Count}");
 
-        if (!isHost)
-        {
-            return;
-        }
-
-        if (targetEscapists.Count <= 0)
-        {
-            return;
-        }
+        if (!isHost) return;
+        if (targetEscapists.Count <= 0) return;
 
         bool allPassed = targetEscapists.All(id => passedEscapists.Contains(id));
-        if (!allPassed)
+        if (!allPassed) return;
+
+        bool allPassedAreAlive = AreAllEscapistsAlive(passedEscapists);
+        if (!allPassedAreAlive)
         {
+            Debug.LogWarning("[PlayerWinTrigger] ⚠️ Algunos escapistas pasaron pero están muertos por el killer - ESCAPISTAS NO GANAN");
             return;
         }
 
-        Debug.Log("[PlayerWinTrigger] 🎉 ¡TODOS LOS ESCAPISTAS CONECTADOS HAN PASADO! ESCAPISTAS GANAN");
+        Debug.Log("[PlayerWinTrigger] 🎉 ¡TODOS LOS ESCAPISTAS CONECTADOS HAN PASADO Y ESTÁN VIVOS! ESCAPISTAS GANAN");
 
         gameWon = true;
 
@@ -161,7 +156,7 @@ public class PlayerWinTrigger : MonoBehaviour
             string winnerType = PlayerType.Escapist.ToString();
             bool isKillerWin = false;
 
-            await lobbyNetworkService.SendGameWinAsync(winnerId, winnerType, isKillerWin);
+            await gameNetworkService.SendGameWinAsync(winnerId, winnerType, isKillerWin);
             GameManager.ChangeScene("Win");
         }
         catch (Exception e)
@@ -170,9 +165,33 @@ public class PlayerWinTrigger : MonoBehaviour
         }
     }
 
+    private bool AreAllEscapistsAlive(HashSet<int> escapistIds)
+    {
+        if (gameStateManager == null)
+        {
+            Debug.LogWarning("[PlayerWinTrigger] ⚠️ GameStateManager es NULL - no se puede validar si los escapistas están vivos");
+            return false;
+        }
+
+        foreach (var escapistId in escapistIds)
+        {
+            var playerSession = lobbyManager?.GetAllPlayers()?.FirstOrDefault(p => p.Id == escapistId);
+            if (playerSession == null)
+            {
+                Debug.LogWarning($"[PlayerWinTrigger] ⚠️ No se encontró sesión para escapista {escapistId}");
+                return false;
+            }
+        }
+
+        int aliveEscapists = gameStateManager.GetAliveEscapistCount();
+        int totalTargetEscapists = escapistIds.Count;
+
+        return aliveEscapists >= totalTargetEscapists;
+    }
+
     private async void HandleAllEscapistsDead()
     {
-        Debug.Log($"[PlayerWinTrigger] 🎉 ¡TODOS LOS ESCAPISTAS HAN MUERTO! KILLER GANA!");
+        Debug.Log("[PlayerWinTrigger] 🎉 ¡TODOS LOS ESCAPISTAS HAN MUERTO! KILLER GANA!");
 
         if (gameWon) return;
         gameWon = true;
@@ -196,11 +215,9 @@ public class PlayerWinTrigger : MonoBehaviour
         string winnerType = PlayerType.Killer.ToString();
         bool isKillerWin = true;
 
-        Debug.Log($"[PlayerWinTrigger] ✅ KILLER (ID: {killerId}) GANA POR MATAR TODOS LOS ESCAPISTAS");
-
-        if (lobbyNetworkService == null)
+        if (gameNetworkService == null)
         {
-            Debug.LogError("[PlayerWinTrigger] ❌ LobbyNetworkService es NULL");
+            Debug.LogError("[PlayerWinTrigger] ❌ GameNetworkService es NULL");
             return;
         }
 
@@ -209,17 +226,9 @@ public class PlayerWinTrigger : MonoBehaviour
             if (isHost)
             {
                 Debug.Log("[PlayerWinTrigger] → Host enviando WIN_GAME (Killer - Todos muertos) a TODOS");
-                await lobbyNetworkService.SendGameWinAsync(killerId, winnerType, isKillerWin);
+                await gameNetworkService.SendGameWinAsync(killerId, winnerType, isKillerWin);
 
                 GameManager.ChangeScene("Win");
-            }
-            else if (isLocal)
-            {
-                Debug.Log("[PlayerWinTrigger] → Cliente local recibió notificación de todos muertos (esperando al host)");
-            }
-            else
-            {
-                Debug.Log("[PlayerWinTrigger] → Jugador remoto - nada que hacer");
             }
         }
         catch (Exception e)

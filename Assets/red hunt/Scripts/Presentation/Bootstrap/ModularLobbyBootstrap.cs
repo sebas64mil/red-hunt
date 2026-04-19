@@ -55,7 +55,7 @@ public class ModularLobbyBootstrap : MonoBehaviour
 
         // 2) Network - NetworkBootstrap gestiona sus propios Server/Client (autónomo)
         networkBoot = gameObject.GetComponent<NetworkBootstrap>() ?? gameObject.AddComponent<NetworkBootstrap>();
-        networkBoot.Init(appBoot.Services);
+        networkBoot.Init(appBoot.Services, false);
 
         // 3) Presentation
         presentationBoot = gameObject.GetComponent<PresentationBootstrap>() ?? gameObject.AddComponent<PresentationBootstrap>();
@@ -126,6 +126,18 @@ public class ModularLobbyBootstrap : MonoBehaviour
         try
         {
             return networkBoot?.GetLobbyNetworkService();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public GameNetworkService GetGameNetworkService()
+    {
+        try
+        {
+            return networkBoot?.GetGameNetworkService();
         }
         catch
         {

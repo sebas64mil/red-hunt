@@ -13,6 +13,7 @@ public class PresentationBootstrap : MonoBehaviour
     private ApplicationBootstrap appBootstrap;
     private NetworkBootstrap networkBootstrap;
     private LobbyNetworkService lobbyNetworkService;
+    private GameNetworkService gameNetworkService;
     private UIBindingBootstrap uiBindingBootstrap;
 
     private AdminUI adminUI;
@@ -88,6 +89,9 @@ public class PresentationBootstrap : MonoBehaviour
             if (lobbyNetworkService != null)
                 lobby_network_service_assign(newSpawnManager);
 
+            if (gameNetworkService != null)
+                game_network_service_assign(newSpawnManager);
+
             Debug.Log("[PresentationBootstrap] ✅ SpawnUI re-registrada con spawnParents SEPARADOS");
 
             try
@@ -131,6 +135,18 @@ public class PresentationBootstrap : MonoBehaviour
         catch (Exception e)
         {
             Debug.LogWarning($"[PresentationBootstrap] No se pudo asignar SpawnManager a LobbyNetworkService: {e.Message}");
+        }
+    }
+
+    private void game_network_service_assign(SpawnManager manager)
+    {
+        try
+        {
+            gameNetworkService.SpawnManagerInstance = manager;
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[PresentationBootstrap] No se pudo asignar SpawnManager a GameNetworkService: {e.Message}");
         }
     }
 
@@ -203,6 +219,7 @@ public class PresentationBootstrap : MonoBehaviour
     {
         networkBootstrap = net ?? throw new ArgumentNullException(nameof(net));
         lobbyNetworkService = net.GetLobbyNetworkService();
+        gameNetworkService = net.GetGameNetworkService();
 
         networkBootstrap.OnPlayerIdAssigned += HandlePlayerIdAssigned;
         networkBootstrap.OnLocalJoinAccepted += HandleLocalJoinAccepted;
@@ -211,19 +228,19 @@ public class PresentationBootstrap : MonoBehaviour
         if (lobbyNetworkService != null)
         {
             lobbyNetworkService.OnStartGameReceived += HandleStartGameReceived;
-            lobbyNetworkService.OnReturnToLobbyReceived += HandleReturnToLobby;  
+            lobbyNetworkService.OnReturnToLobbyReceived += HandleReturnToLobby;
         }
 
-        if (installed && LobbyNetworkServiceValid())
+        if (installed && Presentation?.SpawnManager != null)
         {
-            lobbyNetworkService.SpawnManagerInstance = Presentation.SpawnManager;
+            if (lobbyNetworkService != null)
+                lobbyNetworkService.SpawnManagerInstance = Presentation.SpawnManager;
+
+            if (gameNetworkService != null)
+                gameNetworkService.SpawnManagerInstance = Presentation.SpawnManager;
         }
     }
 
-    private bool LobbyNetworkServiceValid()
-    {
-        return lobbyNetworkService != null && Presentation?.SpawnManager != null;
-    }
 
     private void HandleStartGameReceived(string sceneName)
     {
