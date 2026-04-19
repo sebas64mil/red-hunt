@@ -9,11 +9,9 @@ public class WinUI : MonoBehaviour
     [SerializeField] private LeaveButton leaveButton;
     [SerializeField] private ShutdownButton shutdownButton;
 
-    // ⭐ NUEVO: Textos configurables para el asesino
     [SerializeField] private string killerTitle = "¡EL ASESINO GANA!";
     [SerializeField] private string killerDescription = "El asesino ha eliminado a todos los escapistas.";
 
-    // ⭐ NUEVO: Textos configurables para los escapistas
     [SerializeField] private string escapistTitle = "¡LOS ESCAPISTAS GANAN!";
     [SerializeField] private string escapistDescription = "Los escapistas lograron escapar.";
 

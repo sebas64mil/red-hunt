@@ -153,13 +153,11 @@ public class KillerAttack : MonoBehaviour
 
             if (isHost && broadcastService != null)
             {
-                // HOST: Enviar a todos
                 _ = broadcastService.SendToAll(healthUpdateJson);
                 Debug.Log($"[KillerAttack] 📡 HOST enviando HEALTH_UPDATE a TODOS - target: {targetPlayerId}, health: {currentHealth}/{maxHealth}");
             }
             else if (!isHost && client != null && client.isConnected)
             {
-                // CLIENTE: Enviar al HOST
                 _ = client.SendMessageAsync(healthUpdateJson);
                 Debug.Log($"[KillerAttack] 📤 CLIENTE enviando HEALTH_UPDATE AL HOST - target: {targetPlayerId}, health: {currentHealth}/{maxHealth}");
             }
