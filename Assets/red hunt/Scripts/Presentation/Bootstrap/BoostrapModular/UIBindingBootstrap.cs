@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -739,6 +740,60 @@ public class UIBindingBootstrap : MonoBehaviour
 
         gameUI = ui;
         BindGameUI(gameUI);
+        
+        // ⭐ NUEVO: Conectar EscapistCluesDisplay con LobbyNetworkService
+        BindCluesUI();
+    }
+
+    // ⭐ REEMPLAZAR el método BindCluesUI() COMPLETO
+    private void BindCluesUI()
+    {
+        if (lobbyNetworkService == null)
+        {
+            Debug.LogWarning("[UIBinding] ⚠️ LobbyNetworkService no disponible para CluesUI");
+            return;
+        }
+
+        try
+        {
+            var cluesDisplay = FindFirstObjectByType<EscapistCluesDisplay>();
+            if (cluesDisplay == null)
+            {
+                Debug.LogWarning("[UIBinding] ⚠️ EscapistCluesDisplay no encontrado en escena");
+                return;
+            }
+
+            // Desuscribir si había suscripción anterior
+            lobbyNetworkService.OnEscapistsCluesSnapshot -= cluesDisplay.OnSnapshotReceived;
+            lobbyNetworkService.OnEscapistsCluesSnapshot += cluesDisplay.OnSnapshotReceived;
+
+            // Desuscribir evento de clue individual
+            lobbyNetworkService.OnEscapistClueCollected -= HandleEscapistClueCollected;
+            lobbyNetworkService.OnEscapistClueCollected += HandleEscapistClueCollected;
+
+            void HandleEscapistClueCollected(int escapistId, string clueId)
+            {
+                try
+                {
+                    var localPlayerId = network?.Services?.ClientState?.PlayerId ?? -1;
+                    if (localPlayerId > 0 && escapistId == localPlayerId)
+                    {
+                        Debug.Log($"[UIBinding] 🔑 Clue recolectado para player local: {clueId}");
+                        cluesDisplay.OnClueObtained(escapistId, clueId);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"[UIBinding] ❌ Error en HandleEscapistClueCollected: {e.Message}");
+                }
+            }
+
+            DebugLog("✅ EscapistCluesDisplay conectado a eventos de pistas");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[UIBinding] ❌ Error en BindCluesUI: {e.Message}");
+        }
     }
 
     private void BindGameUI(GameUI ui)

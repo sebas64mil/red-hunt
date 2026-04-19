@@ -1855,6 +1855,7 @@ GameObject:
   - component: {fileID: 347840576517588045}
   - component: {fileID: 2018241949686161364}
   - component: {fileID: 3026955715751955832}
+  - component: {fileID: 7444540614772483795}
   m_Layer: 0
   m_Name: Caperuza
   m_TagString: Player
@@ -2178,6 +2179,20 @@ MonoBehaviour:
   playerView: {fileID: 3177610413380496426}
   label: {fileID: 38524310140632523}
   format: '{0}'
+--- !u!114 &7444540614772483795
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8585273875156819028}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ffaffe84f56080b43b577862bcf7392a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ClueCollector
+  interactionRange: 2
+  clueTag: Clue
 --- !u!1 &8668333708137204287
 GameObject:
   m_ObjectHideFlags: 0

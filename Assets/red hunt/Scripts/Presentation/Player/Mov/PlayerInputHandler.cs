@@ -10,11 +10,15 @@ public class PlayerInputHandler : MonoBehaviour
     // ⭐ SOLO evento de salto, los otros se leen directamente
     public event Action OnJump;
 
+    // ⭐ NUEVO: Evento de interacción
+    public event Action OnInteract;
+
     private PlayerInput playerInput;
     private InputAction moveAction;
     private InputAction lookAction;
     private InputAction jumpAction;
     private InputAction attackAction;
+    private InputAction interactAction;
 
     private bool isInitialized = false;
 
@@ -40,6 +44,7 @@ public class PlayerInputHandler : MonoBehaviour
             lookAction = playerInput.actions["Look"];
             jumpAction = playerInput.actions["Jump"];
             attackAction = playerInput.actions["Attack"];
+            interactAction = playerInput.actions["Interact"];
 
             if (moveAction == null || lookAction == null || jumpAction == null)
             {
@@ -95,6 +100,14 @@ public class PlayerInputHandler : MonoBehaviour
             attackAction.started += HandleAttackInput;
             Debug.Log("[PlayerInputHandler] ✅ Attack action habilitada");
         }
+
+        // ⭐ NUEVO: Habilitar action de interacción
+        if (interactAction != null)
+        {
+            interactAction.Enable();
+            interactAction.started += HandleInteractInput;
+            Debug.Log("[PlayerInputHandler] ✅ Interact action habilitada");
+        }
     }
 
     private void OnDisable()
@@ -121,6 +134,13 @@ public class PlayerInputHandler : MonoBehaviour
             attackAction.started -= HandleAttackInput;
             attackAction.Disable();
         }
+
+        // ⭐ NUEVO: Deshabilitar action de interacción
+        if (interactAction != null)
+        {
+            interactAction.started -= HandleInteractInput;
+            interactAction.Disable();
+        }
     }
 
     private void HandleJumpInput(InputAction.CallbackContext context)
@@ -132,6 +152,12 @@ public class PlayerInputHandler : MonoBehaviour
     private void HandleAttackInput(InputAction.CallbackContext context)
     {
         OnAttack?.Invoke();
+    }
+
+    // ⭐ NUEVO: Handler para interacción
+    private void HandleInteractInput(InputAction.CallbackContext context)
+    {
+        OnInteract?.Invoke();
     }
 
     public bool IsMoving()

@@ -120,4 +120,24 @@ public class ClientPacketHandler
             Debug.LogError($"[ClientPacketHandler] Error enviando ESCAPIST_PASSED: {e.Message}");
         }
     }
+
+    public async Task SendEscapistClueCollected(int escapistId, string clueId)
+    {
+        if (!client.isConnected)
+        {
+            Debug.LogError("[ClientPacketHandler] ❌ Cliente no conectado");
+            return;
+        }
+
+        try
+        {
+            var packet = builder.CreateEscapistClueCollected(escapistId, clueId);
+            await client.SendMessageAsync(packet);
+            Debug.Log($"[ClientPacketHandler] ✅ ESCAPIST_CLUE_COLLECTED enviado al host: {clueId}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ClientPacketHandler] Error enviando ESCAPIST_CLUE_COLLECTED: {e.Message}");
+        }
+    }
 }

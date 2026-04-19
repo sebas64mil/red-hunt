@@ -1,6 +1,9 @@
 ﻿using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Collections.Generic;
+using System.Linq;
+
 
 public class GameplayBootstrap : MonoBehaviour
 {
@@ -272,7 +275,7 @@ public class GameplayBootstrap : MonoBehaviour
             return;
         }
         
-        Debug.Log($"[GameplayBootstrap] ✅ Player encontrado: {playerGO.name}");
+        Debug.Log($"[GameplayBootstrap] ✅ Player encontrado: {playerGO.name} (ID: {localPlayerId})");
 
         playerInputHandler = playerGO.GetComponent<PlayerInputHandler>();
         playerMovement = playerGO.GetComponent<PlayerMovement>();
@@ -335,7 +338,141 @@ public class GameplayBootstrap : MonoBehaviour
         // ⭐ Configurar Health UI
         SetupHealthUI(playerGO);
 
+        // ⭐ Configurar Clues Collector
+        SetupClueCollector(playerGO);
+
+        // ⭐ Configurar Clues UI
+        SetupCluesUI(playerGO);
+
         Debug.Log("[GameplayBootstrap] ===== LOCAL PLAYER CONFIGURADO =====");
+    }
+
+    // ⭐ NUEVO: Configurar Clue Collector (solo para Escapistas)
+    private void SetupClueCollector(GameObject playerGO)
+    {
+        if (playerGO == null) return;
+
+        var clueCollector = playerGO.GetComponent<ClueCollector>();
+        if (clueCollector == null)
+        {
+            Debug.Log("[GameplayBootstrap] ℹ️ ClueCollector no presente (no es Escapist)");
+            return;
+        }
+
+        try
+        {
+            var clueRegistry = applicationBootstrap?.Services?.ClueRegistry;
+            var broadcastService = networkBootstrap.Services.BroadcastService;
+            var client = networkBootstrap.Services.Client;
+            var packetBuilder = networkBootstrap.Services.Builder;
+            var isHost = networkBootstrap.Services.ClientState?.IsHost ?? false;
+
+            if (clueRegistry == null)
+            {
+                Debug.LogError("[GameplayBootstrap] ❌ ClueRegistry es NULL");
+                return;
+            }
+
+            clueCollector.Init(localPlayerId, true, clueRegistry);
+            clueCollector.InitNetworkServices(broadcastService, client, packetBuilder, isHost);
+
+            Debug.Log($"[GameplayBootstrap] ✅ ClueCollector using registry: {clueRegistry.GetHashCode()}");
+            
+            // ⭐ NUEVO: Suscribir ClueCollector a los eventos de red de pistas
+            var lobbyNetworkService = networkBootstrap.GetLobbyNetworkService();
+            if (lobbyNetworkService != null)
+            {
+                // Evento 1: Snapshot de todas las pistas - ⭐ CRÍTICO: Sincronizar registro local
+                lobbyNetworkService.OnEscapistsCluesSnapshot -= HandleCluesSnapshot;
+                lobbyNetworkService.OnEscapistsCluesSnapshot += HandleCluesSnapshot;
+
+                // Evento 2: Pista individual recolectada
+                lobbyNetworkService.OnEscapistClueCollected -= HandleClueCollectedFromNetwork;
+                lobbyNetworkService.OnEscapistClueCollected += HandleClueCollectedFromNetwork;
+
+                void HandleCluesSnapshot(IReadOnlyDictionary<int, IReadOnlyCollection<string>> cluesByEscapist)
+                {
+                    // ⭐ NUEVO: mantener targets en el registry que usa la UI
+                    clueRegistry.SetTargetEscapists(applicationBootstrap.Services.LobbyManager
+                        .GetAllPlayers()
+                        .Where(p => p.PlayerType == PlayerType.Escapist.ToString() && p.IsConnected)
+                        .Select(p => p.Id));
+
+                    clueRegistry.SyncFromSnapshot(cluesByEscapist);
+
+                    if (cluesByEscapist.TryGetValue(localPlayerId, out var clues))
+                    {
+                        foreach (var clueId in clues)
+                        {
+                            clueCollector.OnClueCollectedFromNetwork(clueId);
+                        }
+                    }
+                }
+
+                void HandleClueCollectedFromNetwork(int escapistId, string clueId)
+                {
+                    Debug.Log($"[GameplayBootstrap] 🔑 Evento individual: Escapist {escapistId} recolectó {clueId}");
+                    
+                    if (escapistId == localPlayerId)
+                    {
+                        clueCollector.OnClueCollectedFromNetwork(clueId);
+                    }
+                }
+
+                Debug.Log("[GameplayBootstrap] ✅ Eventos de clues suscritos correctamente");
+            }
+            
+            Debug.Log("[GameplayBootstrap] ✅ ClueCollector inicializado para Escapist");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[GameplayBootstrap] ❌ Error en SetupClueCollector: {ex.Message}");
+        }
+    }
+
+    // ⭐ NUEVO: Configurar Clues UI (solo para Escapistas)
+    private void SetupCluesUI(GameObject playerGO)
+    {
+        if (playerGO == null) return;
+
+        var escapistHealth = playerGO.GetComponent<EscapistHealth>();
+        var killerAttack = playerGO.GetComponent<KillerAttack>();
+        
+        var cluesDisplay = FindFirstObjectByType<EscapistCluesDisplay>();
+        if (cluesDisplay == null)
+        {
+            Debug.LogWarning("[GameplayBootstrap] ⚠️ EscapistCluesDisplay no encontrado en escena");
+            return;
+        }
+
+        if (killerAttack != null && escapistHealth == null)
+        {
+            cluesDisplay.HideForKiller();
+            Debug.Log("[GameplayBootstrap] 🔪 Player es Killer - Clues UI desactivada");
+            return;
+        }
+
+        if (escapistHealth != null)
+        {
+            var clueRegistry = applicationBootstrap?.Services?.ClueRegistry;
+            if (clueRegistry != null)
+            {
+                // ⭐ CRÍTICO: Pasar la MISMA referencia del registry que se está sincronizando
+                cluesDisplay.Initialize(clueRegistry, localPlayerId);
+                Debug.Log($"[GameplayBootstrap] ✅ EscapistCluesDisplay inicializado para player {localPlayerId}");
+                Debug.Log($"[GameplayBootstrap] ✅ EscapistCluesDisplay using registry: {clueRegistry.GetHashCode()}");
+                
+                // ⭐ NUEVO: Suscribir a snapshots DESPUÉS de inicializar
+                var lobbyNetworkService = networkBootstrap.GetLobbyNetworkService();
+                if (lobbyNetworkService != null)
+                {
+                    lobbyNetworkService.OnEscapistsCluesSnapshot -= cluesDisplay.OnSnapshotReceived;
+                    lobbyNetworkService.OnEscapistsCluesSnapshot += cluesDisplay.OnSnapshotReceived;
+                    Debug.Log("[GameplayBootstrap] ✅ EscapistCluesDisplay suscrito a snapshots");
+                }
+            }
+            return;
+        }
     }
 
     // ⭐ NUEVO: Método para inicializar PlayerAnimationController

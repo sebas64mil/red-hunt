@@ -352,6 +352,50 @@ public class NetworkInstaller
             }
         });
 
+        // ⭐ NUEVO: Handler para ESCAPIST_CLUE_COLLECTED
+        dispatcher.Register("ESCAPIST_CLUE_COLLECTED", async (json, sender) =>
+        {
+            try
+            {
+                var packet = serializer.Deserialize<EscapistClueCollectedPacket>(json);
+                if (packet == null)
+                {
+                    Debug.LogWarning("[NetworkInstaller] ❌ ESCAPIST_CLUE_COLLECTED packet inválido");
+                    return;
+                }
+
+                Debug.Log($"[NetworkInstaller] ESCAPIST_CLUE_COLLECTED recibido: escapistId={packet.escapistId}, clueId={packet.clueId}");
+
+                // ✅ SI SOY HOST: Rebroadcastear a todos
+                if (isHost && broadcastService != null)
+                {
+                    Debug.Log($"[NetworkInstaller] 📡 HOST rebroadcasteando ESCAPIST_CLUE_COLLECTED a todos");
+                    await broadcastService.SendToAll(json);
+                }
+
+                // ✅ Pasar a LobbyNetworkService para procesar localmente
+                lobbyNetworkService?.HandlePacketReceived(json);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[NetworkInstaller] ❌ Error procesando ESCAPIST_CLUE_COLLECTED: {e.Message}");
+            }
+        });
+
+        // ⭐ NUEVO: Handler para ESCAPISTS_CLUES_SNAPSHOT
+        dispatcher.Register("ESCAPISTS_CLUES_SNAPSHOT", (json, sender) =>
+        {
+            try
+            {
+                Debug.Log("[NetworkInstaller] ESCAPISTS_CLUES_SNAPSHOT recibido");
+                lobbyNetworkService?.HandlePacketReceived(json);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[NetworkInstaller] Error procesando ESCAPISTS_CLUES_SNAPSHOT: {e.Message}");
+            }
+        });
+
         if (isHost)
         {
             dispatcher.Register("DISCONNECT", async (json, sender) =>

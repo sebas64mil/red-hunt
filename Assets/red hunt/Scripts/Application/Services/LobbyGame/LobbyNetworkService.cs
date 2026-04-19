@@ -18,7 +18,7 @@ public class LobbyNetworkService : MonoBehaviour
 
     public event Action<string> OnStartGameReceived;
     public event Action<int> OnLocalJoinAccepted;
-    public event Action OnReturnToLobbyReceived; 
+    public event Action OnReturnToLobbyReceived;
     public event Action<int, string, bool> OnGameWinReceived;
     public event Action<int> OnEscapistPassed;
 
@@ -33,6 +33,13 @@ public class LobbyNetworkService : MonoBehaviour
 
     private readonly HashSet<int> passedEscapistsHost = new();
 
+
+    // ⭐ AGREGAR ESTE EVENTO EN LA SECCIÓN DE EVENTOS
+    public event Action<int, string> OnEscapistClueCollected;
+    public event Action<IReadOnlyDictionary<int, IReadOnlyCollection<string>>> OnEscapistsCluesSnapshot;
+
+    // ⭐ AGREGAR ESTE REGISTRO EN Awake/Init
+    private EscapistClueRegistry cluesRegistry = new();
 
     public void Init(
         LobbyManager lobbyManager,
@@ -113,7 +120,7 @@ public class LobbyNetworkService : MonoBehaviour
         {
             clientState?.SetPlayerId(1);
             clientState?.SetConnected(true);
-            clientState?.SetIsHost(true); 
+            clientState?.SetIsHost(true);
         }
         catch { }
 
@@ -314,7 +321,7 @@ public class LobbyNetworkService : MonoBehaviour
                 HandleReturnToLobbyPacket();
                 break;
 
-            case "WIN_GAME": 
+            case "WIN_GAME":
                 HandleWinGamePacket(packetJson);
                 break;
 
@@ -328,6 +335,15 @@ public class LobbyNetworkService : MonoBehaviour
 
             case "ESCAPISTS_PASSED_SNAPSHOT":
                 HandleEscapistsPassedSnapshotPacket(packetJson);
+                break;
+
+            // ⭐ AGREGAR ESTE CASO EN HandlePacketReceived
+            case "ESCAPIST_CLUE_COLLECTED":
+                HandleEscapistClueCollectedPacket(packetJson);
+                break;
+
+            case "ESCAPISTS_CLUES_SNAPSHOT":
+                HandleEscapistsCluesSnapshotPacket(packetJson);
                 break;
 
             default:
@@ -406,13 +422,13 @@ public class LobbyNetworkService : MonoBehaviour
         try
         {
             var winPacket = packetBuilder.CreateWinGame(winnerId, winnerType, isKillerWin);
-            
+
             Debug.Log($"[LobbyNetworkService] 📤 Reenviando WIN_GAME a todos: winnerId={winnerId}");
-            
+
             await broadcastService.SendToAll(winPacket);
-            
+
             await Task.Delay(100);
-            
+
             Debug.Log("[LobbyNetworkService] ✅ WIN_GAME reenviado a todos los clientes");
         }
         catch (Exception e)
@@ -609,11 +625,11 @@ public class LobbyNetworkService : MonoBehaviour
         if (added == null)
         {
             Debug.LogWarning($"[LobbyNetworkService] Player {playerPacket.id} no pudo ser añadido (lobby lleno u error)");
-            
+
             try
             {
                 var rejectPacket = packetBuilder.CreateAssignReject(playerPacket.id, "Lobby full or internal error");
-                
+
                 if (connectionManager != null && server != null)
                 {
                     if (connectionManager.TryGetEndpointById(playerPacket.id, out IPEndPoint endpoint) && endpoint != null)
@@ -632,7 +648,7 @@ public class LobbyNetworkService : MonoBehaviour
             {
                 Debug.LogWarning($"[LobbyNetworkService] Error enviando ASSIGN_REJECT: {e.Message}");
             }
-            
+
             return;
         }
 
@@ -680,7 +696,7 @@ public class LobbyNetworkService : MonoBehaviour
     private void HandleRemovePlayerPacket(string json)
     {
         var packet = packetBuilder.Serializer.Deserialize<RemovePlayerPacket>(json);
-        if(packet == null) return;
+        if (packet == null) return;
 
         Debug.Log($"[LobbyNetworkService] Player {packet.id} disconnected");
 
@@ -710,9 +726,9 @@ public class LobbyNetworkService : MonoBehaviour
     private void HandleReturnToLobbyPacket()
     {
         try
-        { 
+        {
             GameStarted = false;
-            
+
             try
             {
                 var players = lobbyManager.GetAllPlayers().ToList();
@@ -725,7 +741,7 @@ public class LobbyNetworkService : MonoBehaviour
             {
                 Debug.LogWarning($"[LobbyNetworkService] Error limpiando players: {e.Message}");
             }
-            
+
             OnReturnToLobbyReceived?.Invoke();
         }
         catch (Exception e)
@@ -770,7 +786,7 @@ public class LobbyNetworkService : MonoBehaviour
         {
             var returnPacket = packetBuilder.CreateReturnToLobby();
             await broadcastService.SendToAll(returnPacket);
-            
+
             Debug.Log("[LobbyNetworkService] RETURN_TO_LOBBY enviado a todos los clientes");
         }
         catch (System.Exception e)
@@ -826,13 +842,13 @@ public class LobbyNetworkService : MonoBehaviour
         try
         {
             var winPacket = packetBuilder.CreateWinGame(winnerId, winnerType, isKillerWin);
-            
+
             Debug.Log($"[LobbyNetworkService] 📡 Enviando WIN_GAME a TODOS: winnerId={winnerId}, winnerType={winnerType}");
-            
+
             await broadcastService.SendToAll(winPacket);
-            
+
             HandleWinGamePacket(winPacket);
-            
+
             Debug.Log("[LobbyNetworkService] ✅ WIN_GAME enviado a todos los clientes - seguro cambiar escena");
         }
         catch (Exception e)
@@ -907,5 +923,121 @@ public class LobbyNetworkService : MonoBehaviour
     {
         GameStarted = false;
         Debug.Log("[LobbyNetworkService] Game win state resetted");
+    }
+
+    // ⭐ Agregar al método HandleEscapistClueCollectedPacket
+    private void HandleEscapistClueCollectedPacket(string json)
+    {
+        var packet = packetBuilder.DeserializeEscapistClueCollected(json);
+        if (packet == null)
+        {
+            Debug.LogWarning("[LobbyNetworkService] ESCAPIST_CLUE_COLLECTED packet inválido");
+            return;
+        }
+
+        Debug.Log($"[LobbyNetworkService] ESCAPIST_CLUE_COLLECTED recibido: escapistId={packet.escapistId}, clueId={packet.clueId}");
+
+        DesactivateClueInScene(packet.clueId);
+
+        if (!isHost)
+        {
+            try
+            {
+                OnEscapistClueCollected?.Invoke(packet.escapistId, packet.clueId);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[LobbyNetworkService] Error invocando OnEscapistClueCollected: {e.Message}");
+            }
+            return;
+        }
+
+        // HOST: registrar clue
+        cluesRegistry.AddClue(packet.escapistId, packet.clueId);
+
+        var targetIds = lobbyManager.GetAllPlayers()
+            .Where(p => p.PlayerType == PlayerType.Escapist.ToString() && p.IsConnected)
+            .Select(p => p.Id)
+            .Distinct()
+            .OrderBy(id => id)
+            .ToList();
+
+        // ⭐ CRÍTICO: para que GetSnapshot() genere entries para TODOS
+        cluesRegistry.SetTargetEscapists(targetIds);
+
+        var snapshotJson = packetBuilder.CreateEscapistsCluesSnapshot(targetIds, cluesRegistry.GetSnapshot());
+
+        if (broadcastService != null)
+        {
+            _ = broadcastService.SendToAll(snapshotJson);
+        }
+
+        // Si quieres que el host se actualice igual que un cliente, deja que lo procese al recibirlo
+        // o bien llama directamente:
+        HandleEscapistsCluesSnapshotPacket(snapshotJson);
+    }
+
+    // ⭐ NUEVO: Desactivar pista en la escena
+    private void DesactivateClueInScene(string clueId)
+    {
+        var allClues = FindObjectsByType<ClueItemController>(FindObjectsSortMode.None);
+
+        foreach (var clue in allClues)
+        {
+            if (clue.ClueId == clueId && !clue.IsCollected)
+            {
+                clue.CollectClue();
+                Debug.Log($"[LobbyNetworkService] ✅ Pista {clueId} desactivada en escena");
+                return;
+            }
+        }
+
+        Debug.LogWarning($"[LobbyNetworkService] ⚠️ No se encontró pista {clueId} en escena");
+    }
+
+    // ⭐ AGREGAR ESTE MÉTODO
+    private void HandleEscapistsCluesSnapshotPacket(string json)
+    {
+        var packet = packetBuilder.DeserializeEscapistsCluesSnapshot(json);
+        if (packet == null)
+        {
+            Debug.LogWarning("[LobbyNetworkService] ESCAPISTS_CLUES_SNAPSHOT inválido");
+            return;
+        }
+
+        cluesRegistry.SetTargetEscapists(packet.targetEscapistIds);
+
+        var cluesByEscapist = new Dictionary<int, IReadOnlyCollection<string>>();
+        foreach (var entry in packet.entries)
+        {
+            cluesByEscapist[entry.escapistId] = entry.clueIds.AsReadOnly();
+        }
+
+        cluesRegistry.SyncFromSnapshot(cluesByEscapist);
+
+        // ⭐ NUEVO: aplicar snapshot a la escena (desactivar prefabs recogidos)
+        var globalClueIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var entry in packet.entries)
+        {
+            foreach (var clueId in entry.clueIds)
+            {
+                globalClueIds.Add(clueId);
+            }
+        }
+
+        foreach (var clueId in globalClueIds)
+        {
+            DesactivateClueInScene(clueId);
+        }
+
+        try
+        {
+            OnEscapistsCluesSnapshot?.Invoke(cluesByEscapist);
+            Debug.Log("[LobbyNetworkService] 📸 ESCAPISTS_CLUES_SNAPSHOT procesado y enviado a suscriptores");
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[LobbyNetworkService] Error invocando OnEscapistsCluesSnapshot: {e.Message}");
+        }
     }
 }

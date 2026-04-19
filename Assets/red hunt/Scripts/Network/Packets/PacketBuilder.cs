@@ -156,6 +156,57 @@ public class PacketBuilder
         return serializer.Serialize(packet);
     }
 
+
+    public string CreateEscapistClueCollected(int escapistId, string clueId)
+    {
+        var packet = new EscapistClueCollectedPacket
+        {
+            type = "ESCAPIST_CLUE_COLLECTED",
+            escapistId = escapistId,
+            clueId = clueId
+        };
+
+        return serializer.Serialize(packet);
+    }
+
+    public string CreateEscapistsCluesSnapshot(IEnumerable<int> targetIds, IReadOnlyDictionary<int, IReadOnlyCollection<string>> cluesByEscapist)
+    {
+        var packet = new EscapistsCluesSnapshotPacket
+        {
+            type = "ESCAPISTS_CLUES_SNAPSHOT",
+            targetEscapistIds = targetIds?.Distinct().OrderBy(id => id).ToList() ?? new List<int>()
+        };
+
+        if (cluesByEscapist != null)
+        {
+            foreach (var id in packet.targetEscapistIds)
+            {
+                if (!cluesByEscapist.TryGetValue(id, out var clueIds) || clueIds == null)
+                    clueIds = new List<string>();
+
+                packet.entries.Add(new EscapistCluesEntry
+                {
+                    escapistId = id,
+                    clueIds = clueIds.Distinct().OrderBy(x => x).ToList()
+                });
+            }
+        }
+
+        return serializer.Serialize(packet);
+    }
+
+    public EscapistClueCollectedPacket DeserializeEscapistClueCollected(string json)
+    {
+        return serializer.Deserialize<EscapistClueCollectedPacket>(json);
+    }
+
+    public EscapistsCluesSnapshotPacket DeserializeEscapistsCluesSnapshot(string json)
+    {
+        return serializer.Deserialize<EscapistsCluesSnapshotPacket>(json);
+    }
+
+    // ===================== EXISTENTE =====================
+
     public HealthUpdatePacket DeserializeHealthUpdate(string json)
     {
         return serializer.Deserialize<HealthUpdatePacket>(json);
