@@ -13,7 +13,7 @@
 
 1. [Descripción general](#descripción-general)
 2. [Arquitectura del sistema](#arquitectura-del-sistema)
-3. [Protocolos de red](#protocolos-de-red)
+3. [Protocolo de red](#protocolo-de-red)
 4. [Flujos de mensajes y envío](#flujos-de-mensajes-y-envío)
 5. [Estructura de los mensajes](#estructura-de-los-mensajes)
 6. [Lógica de fragmentación](#lógica-de-fragmentación)
@@ -90,9 +90,9 @@ t=116ms   RemotePlayerMovementManager.ProcessMove()
 
 ---
 
-## Protocolos de red
+## Protocolo de red
 
-### UDP (Protocolo principal)
+### UDP 
 
 **Características:**
 - Bajo latencia (ideal para movimiento)
