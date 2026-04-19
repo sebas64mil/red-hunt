@@ -123,8 +123,7 @@ public class EscapistHealth : MonoBehaviour
         // 3️⃣ ⭐ Notificar al GameStateManager que un escapista ha sido asesinado
         if (gameStateManager != null)
         {
-            // Llamar al método público que dispara el evento
-            gameStateManager.NotifyEscapistKilled();
+            gameStateManager.NotifyEscapistKilled(playerId);
             Debug.Log($"[EscapistHealth] ✅ GameStateManager notificado del asesinato del player {playerId}");
         }
         else
