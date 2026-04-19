@@ -1,8 +1,6 @@
+ Red Hunt - Documentación de Implementación Real
 
-
-# Red Hunt - Documentación del Proyecto
-
-> Juego multijugador en Unity con arquitectura de red robusta, sincronización en tiempo real y lobby seguro.
+> Juego multijugador asimétrico en Unity con arquitectura de red robusta, sincronización en tiempo real y mecánicas de ataque/defensa/recolección.
 
 ![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?logo=unity)
 ![.NET](https://img.shields.io/badge/.NET-4.7.1%2B-purple)
@@ -18,25 +16,27 @@
 3. [Protocolo de red](#protocolo-de-red)
 4. [Flujos de mensajes y envío](#flujos-de-mensajes-y-envío)
 5. [Estructura de los mensajes](#estructura-de-los-mensajes)
-6. [Lógica de fragmentación](#lógica-de-fragmentación)
-7. [Ejemplos de implementación](#ejemplos-de-implementación)
+6. [Mecánicas del juego](#mecánicas-del-juego)
+7. [Ejemplos de implementación real](#ejemplos-de-implementación-real)
 8. [Tabla de scripts](#tabla-de-scripts)
 9. [Estructura del proyecto](#estructura-del-proyecto)
 10. [Interfaz del usuario](#interfaz-del-usuario)
-11. [Ejecución y uso](#ejecución-y-uso)
+11. [Flujo de juego](#flujo-de-juego)
 12. [Características principales](#características-principales)
 
 ---
 
 ## Descripción general
 
-**Red Hunt** implementa una arquitectura de red en 4 capas desacopladas para comunicación en tiempo real entre jugadores. Usa **UDP** como protocolo principal para garantizar baja latencia en movimiento, con un sistema de lobby sin condiciones de carrera y sincronización por snapshots cada 100ms.
+**Red Hunt** es un juego multijugador asimétrico con arquitectura de red en 4 capas. Usa **UDP** para baja latencia y sincronización cada 100ms mediante snapshots. 
+
+**Mecánica central:** Un jugador es **Killer** (atacante con daño) y 1+ jugadores son **Escapists** (recolectores de pistas con salud limitada). El Killer debe derrotar a los Escapists antes de que estos logren sus objetivos.
 
 El proyecto está estructurado en:
-- **Application Layer:** Lógica de negocio (lobby, jugadores, spawning)
-- **Domains Layer:** Modelos y entidades
-- **Network Layer:** Protocolos, transporte, serialización
-- **Presentation Layer:** UI, input, rendering
+- **Application Layer:** Lógica de negocio (lobby, roles, gamestate)
+- **Domains Layer:** Modelos (Player, PlayerSession)
+- **Network Layer:** UDP, serialización JSON, packets
+- **Presentation Layer:** UI, input, rendering, bootstrap modular
 
 ---
 
@@ -48,13 +48,13 @@ El proyecto está estructurado en:
 ┌──────────────────────────────────────────────┐
 │              PRESENTATION LAYER               │
 │  PlayerMovement · PlayerInputHandler          │
-│  RemotePlayerSync · LobbyUI · AdminUI         │
+│  RemotePlayerSync · KillerAttack · UI         │
 └────────────────────┬─────────────────────────┘
                      │ Events
 ┌────────────────────▼─────────────────────────┐
 │              APPLICATION LAYER                │
 │  LobbyManager · PlayerNetworkService          │
-│  RemotePlayerMovementManager · SpawnManager   │
+│  SpawnManager · GameStateManager · Mechanics  │
 └────────────────────┬─────────────────────────┘
                      │ Network Messages
 ┌────────────────────▼─────────────────────────┐
@@ -65,7 +65,7 @@ El proyecto está estructurado en:
                      │ UDP Datagrams
 ┌────────────────────▼─────────────────────────┐
 │              TRANSPORT LAYER                  │
-│  UdpTransport (puerto 12345 configurable)     │
+│  UdpTransport (puerto 7777 configurable)      │
 └────────┬───────────────┬────────────┬────────┘
          ▼               ▼            ▼
        HOST          CLIENT 1     CLIENT 2
@@ -78,7 +78,7 @@ t=0ms     PlayerInputHandler captura WASD + Mouse
           PlayerMovement aplica física al Rigidbody
 
 t=100ms   [Cliente] PlayerNetworkService.SendMove()
-            → MovePacket { position, rotation, velocity, isJumping }
+            → MovePacket { position, rotation, velocity }
             → Client envía UDP al servidor
 
           [Host] PlayerNetworkService.SendSnapshot()
@@ -97,7 +97,7 @@ t=116ms   RemotePlayerMovementManager.ProcessMove()
 ### UDP 
 
 **Características:**
-- Bajo latencia (ideal para movimiento)
+- Bajo latencia (ideal para movimiento y mecánicas en tiempo real)
 - Sin garantía de entrega (aceptable para movimiento)
 - Sin orden garantizado (manejado por timestamps)
 - Mejor para datos en tiempo real
@@ -114,8 +114,8 @@ UdpTransport.cs → Interfaz ITransport
 - Movimiento sin retrasos de confirmación
 - Permite snapshots frecuentes (100ms)
 - Escalable a múltiples clientes
-
 ---
+
 
 ## Flujos de mensajes y envío
 
@@ -125,11 +125,16 @@ UdpTransport.cs → Interfaz ITransport
 |---|---|---|
 | ASSIGN_PLAYER | Servidor → Cliente | Asigna ID al cliente al conectarse |
 | LOBBY_STATE | Servidor → Todos | Sincroniza lista de jugadores del lobby |
-| PLAYER | Broadcast | Información de un jugador |
+| PLAYER_READY | Cliente → Servidor | Jugador marca como listo |
+| START_GAME | Servidor → Todos | Inicia el juego |
 | MOVE | Cliente → Servidor | Posición/rotación/velocidad local |
 | SNAPSHOT | Servidor → Todos | Estado de todos los jugadores |
-| REMOVE_PLAYER | Broadcast | Jugador desconectado o expulsado |
-| KICK | Servidor → Cliente | Expulsión por admin |
+| HEALTH_UPDATE | Cliente → Servidor | Actualización de salud del Escapist |
+| ESCAPISTS_CLUES | Servidor → Todos | Pistas recolectadas por Escapists |
+| ESCAPISTS_PASSED | Cliente → Servidor | Escapist alcanzó zona de victoria |
+| WIN_GAME | Servidor → Todos | Notifica condición de victoria/derrota |
+| REMOVE_PLAYER | Broadcast | Jugador desconectado |
+| KICK | Servidor → Cliente | Expulsión del lobby |
 | DISCONNECT | Cliente → Servidor | Desconexión limpia |
 
 ### Flujo Cliente → Servidor
@@ -189,7 +194,6 @@ Lógica de aplicación
   "position": { "x": 10.5, "y": 1.2, "z": 5.3 },
   "rotation": { "x": 0, "y": 0.707, "z": 0, "w": 0.707 },
   "velocity": { "x": 5.0, "y": 0.0, "z": 0.0 },
-  "isJumping": false,
   "timestamp": 1234567890
 }
 ```
@@ -203,19 +207,30 @@ Lógica de aplicación
 }
 ```
 
+#### PlayerReadyPacket
+
+```json
+{
+  "type": "PLAYER_READY",
+  "playerId": 2,
+  "role": "Killer"
+}
+```
+
 #### LobbyStatePacket
 
 ```json
 {
   "type": "LOBBY_STATE",
   "Players": [
-    { "Id": 1, "Name": "Host", "IsHost": true },
-    { "Id": 2, "Name": "Player_2", "IsHost": false }
+    { "Id": 1, "Name": "Host", "IsHost": true, "Role": "Killer" },
+    { "Id": 2, "Name": "Player_2", "IsHost": false, "Role": "Escapist" },
+    { "Id": 3, "Name": "Player_3", "IsHost": false, "Role": "Escapist" }
   ]
 }
 ```
 
-#### SnapshotPacket
+#### PlayerStateSnapshot
 
 ```json
 {
@@ -239,6 +254,40 @@ Lógica de aplicación
 }
 ```
 
+#### HealthUpdatePacket
+
+```json
+{
+  "type": "HEALTH_UPDATE",
+  "playerId": 2,
+  "currentHealth": 2,
+  "maxHealth": 3
+}
+```
+
+#### EscapistsCluesSnapshotPacket
+
+```json
+{
+  "type": "ESCAPISTS_CLUES",
+  "escapistClues": {
+    "2": ["clue_1", "clue_3", "clue_5"],
+    "3": ["clue_2", "clue_4"]
+  }
+}
+```
+
+#### WinGamePacket
+
+```json
+{
+  "type": "WIN_GAME",
+  "winner": "Killer",
+  "killerId": 1,
+  "reason": "All escapists defeated"
+}
+```
+
 ### Estructura de paquete base
 
 ```csharp
@@ -257,408 +306,475 @@ public class BasePacket
 
 ---
 
-## Lógica de fragmentación
+## Mecánicas del juego
 
-### Propósito
+Red Hunt implementa un sistema de juego asimétrico donde dos roles tienen objetivos opuestos:
 
-Fragmentar mensajes grandes en paquetes más pequeños para asegurar entrega confiable por UDP y evitar pérdida de datos en redes con MTU limitado.
+### 🔪 Killer (Atacante)
 
-### MTU (Maximum Transmission Unit)
+**Objetivo:** Derrotar a todos los Escapists antes de que cumplan sus objetivos.
 
-- Ethernet típico: 1500 bytes
-- UDP overhead: ~28 bytes (IP + UDP headers)
-- JSON overhead: ~50-100 bytes
-- Payload seguro: ~1300-1400 bytes
+**Implementación:** `KillerAttack.cs`
 
-### Estrategia de chunking
+**Mecánicas:**
+- **Ataque cuerpo a cuerpo:** Ataca al Escapist cercano con cooldown de 0.5s
+- **Daño por golpe:** 1 daño por ataque (configurable)
+- **Animación:** Triggers de ataque sincronizados con `PlayerAnimationController`
+- **Contacto automático:** El ataque se resuelve por distancia de proximidad
+- **Red:** Los ataques se envían a todos los clientes vía `BroadcastService`
+
+**Flujo de ataque:**
+```
+KillerAttack.Update()
+    ↓
+Detecta input de ataque local
+    ↓
+Valida cooldown (0.5s)
+    ↓
+Busca Escapist cercano
+    ↓
+Envía HEALTH_UPDATE packet
+    ↓
+BroadcastService envía a todos
+    ↓
+EscapistHealth recibe daño
+```
+
+### Escapist (Defensor/Recolector)
+
+**Objetivo:** Recolectar todas las pistas del mapa y llegar a zona de victoria.
+
+**Implementación:** `EscapistHealth.cs`, `ClueCollector.cs`, `PlayerWinTrigger.cs`
+---
+
+**Mecánicas principales:**
+
+#### 1. Sistema de Salud
+```csharp
+// EscapistHealth.cs
+private int maxHealth = 3;  // 3 impactos antes de morir
+public event Action<int, int> OnHealthChanged;  // (playerId, newHealth)
+public event Action<int> OnPlayerDied;          // (playerId)
+```
+
+**Estados:**
+- Salud > 0: Vivo y movible
+- Salud <= 0: Muerto (game over para ese jugador)
+- Recibe eventos de OnHealthChanged para UI
+
+#### 2. Recolección de Pistas
+```csharp
+// ClueCollector.cs
+// Presionar E para recolectar pistas cercanas
+OnInteract event → HandleInteractInput()
+    ↓
+Detecta ClueItemController cercano
+    ↓
+Envía OnClueCollected event
+    ↓
+EscapistClueRegistry.AddClue()
+    ↓
+EscapistCluesDisplay actualiza UI
+```
+
+**Características:**
+- Pistas esparcidas en el mapa como objetos interactuables
+- Se recolectan con la tecla "E" (interact)
+- Se registran en `EscapistClueRegistry`
+- UI muestra pistas recolectadas en tiempo real
+
+#### 3. Condición de Victoria
+```csharp
+// PlayerWinTrigger.cs
+OnTriggerEnter(Collider other)
+    ↓
+if (other.CompareTag("Win"))
+    ↓
+Envía EscapistsPassedSnapshot
+    ↓
+Servidor valida y actualiza estado
+    ↓
+WinGamePacket notifica a todos
+```
+
+**Condiciones de victoria:**
+- **Escapist gana:** Toca collider con tag "Win"
+- **Killer gana:** Todos los Escapist tienen health <= 0
+- La victoria se valida en servidor
+
+### 🔄 Sistema de Sincronización
+
+**Snapshot cada 100ms:** El host recolecta posición, rotación y velocidad de todos los jugadores y envía un snapshot único.
 
 ```csharp
-[System.Serializable]
-public class ChunkedPacket : BasePacket
+// PlayerNetworkService.cs
+if (isHost)
 {
-    public int chunkIndex;      // Índice del fragmento
-    public int totalChunks;     // Total de fragmentos
-    public string messageId;    // ID del mensaje original
-    public string payload;      // Contenido del fragmento
+    timeSinceLastSnapshot += Time.fixedDeltaTime;
+    if (timeSinceLastSnapshot >= snapshotRate) // 0.1s
+    {
+        SendPlayerStateSnapshot();  // Envía estado de TODOS
+        timeSinceLastSnapshot = 0f;
+    }
+}
+else
+{
+    timeSinceLastSnapshot += Time.fixedDeltaTime;
+    if (timeSinceLastSync >= syncRate)  // 0.1s
+    {
+        SendLocalPlayerPosition();  // Solo su MOVE
+        timeSinceLastSync = 0f;
+    }
 }
 ```
 
-### Ejemplo de fragmentación
+**Ventaja:** Reducción de bandwidth al usar un snapshot central en lugar de múltiples MOVEs.
 
-```
-Mensaje original: 5000 bytes
-Dividir en 4 fragmentos:
-
-Chunk 1: { chunkIndex: 0, totalChunks: 4, payload: 1300 bytes }
-Chunk 2: { chunkIndex: 1, totalChunks: 4, payload: 1300 bytes }
-Chunk 3: { chunkIndex: 2, totalChunks: 4, payload: 1300 bytes }
-Chunk 4: { chunkIndex: 3, totalChunks: 4, payload: 100 bytes }
-```
-
-### Algoritmo de recepción
+### ↔️ Interpolación de Movimiento Remoto
 
 ```csharp
-private Dictionary<string, List<ChunkedPacket>> chunks = 
-    new Dictionary<string, List<ChunkedPacket>>();
-
-public void ReceiveChunk(ChunkedPacket chunk)
-{
-    if (!chunks.ContainsKey(chunk.messageId))
-    {
-        chunks[chunk.messageId] = new List<ChunkedPacket>(chunk.totalChunks);
-    }
-    
-    chunks[chunk.messageId][chunk.chunkIndex] = chunk;
-    
-    // Verificar si todos los fragmentos han llegado
-    if (chunks[chunk.messageId].Count == chunk.totalChunks &&
-        chunks[chunk.messageId].TrueForAll(c => c != null))
-    {
-        ReconstructMessage(chunk.messageId);
-    }
-}
-
-private void ReconstructMessage(string messageId)
-{
-    var allChunks = chunks[messageId];
-    string fullMessage = string.Concat(allChunks.Select(c => c.payload));
-    
-    // Procesar mensaje completo
-    dispatcher.Dispatch(fullMessage, sender);
-    
-    chunks.Remove(messageId);
-}
+// RemotePlayerSync.cs
+OnRemotePositionReceived(MovePacket packet)
+    ↓
+transform.position = Lerp(current, target, speed * deltaTime)
+transform.rotation = Lerp(current, target, speed * deltaTime)
+rigidbody.velocity = packet.velocity
 ```
 
-### Timeout de fragmentos
-
-```csharp
-private void CleanupExpiredChunks()
-{
-    var now = Time.time;
-    var expired = chunks
-        .Where(kv => now - kv.Value.FirstOrDefault()?.receivedTime > 30f)
-        .Select(kv => kv.Key)
-        .ToList();
-    
-    foreach (var messageId in expired)
-    {
-        chunks.Remove(messageId);
-        Debug.LogWarning($"Timeout esperando fragmentos para {messageId}");
-    }
-}
-```
-
-**Estado actual:** Infraestructura lista, implementación de chunking automático en PacketBuilder.cs y recepción en PacketDispatcher.cs (próxima fase).
+La interpolación es **local y suave**, sin saltos de posición.
 
 ---
 
-## Ejemplos de implementación
+## Ejemplos de implementación real
 
-### Ejemplo 1: Enviar movimiento del jugador
+### Ejemplo 1: Killer ataca a Escapist
 
 ```csharp
-// En PlayerNetworkService.cs
-private void SendMovePacket()
+// KillerAttack.cs - Ataque del Killer
+private void Update()
 {
-    var movePacket = new MovePacket
+    if (!isLocal) return;  // Solo ejecutar en local
+    
+    timeSinceLastAttack += Time.deltaTime;
+    
+    if (inputHandler.IsAttacking && timeSinceLastAttack >= attackCooldown)
     {
-        type = "MOVE",
-        id = playerId,
-        position = transform.position,
-        rotation = transform.rotation,
-        velocity = rigidbody.velocity,
-        isJumping = animator.GetBool("IsJumping")
-    };
+        // Buscar Escapist cercano
+        EscapistHealth target = FindNearestEscapist();
+        
+        if (target != null)
+        {
+            timeSinceLastAttack = 0f;
+            
+            // Generar evento de ataque
+            target.TakeDamage(damagePerHit);
+            OnAttackConnected?.Invoke(playerId, target.PlayerId);
+            
+            // Enviar a todos los clientes
+            if (isHost && broadcastService != null)
+            {
+                var healthUpdateJson = packetBuilder.CreateHealthUpdate(
+                    target.PlayerId, 
+                    target.CurrentHealth
+                );
+                _ = broadcastService.SendToAll(healthUpdateJson);
+            }
+        }
+    }
+}
+```
+
+### Ejemplo 2: Escapist recibe daño
+
+```csharp
+// EscapistHealth.cs - Sistema de salud
+public void TakeDamage(int damage)
+{
+    if (!IsAlive) return;
     
-    string json = serializer.Serialize(movePacket);
-    client.SendToServerAsync(json);
-}
-```
-
-### Ejemplo 2: Recibir y procesar MovePacket
-
-```csharp
-// Registrar handler en PacketDispatcher
-dispatcher.Register("MOVE", HandleMovePacket);
-
-// Handler
-private void HandleMovePacket(string json, IPEndPoint sender)
-{
-    var movePacket = serializer.Deserialize<MovePacket>(json);
-    remotePlayerMovementManager.ProcessMove(movePacket);
-}
-```
-
-### Ejemplo 3: Interpolar movimiento remoto
-
-```csharp
-// En RemotePlayerSync.cs
-public void UpdateMovement(MovePacket movePacket)
-{
-    // Lerp suave de posición
-    targetPosition = movePacket.position;
-    transform.position = Vector3.Lerp(
-        transform.position, 
-        targetPosition, 
-        Time.deltaTime * interpolationSpeed
-    );
+    currentHealth -= damage;
+    OnHealthChanged?.Invoke(playerId, currentHealth);
     
-    // Rotar hacia objetivo
-    transform.rotation = Quaternion.Lerp(
-        transform.rotation,
-        movePacket.rotation,
-        Time.deltaTime * rotationSpeed
-    );
+    if (currentHealth <= 0)
+    {
+        HandleDeath();
+    }
+}
+
+private void HandleDeath()
+{
+    OnPlayerDied?.Invoke(playerId);
     
-    // Aplicar velocidad horizontal
-    rigidbody.velocity = new Vector3(
-        movePacket.velocity.x,
-        rigidbody.velocity.y,
-        movePacket.velocity.z
-    );
+    if (playerMovement != null)
+        playerMovement.enabled = false;  // Detener movimiento
+    
+    if (animationController != null)
+        animationController.PlayDeathAnimation();
 }
 ```
 
-### Ejemplo 4: Broadcasting a todos los clientes
+### Ejemplo 3: Escapist recolecta pistas
 
 ```csharp
-// En BroadcastService.cs
-public async Task BroadcastMessage(string message)
+// ClueCollector.cs - Recolección de pistas
+private void OnEnable()
 {
-    var allClients = clientConnectionManager.GetAllConnections();
-    await transport.SendToAll(message, allClients);
+    if (inputHandler != null)
+    {
+        inputHandler.OnInteract += HandleInteractInput;
+    }
+}
+
+private void HandleInteractInput()
+{
+    if (nearbyClueController == null) return;
+    
+    // Validar proximidad
+    float distance = Vector3.Distance(transform.position, nearbyClue.transform.position);
+    if (distance > interactionDistance) return;
+    
+    // Recolectar pista
+    string clueId = nearbyClueController.GetClueId();
+    clueRegistry.AddClue(clueId);
+    nearbyClueController.Collect();
+    
+    OnClueCollected?.Invoke(playerId, clueId);
+    
+    // Notificar UI
+    if (isLocal && OnClueCollected != null)
+    {
+        // UI se actualiza automáticamente
+    }
 }
 ```
 
-### Ejemplo 5: Registrar un handler de paquetes
+### Ejemplo 4: Escapist alcanza zona de victoria
 
 ```csharp
-// En ConnectionHandler.cs
-public void Init(PacketDispatcher dispatcher)
+// PlayerWinTrigger.cs - Sistema de victoria
+private void OnTriggerEnter(Collider other)
 {
-    dispatcher.Register("LOBBY_STATE", HandleLobbyState);
-    dispatcher.Register("ASSIGN_PLAYER", HandleAssignPlayer);
-    dispatcher.Register("REMOVE_PLAYER", HandleRemovePlayer);
+    if (gameWon) return;
+    
+    if (other.CompareTag("Win"))
+    {
+        HandleWinCollision();
+    }
 }
 
-private void HandleLobbyState(string json, IPEndPoint sender)
+private async void HandleWinCollision()
 {
-    var lobbyState = serializer.Deserialize<LobbyStatePacket>(json);
-    lobbyManager.UpdateLobbyState(lobbyState);
+    if (playerId < 0) return;
+    
+    gameWon = true;
+    passedEscapists.Add(playerId);
+    
+    // Notificar al servidor
+    if (lobbyNetworkService != null)
+    {
+        var passedJson = builder.CreateEscapistsPassedSnapshot(passedEscapists);
+        await server.BroadcastMessage(passedJson);
+    }
+    
+    // Verificar si todos los Escapist pasaron
+    if (AllEscapistsHavePassed())
+    {
+        gameStateManager?.SetGameWon();
+    }
 }
 ```
 
+### Ejemplo 5: Host envía snapshot cada 100ms
+
+```csharp
+// PlayerNetworkService.cs - Snapshot del host
+private void FixedUpdate()
+{
+    if (!isHost) return;  // Solo host envía snapshots
+    
+    timeSinceLastSnapshot += Time.fixedDeltaTime;
+    
+    if (timeSinceLastSnapshot >= snapshotRate)  // 0.1s
+    {
+        SendPlayerStateSnapshot();
+        timeSinceLastSnapshot = 0f;
+    }
+}
+
+private void SendPlayerStateSnapshot()
+{
+    var playersData = new Dictionary<int, (Transform transform, Vector3 velocity, bool isJumping)>();
+    
+    // Recolectar datos de TODOS los jugadores
+    var allPlayers = lobbyManager.GetAllPlayers();
+    foreach (var playerSession in allPlayers)
+    {
+        var playerGO = spawnManager.GetPlayerGameObject(playerSession.Id);
+        if (playerGO == null) continue;
+        
+        var playerMovementComponent = playerGO.GetComponent<PlayerMovement>();
+        playersData[playerSession.Id] = (
+            playerGO.transform,
+            playerMovementComponent.CurrentVelocity,
+            playerMovementComponent.IsJumping
+        );
+    }
+    
+    string snapshotJson = playerPacketBuilder.CreatePlayerStateSnapshot(playersData);
+    _ = broadcastService.SendToAll(snapshotJson);
+}
+```
 ---
-
 ## Tabla de scripts
 
-### Application Layer
+### Application Layer - Services
 
 | Script | Función |
 |--------|---------|
-| LobbyManager.cs | Control del estado del lobby |
-| LobbyNetworkService.cs | Comunicación de red del lobby |
-| AdminNetworkService.cs | Gestión de admin (kick, etc) |
-| PlayerNetworkService.cs | Sincronización de movimiento |
-| RemotePlayerMovementManager.cs | Gestor de jugadores remotos |
-| PlayerRegistry.cs | Registro de IDs de jugadores |
-| SpawnManager.cs | Spawn/remoción de jugadores |
-| JoinLobbyCommand.cs | Comando de unirse |
-| LeaveLobbyCommand.cs | Comando de salida |
+| LobbyManager.cs | Control del estado del lobby y gestión de jugadores |
+| LobbyNetworkService.cs | Comunicación de red del lobby (join, leave, ready, start) |
+| AdminNetworkService.cs | Gestión de admin (kick, pause, shutdown) |
+| PlayerRegistry.cs | Registro de IDs de jugadores con reutilización |
+
+### Application Layer - Systems
+
+| Script | Función |
+|--------|---------|
+| PlayerNetworkService.cs | Sincronización de movimiento: snapshots (host) + MOVEs (clientes) |
+| RemotePlayerMovementManager.cs | Gestor centralizado de jugadores remotos |
+| SpawnManager.cs | Spawn/remoción de jugadores (Killer y Escapist) |
+| GameStateManager.cs | Gestor del estado del juego (victoria/derrota) |
+
+### Application Layer - Gameplay Mechanics
+
+| Script | Función |
+|--------|---------|
+| KillerAttack.cs | Sistema de ataque del Killer |
+| EscapistHealth.cs | Sistema de salud del Escapist (3 puntos) |
+| ClueCollector.cs | Recolección de pistas para Escapist |
+| ClueItemController.cs | Control de items de pistas en el mapa |
+| PlayerWinTrigger.cs | Validación de condiciones de victoria |
+| DoorController.cs | Control de puertas interactuables |
 
 ### Domains Layer
 
 | Script | Función |
 |--------|---------|
 | Player.cs | Entidad del jugador |
-| PlayerSession.cs | Sesión de un jugador |
-| LobbyState.cs | Enumeración de estados |
-| PlayerType.cs | Tipo de jugador |
+| PlayerSession.cs | Sesión individual de jugador |
+| PlayerType.cs | Enumeración de roles (Killer, Escapist) |
 
-### Network Layer
+### Network Layer - Transporte
 
 | Script | Función |
 |--------|---------|
-| UdpTransport.cs | Transporte UDP |
-| Client.cs | Cliente de red |
-| Server.cs | Servidor de red |
-| PacketDispatcher.cs | Enrutador de paquetes |
-| PacketBuilder.cs | Constructor de paquetes |
-| JsonSerializer.cs | Serializador JSON |
-| ClientPacketHandler.cs | Handler de cliente |
-| AdminPacketHandler.cs | Handler de admin |
-| ConnectionHandler.cs | Handler de conexión |
-| BroadcastService.cs | Servicio de broadcast |
+| UdpTransport.cs | Implementación de transporte UDP |
+| Client.cs | Cliente de red (conexión al servidor) |
+| Server.cs | Servidor de red (escucha conexiones) |
+| BroadcastService.cs | Broadcast a todos los clientes |
+| ClientConnectionManager.cs | Gestión de conexiones cliente |
 
-### Network Packets
+### Network Layer - Dispatching y Handling
+
+| Script | Función |
+|--------|---------|
+| PacketDispatcher.cs | Enrutador de paquetes por tipo |
+| ConnectionHandler.cs | Manejo de conexión/desconexión |
+| AdminPacketHandler.cs | Manejo de paquetes admin |
+| LatencyHandler.cs | Manejo de ping/pong |
+
+### Network Layer - Packets
 
 | Script | Tipo | Función |
 |--------|------|---------|
-| BasePacket.cs | Base | Estructura base |
-| MovePacket.cs | MOVE | Movimiento |
-| AssignPlayerPacket.cs | ASSIGN_PLAYER | Asignar ID |
-| LobbyStatePacket.cs | LOBBY_STATE | Estado del lobby |
+| BasePacket.cs | Base | Estructura base { type } |
+| MovePacket.cs | MOVE | Posición, rotación, velocidad |
+| PlayerStateSnapshot.cs | SNAPSHOT | Estado de todos los jugadores |
+| HealthUpdatePacket.cs | HEALTH_UPDATE | Actualización de salud Escapist |
+| StartGamePacket.cs | START_GAME | Inicia el juego |
+| WinGamePacket.cs | WIN_GAME | Notifica condición de victoria |
+| EscapistsPassedSnapshotPacket.cs | ESCAPISTS_PASSED | Escapist llegó a zona win |
+| EscapistsCluesSnapshotPacket.cs | ESCAPISTS_CLUES | Estado de pistas recolectadas |
+| AssignPlayerPacket.cs | ASSIGN_PLAYER | Asigna ID al cliente |
+| PlayerReadyPacket.cs | PLAYER_READY | Jugador listo |
 | PlayerPacket.cs | PLAYER | Info del jugador |
-| RemovePlayerPacket.cs | REMOVE_PLAYER | Remoción |
-| KickPacket.cs | KICK | Expulsión |
-| DisconnectPacket.cs | DISCONNECT | Desconexión |
 
-### Presentation Layer
+### Network Layer - Serialización
 
 | Script | Función |
 |--------|---------|
-| PlayerMovement.cs | Movimiento del jugador |
-| PlayerInputHandler.cs | Handler de input |
-| RemotePlayerSync.cs | Sync de jugador remoto |
-| PlayerView.cs | Representación visual |
-| LobbyUI.cs | UI del lobby |
-| AdminUI.cs | UI de admin |
-| SpawnUI.cs | UI de spawn |
+| JsonSerializer.cs | Serializador JSON wrapper para JsonUtility |
+| PlayerPacketBuilder.cs | Constructor de paquetes de jugador |
+| AdminPacketBuilder.cs | Constructor de paquetes admin |
+| PacketBuilder.cs | Constructor general de paquetes |
+
+### Presentation Layer - UI
+
+| Script | Función |
+|--------|---------|
+| LobbyUI.cs | UI principal del lobby |
+| GameUI.cs | UI del gameplay |
+| WinUI.cs | UI de pantalla de victoria |
+| AdminUI.cs | UI de administración |
+| HealthUIDisplay.cs | Display de salud del Escapist |
+| EscapistCluesDisplay.cs | Display de pistas recolectadas |
+| LeaveButton.cs | Botón para abandonar |
+| ShutdownButton.cs | Botón para apagar servidor |
+| SpawnUI.cs | UI de spawn de jugadores |
+| PlayerIdLabelUI.cs | Etiqueta de ID de jugador |
+
+### Presentation Layer - Player
+
+| Script | Función |
+|--------|---------|
+| PlayerMovement.cs | Movimiento WASD 8 direcciones |
+| PlayerInputHandler.cs | Handler de input (WASD, E, Mouse, Click) |
+| RemotePlayerSync.cs | Interpolación suave de jugadores remotos |
+| PlayerView.cs | Representación visual del jugador |
+| PlayerAnimationController.cs | Control de animaciones |
+| PlayerWinTrigger.cs | Trigger de victoria |
+
+### Presentation Layer - Bootstrap
+
+| Script | Función |
+|--------|---------|
 | ModularLobbyBootstrap.cs | Orquestador principal |
+| ApplicationBootstrap.cs | Inicializa capa Application |
+| NetworkBootstrap.cs | Inicializa capa Network |
+| PresentationBootstrap.cs | Inicializa capa Presentation |
+| UIBindingBootstrap.cs | Wiring de eventos UI |
+| GameplayBootstrap.cs | Inicializa gameplay |
+| PlayerCameraBootstrap.cs | Inicializa cámara del jugador |
 
-### Installers
+### Utilidades
 
 | Script | Función |
 |--------|---------|
-| ApplicationInstaller.cs | Instala Application layer |
-| NetworkInstaller.cs | Instala Network layer |
-| PresentationInstaller.cs | Instala Presentation layer |
-| AdminInstaller.cs | Instala servicios admin |
+| GameManager.cs | Gestor estático del juego (pausa, escenas) |
+| CursorMonitor.cs | Monitoreo y control del cursor |
+| LatencyService.cs | Servicio de latencia (ping/pong) |
 
 ---
 
+---
 ## Estructura del proyecto
 
-### Movimiento del Player 
-- **Sistema de movimiento local:** Movimiento en 8 direcciones con velocidad fija, sistema de salto con detección de terreno y drag dinámico.
-- **Sistema de cámara:** Rotación vertical (pitch) en CameraHolder, rotación horizontal (yaw) en el cuerpo del jugador con sensibilidad configurable.
-- **Input handler modular:** Integración con Unity Input System (PlayerInput), acciones Move, Look y Jump con suscripción a eventos.
-- **Sincronización de movimiento:** Host envía snapshots de TODOS los jugadores, clientes envían solo su MOVE local con posición, rotación, velocidad e isJumping.
-- **Interpolación de jugadores remotos:** Lerp suave de posición/rotación, aplicación de velocidad horizontal, sincronización de estado con timestamp.
-- **Gestor centralizado de movimiento remoto:** RemotePlayerMovementManager registra/desregistra players remotos y procesa MovePackets.
+### Mecánicas principales implementadas
 
-- **Principales archivos nuevos:**
-  - `PlayerMovement.cs`: Manejo de movimiento (WASD), salto y look (mouse) con CameraHolder.
-  - `PlayerInputHandler.cs`: Integración con PlayerInput del InputSystem (Move, Look, Jump actions).
-  - `PlayerNetworkService.cs`: Sincronización de movimiento: host envía snapshots, clientes envían MOVEs, manejo de conexión bidireccional.
-  - `RemotePlayerMovementManager.cs`: Gestor centralizado de sincronización de jugadores remotos, registro y procesamiento de MovePackets.
-  - `RemotePlayerSync.cs`: Interpolación local de jugadores remotos, aplicación de velocidad y rotación.
-  - `MovePacket.cs`: Paquete de red con posición, rotación, velocidad e isJumping.
+Red Hunt implementa un **modelo asimétrico 1vsN** donde:
 
-### Lobby robusto y seguro
-- El host siempre es ID 1 (evita condiciones de carrera).
-- IDs de jugadores reutilizables y control de máximo de jugadores.
-- Flujo de join/leave/kick robusto: broadcast de REMOVE_PLAYER, limpieza local y desconexión ordenada.
-- Mejoras en handshake y transporte cliente-servidor, manejo de errores y desconexión.
-- Soporte para iniciar partida y sincronizar estado del lobby.
-
-- **Principales archivos modificados (lobby):**
-  - `LobbyNetworkService.cs`: Forzado de ID host, lógica de join/leave, shutdown ordenado, manejo de paquetes y sincronización de estado.
-  - `LobbyManager.cs`: Añadir players remotos con ID, bloqueo para operaciones remotas, control de límite y notificaciones.
-  - `PlayerRegistry.cs`: IDs reutilizables, métodos para aceptar IDs explícitos y actualizar tipo de jugador.
-  - `ClientConnectionManager.cs`: IDs de cliente desde 2, reutilización y limpieza.
-  - `ClientPacketHandler.cs`: Manejo de asignación de player, desconexión y limpieza de estado.
-  - `ClientState.cs`: Estado de conexión y eventos.
-  - `Client.cs`: Handshake robusto, mejor manejo de transporte y desconexión.
-  - `Server.cs`: Dispatch de mensajes y limpieza.
-  - `BroadcastService.cs`: Broadcast a todos los clientes.
-  - `PacketBuilder.cs`: Nuevos builders para todos los paquetes clave.
-  - `SpawnManager.cs`: Spawn/remove de players remotos y posiciones.
-  - `UI/Admin/*`: Listado de jugadores, botón kick, flujo de kick y limpieza de estado.
-  - `Network/Handlers/*`: Manejo centralizado y robusto de paquetes admin/connection.
-  - `JoinLobbyCommand.cs` y `LeaveLobbyCommand.cs`: Integración de comandos en el flujo de lobby.
-  - **Documentación:** Registro de cambios y explicación de problemas UDP/reordenamiento y soluciones.
-
-## Objetivos cumplidos
-
-- Evitar condiciones de carrera en asignación de IDs (host = ID 1 garantizado).
-- Flujo de join/leave/kick robusto y ordenado.
-- Reutilización segura de IDs y control del máximo de players.
-- Mejoras en handshake, transporte y manejo de errores.
-- Sincronización de estado y soporte para iniciar partida.
-- **Sistema de movimiento completo:** Input local (WASD + mouse), sincronización en red (MOVEs + snapshots de host), interpolación de players remotos.
-- **Controlador de cámara funcional:** Rotación vertical/horizontal con sensibilidad configurable y sistema de CameraHolder.
-- **Integración de InputSystem:** Acciones Move, Look y Jump mapeadas y funcionales.
-
+- **1 Killer:** Atacante con objetivo de derrotar a los Escapists mediante daño cuerpo a cuerpo
+- **N Escapists:** Defensores con objetivo de recolectar pistas y llegar a zona de victoria
+- **Movimiento:** WASD en 8 direcciones (sin saltos)
+- **Sistema de salud:** Escapists tienen 3 puntos de vida; cada ataque del Killer quita 1
+- **Sistema de pistas:** Pistas esparcidas en el mapa que los Escapists pueden recolectar
+- **Victoria:** Killer gana si mata todos; Escapist gana si llega a zona win
+- **Red:** UDP con snapshots 100ms, sincronización suave con Lerp
 ---
-
-## Resumen Ejecutivo
-
-El proyecto ahora cuenta con una **arquitectura profesional y escalable**:
-- Separación clara de capas (Network, Application, Presentation)
-- Patrón Installers para inicialización limpia
-- Sin God Classes
-- Bajo acoplamiento
-- Fácil de testear y mantener
-
----
-
 
 ## Arquitectura actual
 
 ---
-
-### ¿Qué hace cada script principal?
-
-#### Application
-- **AdminNetworkService.cs:** Gestiona la lógica de administración de red (acciones de admin, como kick, desde el cliente o servidor).
-- **LobbyManager.cs:** Controla el estado y la lógica del lobby, incluyendo la gestión de jugadores y el flujo de entrada/salida.
-- **LobbyNetworkService.cs:** Encapsula la comunicación de red específica del lobby (join, leave, sincronización de estado).
-- **JoinLobbyCommand.cs / LeaveLobbyCommand.cs:** Comandos para unirse o salir del lobby, integrados en el flujo de comandos.
-- **ILobbyCommand.cs:** Interfaz base para comandos del lobby.
-- **PlayerRegistry.cs:** Lleva el registro de los jugadores activos y sus IDs, permitiendo reutilización y control de máximo.
-- **PlayerSession.cs:** Representa la sesión individual de un jugador.
-- **SpawnManager.cs:** Gestiona el spawn y remoción de jugadores en la escena.
-- **PlayerNetworkService.cs:** Sincronización de movimiento: host envía snapshots de todos los players, clientes envían MOVEs locales, manejo de conexión bidireccional.
-- **RemotePlayerMovementManager.cs:**  Gestor centralizado que registra/desregistra players remotos y procesa MovePackets, dispara eventos de movimiento.
-
-#### Domains
-- **Player.cs:** Entidad que representa a un jugador.
-- **LobbyState.cs / PlayerType.cs:** Enumeraciones para el estado del lobby y tipos de jugador.
-
-#### Network
-- **PacketDispatcher.cs:** Encargado de distribuir los paquetes recibidos a los handlers correspondientes.
-- **AdminPacketHandler.cs / ConnectionHandler.cs:** Manejan la lógica de los paquetes de administración y conexión.
-- **IClient.cs, IServer.cs, ITransport.cs, IGameConnection.cs, ISerializer.cs:** Interfaces para abstracción de cliente, servidor, transporte y serialización.
-- **KickPacket.cs:** Paquete específico para expulsar jugadores.
-- **AdminPacketBuilder.cs / PacketBuilder.cs / BasePacket.cs:** Construcción y definición de paquetes de red.
-- **AssignPlayerPacket.cs, AssignRejectPacket.cs, LobbyStatePacket.cs, PlayerPacket.cs, PlayerReadyPacket.cs:** Paquetes para sincronización y gestión de jugadores.
-- **DisconnectPacket.cs, RemovePlayerPacket.cs:** Paquetes para desconexión y remoción de jugadores.
-- **MovePacket.cs:** Paquete de movimiento con posición, rotación, velocidad e isJumping.
-- **JsonSerializer.cs:** Serializador JSON para los datos de red.
-- **Client.cs, ClientPacketHandler.cs, ClientState.cs:** Lógica y estado del cliente de red.
-- **BroadcastService.cs, ClientConnection.cs, ClientConnectionManager.cs, Server.cs:** Lógica de servidor, conexiones y broadcast.
-- **UdpTransport.cs:** Implementación del transporte UDP.
-
-
-
-#### Presentation
-- **Sistema modular de bootstrap:**
-  - Se eliminó la God Class `GameBootstrap`/`LobbyBootstrap` y se reemplazó por un sistema modular basado en `ModularLobbyBootstrap`.
-  - `ModularLobbyBootstrap` orquesta la inicialización y conexión de los bootstraps autónomos:
-    - **ApplicationBootstrap:** Inicializa y expone los servicios de la capa Application, reexpone eventos clave (join/leave player).
-    - **NetworkBootstrap:** Inicializa la red, conecta con Application y expone eventos de red (asignación de ID, desconexión, etc.).
-    - **PresentationBootstrap:** Gestiona la UI y conecta los paneles visuales con los servicios y eventos de Application/Network.
-    - **UIBindingBootstrap:** Realiza el binding de eventos entre la UI y los servicios, permitiendo flujos desacoplados y testables.
-  - Cada bootstrap es autónomo y testable, y ModularLobbyBootstrap los orquesta y conecta.
-- **AdminInstaller.cs, ApplicationInstaller.cs, NetworkInstaller.cs, PresentationInstaller.cs:** Instalan y configuran dependencias de cada capa.
-- **PlayerView.cs:** Representación visual del jugador.
-- **PlayerMovement.cs:** Sistema de movimiento del jugador: WASD para movimiento en 8 direcciones, salto con detección de terreno, drag dinámico.
-- **PlayerInputHandler.cs:** Handler de input integrado con PlayerInput del InputSystem: Move, Look y Jump actions con eventos.
-- **RemotePlayerSync.cs:** Interpolación suave de posición/rotación para jugadores remotos, aplicación de velocidad desde red.
-- **UI/Admin/**
-  - **AdminPlayerEntry.cs, AdminUI.cs:** UI para administración de jugadores.
-- **UI/Lobby/**
-  - **LobbyUI.cs:** UI principal del lobby, maneja eventos de conexión, roles y estado de la sala.
-  - **LeaveButton.cs:** Botón modular para abandonar el lobby, con control de visibilidad e interacción.
-  - **ShutdownButton.cs:** Botón modular para apagar el servidor, con eventos y control de estado.
-  - **SpawnUI.cs:** UI para mostrar y gestionar el spawn de jugadores, posiciones y roles.
-
-Este sistema modular permite desacoplar responsabilidades, facilita el testing y la extensión, y elimina dependencias circulares y God Classes. Cada bootstrap puede evolucionar de forma independiente y ModularLobbyBootstrap se encarga de la orquestación y el wiring de eventos.
-
----
-
 ### Flujo principal del sistema
 
 1. **Inicio:** Se inicializan los Installers y el ModularGameBootstrap.
@@ -967,105 +1083,165 @@ START
                 └─ DISCONNECTED
 ```
 
-### Componentes de UI
+### Componentes de UI clave
 
 | Componente | Ubicación | Función |
 |-----------|-----------|---------|
-| LobbyUI.cs | Canvas/LobbyPanel | Pantalla principal del lobby |
-| AdminUI.cs | Canvas/AdminPanel | Panel de administración |
-| SpawnUI.cs | Canvas/SpawnPanel | Mostrar jugadores spawned |
-| LeaveButton.cs | Canvas/LeaveButton | Abandonar lobby |
-| ShutdownButton.cs | Canvas/ShutdownButton | Apagar servidor |
-| AdminPlayerEntry.cs | Canvas/AdminPanel/PlayersList | Entrada de jugador |
+| LobbyUI.cs | Canvas/LobbyPanel | Selección de rol y estado del lobby |
+| HealthUIDisplay.cs | Canvas/GameplayPanel | Muestra salud del Escapist (3/3) |
+| EscapistCluesDisplay.cs | Canvas/GameplayPanel | Muestra pistas recolectadas (2/5) |
+| WinUI.cs | Canvas/WinPanel | Pantalla de victoria con estadísticas |
+| PlayerIdLabelUI.cs | Encima de cada jugador | Etiqueta flotante con ID |
+| AdminUI.cs | Canvas/AdminPanel | Panel de admin (solo host) |
+
+### Estados del UI según rol
+
+**Killer:**
+- Mostrar contador de ataques
+- Indicador de enemigos activos
+- Cooldown de ataque visual
+
+**Escapist:**
+- Mostrar barra de salud (3/3)
+- Mostrar pistas recolectadas (X/5)
+- Objetivo principal visible
 
 ---
 
-## Ejecución y uso
+## Flujo de juego
 
-### Requisitos
-
-- Unity 2021.3 LTS o superior
-- .NET Framework 4.7.1+
-- Windows, macOS, Linux
-
-### Compilación
-
-```bash
-# Navegar al directorio del proyecto
-cd red-hunt
-
-# Compilar con dotnet
-dotnet build red-hunt.slnx
-
-# Ejecutar desde Unity Editor o build compilado
-```
-
-### Modo Host
-
-1. Abrir escena LobbyScene
-2. Seleccionar Host → Iniciar
-3. El servidor escucha en el puerto configurado (por defecto 12345)
-
-### Modo Cliente
-
-1. Abrir escena LobbyScene
-2. Seleccionar Cliente
-3. Ingresar IP del host (ej: 127.0.0.1)
-4. Presionar Conectar
-5. Esperar asignación de ID
-
-### Flujo típico de sesión
+### Fase 1: Selección de roles (Lobby)
 
 ```
-1. Host inicia servidor
-2. Clientes se conectan → Reciben ID (2, 3, 4...)
-3. Clientes reciben LOBBY_STATE
-4. Players aparecen en la escena (SpawnManager)
-5. PlayerInputHandler captura input
-6. PlayerMovement aplica física
-7. PlayerNetworkService sincroniza:
-   - Host: snapshots cada 100ms
-   - Clientes: MOVEs cada 100ms
-8. RemotePlayerSync interpola movimiento
-9. Host presiona "Iniciar partida"
-10. Transición a GameScene
+1. Host inicia servidor (escena LobbyScene)
+2. Clientes se conectan con IP del host
+3. Ambos seleccionan rol: Killer o Escapist
+4. Host presiona "INICIAR PARTIDA"
+5. Validación servidor:
+   - Al menos 1 Killer
+   - Al menos 1 Escapist
+   - Máx 4 jugadores
+6. Transición a GameScene
 ```
 
-### Controles
+### Fase 2: Gameplay
 
-| Tecla | Acción |
-|---|---|
-| WASD | Movimiento en 8 direcciones |
-| Mouse | Rotación de cámara |
-| Espacio | Saltar |
-| ESC | Menú / Desconectar |
+```
+[Killer]                    [Escapist 1]              [Escapist 2]
+  ↓                            ↓                          ↓
+Búsqueda activa          Recolecta pistas         Recolecta pistas
+  ↓                            ↓                          ↓
+Detecta cercanos         Llega a pista 1          Recolecta pista 1
+  ↓                            ↓                          ↓
+Ataque (Click)           Envía OnClueCollected    Recolecta pista 2
+  ↓                            ↓                          ↓
+HealthUpdate packet      Recolecta pistas 2-5    Alcanza zona Win
+  ↓                            ↓                          ↓
+Broadcast a todos        Llega a zona Win         Envía WinGamePacket
+  ↓                            ↓                          ↓
+Escapist 1 sufre daño    Logra victoria          Victoria Escapist
+```
+
+### Fase 3: Fin de partida
+
+```
+Condición: Un bando ha ganado
+
+VICTORIA KILLER:
+  ↓
+  Todos los Escapist tienen health <= 0
+  ↓
+  Servidor envía WinGamePacket
+  ↓
+  Mostrar WinUI con estadísticas
+  ↓
+  Opción: Volver al lobby
+
+VICTORIA ESCAPIST:
+  ↓
+  N Escapists alcanzaron zona Win
+  ↓
+  PlayerWinTrigger envía EscapistsPassedSnapshot
+  ↓
+  Servidor valida y envía WinGamePacket
+  ↓
+  Mostrar WinUI con estadísticas
+```
+
+### Sincronización en red
+
+```
+[Host]
+  ↓
+Recolecta estado de todos los jugadores
+  ↓
+Cada 100ms (snapshotRate = 0.1)
+  ↓
+Crea PlayerStateSnapshot
+  ↓
+Envía a todos vía BroadcastService
+  ↓
+[Clientes]
+  ↓
+Reciben snapshot
+  ↓
+RemotePlayerMovementManager.ProcessMovePacket()
+  ↓
+RemotePlayerSync.OnRemotePositionReceived()
+  ↓
+Lerp suave a nueva posición
+  ↓
+Resultado: Movimiento fluido sin saltos
+```
 
 ---
 
 ## Características principales
 
+### Implementadas y funcionando
+
 | Característica | Detalle |
 |---|---|
-| Movimiento | 8 direcciones (WASD), salto con detección de terreno, cámara pitch/yaw |
-| Sincronización | Host envía snapshots de todos los jugadores cada 100ms |
-| Lobby seguro | Host siempre ID 1, IDs reutilizables, sin condiciones de carrera |
-| Arquitectura | 4 capas: Application, Domains, Network, Presentation |
-| Interpolación | Lerp suave de posición y rotación para jugadores remotos |
-| Serialización | JSON con JsonUtility para compatibilidad total |
-| Escalabilidad | Fácil de extender, bajo acoplamiento |
-| Testeable | Inyección de dependencias, interfaces limpias |
+| **Movimiento** | WASD en 8 direcciones, cámara con mouse (pitch/yaw), sin saltos |
+| **Roles asimétricos** | Killer (atacante) vs Escapist (defensor/recolector) |
+| **Sistema de ataque** | Killer ataca con cooldown de 0.5s, daño 1 por golpe |
+| **Sistema de salud** | Escapist tiene 3 puntos de vida; muere al llegar a 0 |
+| **Recolección de pistas** | Escapist presiona E para recolectar pistas del mapa |
+| **Sistema de victoria** | Killer gana eliminando todos; Escapist gana alcanzando zona win |
+| **Sincronización de red** | Snapshots cada 100ms, UDP, low latency |
+| **Interpolación** | Movimiento remoto suave con Lerp |
+| **Arquitectura modular** | 4 capas (Network, Application, Domains, Presentation) |
+| **Bootstrap limpio** | Installers + BoostrapModular, sin God Classes |
+| **Lobby robusto** | Join/Leave/Ready/Kick con validación servidor |
+| **Serialización JSON** | JsonUtility para compatibilidad total |
+| **UI completa** | Lobby, Gameplay, Win, Health, Clues, Admin |
+| **Animaciones** | PlayerAnimationController sincronizado |
+
+---
+## Requisitos técnicos
+
+- **Unity:** 2021.3 LTS o superior
+- **.NET Framework:** 4.7.1+
+- **OS:** Windows, macOS, Linux
+- **Networking:** UDP (configurable puerto 7777)
+- **Resolución:** 1920x1080 (configurable)
+- **FPS Target:** 60 (configurable)
 
 ---
 
-## Roadmap
+## Controles del juego
 
-- [ ] Fragmentación automática de mensajes grandes (chunking sobre MTU)
-- [ ] Predicción de movimiento (dead reckoning)
-- [ ] TCP como fallback para mensajes críticos
-- [ ] Sistema de autoridad distribuida
-- [ ] Persistencia de estado en base de datos
-- [ ] Balanceo de carga entre servidores
+| Input | Acción |
+|-------|--------|
+| **WASD** | Movimiento en 8 direcciones |
+| **Mouse** | Rotación de cámara (pitch/yaw) |
+| **Click izquierdo** | Atacar (Killer) |
+| **E** | Interactuar/Recolectar pistas (Escapist) |
+| **Tab** | Toggle pause (solo host) |
+| **ESC** | Menú / Salir |
 
 ---
 
 *Versión 1.0.0 — Última actualización: 19/04/2026*
+
+**Nota:** Este README refleja la implementación real del proyecto. Toda sección o mecánica NO incluida en este documento NO está implementada en el código.
