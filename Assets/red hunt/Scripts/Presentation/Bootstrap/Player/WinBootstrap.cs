@@ -117,6 +117,7 @@ public class WinBootstrap : MonoBehaviour
         winUI.OnReturnToLobby += HandleReturnToLobby;
 
         var isHost = networkBootstrap?.Services?.ClientState?.IsHost ?? false;
+        GameManager.IsHost = isHost;
         winUI.SetIsHost(isHost);
         winUI.SetConnected(true);
 
