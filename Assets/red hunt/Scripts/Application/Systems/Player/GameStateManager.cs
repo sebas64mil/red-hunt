@@ -50,6 +50,23 @@ public class GameStateManager : MonoBehaviour
         Debug.Log($"[GameStateManager] ✅ Player {playerId} inicializado - Tipo: {playerType}, Salud: {maxHealth}/{maxHealth}");
     }
 
+    public void RemovePlayer(int playerId)
+    {
+        if (!playerHealthStates.TryGetValue(playerId, out var state))
+        {
+            return;
+        }
+
+        playerHealthStates.Remove(playerId);
+
+        Debug.Log($"[GameStateManager] 🧹 Player {playerId} eliminado del estado (tipo={state.PlayerType})");
+
+        if (state.PlayerType == PlayerType.Escapist)
+        {
+            CheckAllEscapistsDead();
+        }
+    }
+
     public void UpdatePlayerHealth(int playerId, int newHealth)
     {
         if (!playerHealthStates.TryGetValue(playerId, out var state))

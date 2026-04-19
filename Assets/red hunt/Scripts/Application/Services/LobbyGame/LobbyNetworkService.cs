@@ -279,7 +279,62 @@ public class LobbyNetworkService : MonoBehaviour
     {
         Debug.Log($"[LobbyNetworkService] Removing player {id}");
 
+        passedEscapistsHost.Remove(id);
+
         SpawnManagerInstance?.RemovePlayer(id);
+
+        if (!GameStarted)
+        {
+            return;
+        }
+
+        try
+        {
+            var gameState = FindFirstObjectByType<GameStateManager>();
+            if (gameState != null)
+            {
+                gameState.RemovePlayer(id);
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[LobbyNetworkService] Error actualizando GameStateManager al salir player {id}: {e.Message}");
+        }
+
+        if (!isHost)
+        {
+            return;
+        }
+
+        try
+        {
+            var targetIds = lobbyManager.GetAllPlayers()
+                .Where(p => p.PlayerType == PlayerType.Escapist.ToString() && p.IsConnected)
+                .Select(p => p.Id)
+                .Distinct()
+                .OrderBy(pid => pid)
+                .ToList();
+
+            var passedIds = passedEscapistsHost
+                .Where(pid => targetIds.Contains(pid))
+                .Distinct()
+                .OrderBy(pid => pid)
+                .ToList();
+
+            var snapshotJson = packetBuilder.CreateEscapistsPassedSnapshot(targetIds, passedIds);
+
+            if (broadcastService != null)
+            {
+                Debug.Log($"[LobbyNetworkService] 📡 HOST: reenviando ESCAPISTS_PASSED_SNAPSHOT tras disconnect/kick (passed={passedIds.Count}/{targetIds.Count})");
+                _ = broadcastService.SendToAll(snapshotJson);
+            }
+
+            HandleEscapistsPassedSnapshotPacket(snapshotJson);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[LobbyNetworkService] Error reenviando snapshot de escapistas tras Left: {e.Message}");
+        }
     }
 
     // ==================== EVENTOS DE RED ====================

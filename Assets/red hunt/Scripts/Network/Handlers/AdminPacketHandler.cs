@@ -81,7 +81,7 @@ public class AdminPacketHandler
                 return;
             }
 
-             ApplyKickLocally(pkt.targetId);
+            ApplyKickLocally(pkt.targetId);
         }
         catch (System.Exception e)
         {
@@ -136,7 +136,34 @@ public class AdminPacketHandler
 
             if (myId == targetId)
             {
-                Debug.Log("[AdminPacketHandler] Soy el objetivo del kick -> limpiando estado local y desconectando cliente local");
+                Debug.Log("[AdminPacketHandler] Soy el objetivo del kick -> volviendo a Lobby/MainMenu y desconectando");
+
+                try
+                {
+                    var boot = ModularLobbyBootstrap.Instance;
+                    if (boot != null)
+                    {
+                        var presentation = boot.GetComponent<PresentationBootstrap>();
+                        if (presentation != null)
+                        {
+                            presentation.SetReturningFromGameScene(true);
+                        }
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning($"[AdminPacketHandler] Error marcando retorno a lobby: {e.Message}");
+                }
+
+                try
+                {
+                    GameManager.SetCursorVisible(true);
+                    GameManager.ChangeScene("Lobby");
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning($"[AdminPacketHandler] Error cambiando a escena Lobby tras kick: {e.Message}");
+                }
 
                 try
                 {
