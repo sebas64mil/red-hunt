@@ -10,10 +10,8 @@ public static class GameManager
     // ----------------- Enable or disable cursor ------------------
     public static void SetCursorVisible(bool state)
     {
-        // Host siempre tiene cursor visible
-        bool actualState = IsHost ? true : state;
-        Cursor.visible = actualState;
-        Cursor.lockState = actualState ? CursorLockMode.None : CursorLockMode.Locked;
+        Cursor.visible = state;
+        Cursor.lockState = state ? CursorLockMode.None : CursorLockMode.Locked;
     }
 
     // ----------------- Change scene ------------------
