@@ -41,9 +41,31 @@ public static class GameManager
     }
 
     // ----------------- Toggle Pause ------------------
-    public static void TogglePause()
+    public static async void TogglePause()
     {
-        SetPause(!IsPaused);
+        bool newPause = !IsPaused;
+
+        if (IsHost && AdminService != null)
+        {
+            bool success = await AdminService.SetGlobalPause(newPause);
+            if (success)
+            {
+                SetPause(newPause);
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] No se pudo enviar la pausa global al servidor");
+            }
+        }
+        else if (IsHost)
+        {
+            Debug.LogWarning("[GameManager] AdminService no inicializado; aplicando pausa localmente");
+            SetPause(newPause);
+        }
+        else
+        {
+            Debug.LogWarning("[GameManager] Solo el host puede alternar la pausa global");
+        }
     }
 
     // ----------------- Restart current scene ------------------
