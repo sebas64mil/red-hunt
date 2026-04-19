@@ -894,6 +894,10 @@ Assets/red hunt/Scripts/
 └──────────────────────────────┘
 ```
 
+<p align="center">
+  <img src="docs/screenshots/lobby.png" alt="Red Hunt Lobby" width="700"/>
+</p>
+
 #### 2. Pantalla de conexión (Connect)
 ```
 HOST:
