@@ -992,7 +992,6 @@ public class LobbyNetworkService : MonoBehaviour
             }
         }
 
-        Debug.LogWarning($"[LobbyNetworkService] ⚠️ No se encontró pista {clueId} en escena");
     }
 
     // ⭐ AGREGAR ESTE MÉTODO

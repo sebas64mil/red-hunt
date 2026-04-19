@@ -240,7 +240,37 @@ public class GameplayBootstrap : MonoBehaviour
         
         SetupLocalPlayerMovement();
         SetupRemotePlayerSyncing();
+
+        SetupDoorController();
+
         Debug.Log("[GameplayBootstrap] Inicializado para PlayerId " + localPlayerId);
+    }
+
+    private void SetupDoorController()
+    {
+        try
+        {
+            var clueRegistry = applicationBootstrap?.Services?.ClueRegistry;
+            if (clueRegistry == null)
+            {
+                Debug.LogError("[GameplayBootstrap] ❌ No se puede inicializar DoorController: ClueRegistry es NULL");
+                return;
+            }
+
+            var door = FindFirstObjectByType<DoorController>();
+            if (door == null)
+            {
+                Debug.LogWarning("[GameplayBootstrap] ⚠️ DoorController no encontrado en escena");
+                return;
+            }
+
+            door.Init(clueRegistry);
+            Debug.Log($"[GameplayBootstrap] ✅ DoorController inicializado con registry: {clueRegistry.GetHashCode()}");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[GameplayBootstrap] ❌ Error en SetupDoorController: {ex.Message}");
+        }
     }
 
     private void SetupGameUI()

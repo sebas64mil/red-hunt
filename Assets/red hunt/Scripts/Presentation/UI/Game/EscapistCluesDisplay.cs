@@ -41,7 +41,6 @@ public class EscapistCluesDisplay : MonoBehaviour
     {
         if (!initialized || localPlayerId <= 0)
         {
-            Debug.LogWarning($"[EscapistCluesDisplay] ⚠️ OnSnapshotReceived ignorado: initialized={initialized}, localPlayerId={localPlayerId}");
             return;
         }
 
