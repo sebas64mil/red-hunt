@@ -2752,8 +2752,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 361.42004, y: -80}
-  m_SizeDelta: {x: 499.8, y: 50}
+  m_AnchoredPosition: {x: 361.42004, y: -102}
+  m_SizeDelta: {x: 586.51, y: 122.8}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1274111962
 MonoBehaviour:
@@ -2775,7 +2775,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Titulo
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: e99fa59530c722c4087574a07198e87a, type: 2}
   m_sharedMaterial: {fileID: 2449792875014999202, guid: e99fa59530c722c4087574a07198e87a, type: 2}
@@ -4338,7 +4338,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Descripcion
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 84557e28cfc452c439f0b3300471869e, type: 2}
   m_sharedMaterial: {fileID: -2911976556973851306, guid: 84557e28cfc452c439f0b3300471869e, type: 2}
@@ -4373,7 +4373,7 @@ MonoBehaviour:
   m_fontSizeMax: 72
   m_fontStyle: 0
   m_HorizontalAlignment: 2
-  m_VerticalAlignment: 512
+  m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: 0
   m_characterHorizontalScale: 1
@@ -4832,6 +4832,10 @@ MonoBehaviour:
   descriptionText: {fileID: 1827922187}
   leaveButton: {fileID: 251836644}
   shutdownButton: {fileID: 1703834867}
+  killerTitle: El Hambre Fue Satisfecha
+  killerDescription: "No dej\xF3 ni rastro\u2026 se devor\xF3 a las Caperucitas."
+  escapistTitle: 
+  escapistDescription: "Las Caperucitas escaparon\u2026 y el peligro desapareci\xF3."
 --- !u!114 &2040378136
 MonoBehaviour:
   m_ObjectHideFlags: 0

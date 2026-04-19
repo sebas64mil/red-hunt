@@ -15,6 +15,7 @@ public class GameplayBootstrap : MonoBehaviour
     private PresentationBootstrap presentationBootstrap;
 
     private RemotePlayerMovementManager remotePlayerMovementManager;
+    private GameStateManager gameStateManager;
 
     private int localPlayerId = -1;
     private bool initialized = false;
@@ -36,6 +37,12 @@ public class GameplayBootstrap : MonoBehaviour
         healthUIDisplay = healthUIDisplayReference;
 
         remotePlayerMovementManager = new RemotePlayerMovementManager();
+        gameStateManager = FindFirstObjectByType<GameStateManager>();
+
+        if (gameStateManager == null)
+        {
+            Debug.LogError("[GameplayBootstrap] ❌ GameStateManager no encontrado en escena - WIN CONDITION FALLARÁ");
+        }
 
         if (networkBootstrap.Services?.ClientState != null)
         {
@@ -95,6 +102,13 @@ public class GameplayBootstrap : MonoBehaviour
                 Debug.Log("[GameplayBootstrap] Reiniciando para nueva partida...");
                 initialized = false;
                 gameUI = null;
+            }
+            
+            // ⭐ Reinicializar GameStateManager para nueva partida
+            gameStateManager = FindFirstObjectByType<GameStateManager>();
+            if (gameStateManager != null)
+            {
+                InitializeGameState();
             }
         }
         
@@ -156,6 +170,43 @@ public class GameplayBootstrap : MonoBehaviour
         catch (Exception e)
         {
             Debug.LogWarning($"[GameplayBootstrap] Error desactivando movimiento: {e.Message}");
+        }
+    }
+
+    // ⭐ NUEVO: Inicializar estado de todos los jugadores
+    private void InitializeGameState()
+    {
+        if (gameStateManager == null) return;
+
+        var lobbyManager = applicationBootstrap?.Services?.LobbyManager;
+        if (lobbyManager == null) return;
+
+        var allPlayers = lobbyManager.GetAllPlayers();
+        foreach (var playerSession in allPlayers)
+        {
+            // Parsear tipo de jugador
+            var playerType = playerSession.PlayerType == PlayerType.Killer.ToString() 
+                ? PlayerType.Killer 
+                : PlayerType.Escapist;
+
+            // Obtener salud máxima del prefab (por defecto 3 para escapistas)
+            int maxHealth = 3;
+            if (playerType == PlayerType.Escapist)
+            {
+                var spawnManager = presentationBootstrap?.Presentation?.SpawnManager;
+                var playerGO = spawnManager?.GetPlayerGameObject(playerSession.Id);
+                if (playerGO != null)
+                {
+                    var escapistHealth = playerGO.GetComponent<EscapistHealth>();
+                    if (escapistHealth != null)
+                    {
+                        maxHealth = escapistHealth.MaxHealth;
+                    }
+                }
+            }
+
+            gameStateManager.InitializePlayer(playerSession.Id, maxHealth, playerType);
+            Debug.Log($"[GameplayBootstrap] ✅ GameStateManager inicializado para player {playerSession.Id} ({playerType})");
         }
     }
 
@@ -364,6 +415,7 @@ public class GameplayBootstrap : MonoBehaviour
         // Si es Escapist (tiene EscapistHealth), inicializar con su salud
         if (escapistHealth != null)
         {
+            // ⭐ Solo pasar un ID (el del jugador local)
             healthUIDisplay.Init(escapistHealth, localPlayerId);
             Debug.Log("[GameplayBootstrap] ✅ HealthUIDisplay configurado para Escapist");
             return;

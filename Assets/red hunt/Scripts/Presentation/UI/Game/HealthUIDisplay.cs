@@ -9,6 +9,9 @@ public class HealthUIDisplay : MonoBehaviour
     [SerializeField] private Sprite health1Sprite;
     [SerializeField] private Sprite health0Sprite;
 
+    [Header("Cámara de Muerte")]
+    [SerializeField] private GameObject deathCameraGameObject;
+
     private EscapistHealth escapistHealth;
     private int playerId = -1;
     private bool isInitialized = false;
@@ -31,6 +34,11 @@ public class HealthUIDisplay : MonoBehaviour
             Debug.LogWarning("[HealthUIDisplay] ⚠️ Alguno de los sprites no está asignado");
         }
 
+        if (deathCameraGameObject == null)
+        {
+            Debug.LogWarning("[HealthUIDisplay] ⚠️ Death Camera GameObject no asignado");
+        }
+
         Debug.Log("[HealthUIDisplay] ✅ Componentes validados");
     }
 
@@ -48,6 +56,7 @@ public class HealthUIDisplay : MonoBehaviour
 
         // Suscribirse a eventos de cambio de salud
         escapistHealth.OnHealthChanged += HandleHealthChanged;
+        escapistHealth.OnPlayerDied += HandlePlayerDied;
 
         // Mostrar salud actual
         UpdateHealthDisplay();
@@ -71,6 +80,74 @@ public class HealthUIDisplay : MonoBehaviour
     private void HandleHealthChanged(int currentHealth, int maxHealth)
     {
         UpdateHealthDisplay();
+        
+        // ⭐ NUEVO: Si la salud llega a 0, activar cámara de muerte
+        if (currentHealth == 0)
+        {
+            ActivateDeathCamera();
+        }
+    }
+
+    private void HandlePlayerDied(int deadPlayerId)
+    {
+        // Solo log, la lógica ya está en HandleHealthChanged
+        if (deadPlayerId == playerId)
+        {
+            Debug.Log($"[HealthUIDisplay] 💀 Jugador local {playerId} ha muerto");
+        }
+    }
+
+    private void ActivateDeathCamera()
+    {
+        Debug.Log("[HealthUIDisplay] 📷 Salud llegó a 0 - activando cámara de muerte");
+
+        // Desactivar cámaras del player
+        DisablePlayerCameras();
+
+        // Activar cámara de muerte
+        if (deathCameraGameObject != null)
+        {
+            deathCameraGameObject.SetActive(true);
+            Debug.Log("[HealthUIDisplay] ✅ Death Camera activada");
+        }
+        else
+        {
+            Debug.LogWarning("[HealthUIDisplay] ⚠️ Death Camera GameObject no está asignado");
+        }
+    }
+
+    private void DisablePlayerCameras()
+    {
+        if (escapistHealth == null || escapistHealth.gameObject == null)
+        {
+            Debug.LogWarning("[HealthUIDisplay] ⚠️ No se puede desactivar cámaras - gameObject es NULL");
+            return;
+        }
+
+        GameObject playerGO = escapistHealth.gameObject;
+
+        // Buscar CameraHolder por nombre
+        var cameraHolder = playerGO.transform.Find("CameraHolder");
+        if (cameraHolder != null)
+        {
+            cameraHolder.gameObject.SetActive(false);
+            Debug.Log("[HealthUIDisplay] 📷 CameraHolder desactivado");
+            return;
+        }
+
+        // Fallback: Buscar cualquier transform que contenga "Camera" en el nombre
+        var transforms = playerGO.GetComponentsInChildren<Transform>();
+        foreach (var t in transforms)
+        {
+            if (t.name.Contains("Camera") || t.name.Contains("Cinemachine"))
+            {
+                t.gameObject.SetActive(false);
+                Debug.Log($"[HealthUIDisplay] 📷 Desactivada cámara: {t.name}");
+                return;
+            }
+        }
+
+        Debug.LogWarning("[HealthUIDisplay] ⚠️ No se encontró CameraHolder ni cámaras");
     }
 
     private void UpdateHealthDisplay()
@@ -112,6 +189,7 @@ public class HealthUIDisplay : MonoBehaviour
         if (escapistHealth != null)
         {
             escapistHealth.OnHealthChanged -= HandleHealthChanged;
+            escapistHealth.OnPlayerDied -= HandlePlayerDied;
             Debug.Log($"[HealthUIDisplay] 🗑️ Desuscrito de eventos para player {playerId}");
         }
     }
