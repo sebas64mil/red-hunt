@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -12,6 +13,9 @@ public class PlayerWinTrigger : MonoBehaviour
     private LobbyNetworkService lobbyNetworkService;
     private LobbyManager lobbyManager;
     private GameStateManager gameStateManager;
+
+    private readonly HashSet<int> passedEscapists = new();
+    private readonly HashSet<int> targetEscapists = new();
 
     private void Start()
     {
@@ -36,40 +40,44 @@ public class PlayerWinTrigger : MonoBehaviour
             return;
         }
 
-        // Importante: evitar doble suscripción si Init se llama más de una vez
+        // ✅ Nombre correcto del evento (GameStateManager)
         gameStateManager.OnAllEscapistsDead -= HandleAllEscapistsDead;
         gameStateManager.OnAllEscapistsDead += HandleAllEscapistsDead;
 
-        Debug.Log("[PlayerWinTrigger] ✅ Suscrito a OnAllEscapistsDead (en Init)");
+        if (lobbyNetworkService != null)
+        {
+            lobbyNetworkService.OnEscapistsPassedSnapshot -= HandleEscapistsPassedSnapshot;
+            lobbyNetworkService.OnEscapistsPassedSnapshot += HandleEscapistsPassedSnapshot;
+        }
     }
 
     private void OnDestroy()
     {
         if (gameStateManager != null)
         {
+            // ✅ Nombre correcto del evento (GameStateManager)
             gameStateManager.OnAllEscapistsDead -= HandleAllEscapistsDead;
-            Debug.Log("[PlayerWinTrigger] ✅ Desuscrito de OnAllEscapistsDead");
+        }
+
+        if (lobbyNetworkService != null)
+        {
+            lobbyNetworkService.OnEscapistsPassedSnapshot -= HandleEscapistsPassedSnapshot;
         }
     }
 
     private void OnTriggerEnter(Collider other)
     {
         if (gameWon) return;
-        
-        // Solo procesar si el tag es "Win"
+
         if (other.CompareTag("Win"))
         {
-            Debug.Log($"[PlayerWinTrigger] Player {playerId} tocó objeto Win: {other.gameObject.name}");
             HandleWinCollision();
         }
     }
 
     private async void HandleWinCollision()
     {
-        if (playerId < 0)
-        {
-            return;
-        }
+        if (playerId < 0) return;
 
         if (lobbyManager == null)
         {
@@ -84,20 +92,10 @@ public class PlayerWinTrigger : MonoBehaviour
             return;
         }
 
-        string winnerType = playerSession.PlayerType;
-
-        // ⭐ CRÍTICO: Solo los escapistas pueden ganar tocando el trigger
-        if (winnerType != PlayerType.Escapist.ToString())
+        if (playerSession.PlayerType != PlayerType.Escapist.ToString())
         {
-            Debug.LogWarning($"[PlayerWinTrigger] ⚠️ Solo los escapistas pueden ganar con el trigger. Player {playerId} es {winnerType}");
             return;
         }
-
-        bool isKillerWin = false;
-
-        Debug.Log($"[PlayerWinTrigger] ✅ {winnerType} (ID: {playerId}) GANÓ - isHost={isHost}, isLocal={isLocal}");
-
-        gameWon = true;
 
         if (lobbyNetworkService == null)
         {
@@ -109,35 +107,69 @@ public class PlayerWinTrigger : MonoBehaviour
         {
             if (isHost)
             {
-                // Host: enviar a TODOS y esperar
-                Debug.Log("[PlayerWinTrigger] → Host enviando WIN_GAME a TODOS (Escapista)");
-                await lobbyNetworkService.SendGameWinAsync(playerId, winnerType, isKillerWin);
-                
-                // ✅ Después de enviar, cambiar escena
-                GameManager.ChangeScene("Win");
+                await lobbyNetworkService.SendEscapistPassedAsync(playerId);
             }
             else if (isLocal)
             {
-                // Cliente local: enviar al host (el host lo rebroadcasteará)
-                Debug.Log("[PlayerWinTrigger] → Cliente local enviando WIN_GAME AL HOST (Escapista)");
-                await lobbyNetworkService.SendGameWinToHostAsync(playerId, winnerType, isKillerWin);
-                
-                // ✅ El cliente espera a recibir el rebroadcast del host
-                Debug.Log("[PlayerWinTrigger] ⏳ Esperando rebroadcast del host...");
-            }
-            else
-            {
-                // Jugador remoto tocó el trigger (no debería pasar)
-                Debug.LogWarning("[PlayerWinTrigger] ⚠️ Jugador remoto tocó win, ignorando");
+                await lobbyNetworkService.SendEscapistPassedToHostAsync(playerId);
             }
         }
         catch (Exception e)
         {
-            Debug.LogError($"[PlayerWinTrigger] ❌ Error al enviar WIN_GAME: {e.Message}");
+            Debug.LogError($"[PlayerWinTrigger] ❌ Error al enviar ESCAPIST_PASSED: {e.Message}");
         }
     }
 
-    // ⭐ CRÍTICO: Este método se llama cuando todos los escapistas mueren
+    private async void HandleEscapistsPassedSnapshot(IReadOnlyCollection<int> targetIds, IReadOnlyCollection<int> passedIds)
+    {
+        if (gameWon) return;
+
+        targetEscapists.Clear();
+        passedEscapists.Clear();
+
+        foreach (var id in targetIds)
+            targetEscapists.Add(id);
+
+        foreach (var id in passedIds)
+            passedEscapists.Add(id);
+
+        Debug.Log($"[PlayerWinTrigger] 📸 Snapshot recibido -> passed={passedEscapists.Count}/{targetEscapists.Count}");
+
+        if (!isHost)
+        {
+            return;
+        }
+
+        if (targetEscapists.Count <= 0)
+        {
+            return;
+        }
+
+        bool allPassed = targetEscapists.All(id => passedEscapists.Contains(id));
+        if (!allPassed)
+        {
+            return;
+        }
+
+        Debug.Log("[PlayerWinTrigger] 🎉 ¡TODOS LOS ESCAPISTAS CONECTADOS HAN PASADO! ESCAPISTAS GANAN");
+
+        gameWon = true;
+
+        try
+        {
+            int winnerId = targetEscapists.Min();
+            string winnerType = PlayerType.Escapist.ToString();
+            bool isKillerWin = false;
+
+            await lobbyNetworkService.SendGameWinAsync(winnerId, winnerType, isKillerWin);
+            GameManager.ChangeScene("Win");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[PlayerWinTrigger] ❌ Error al enviar WIN_GAME (snapshot all passed): {e.Message}");
+        }
+    }
+
     private async void HandleAllEscapistsDead()
     {
         Debug.Log($"[PlayerWinTrigger] 🎉 ¡TODOS LOS ESCAPISTAS HAN MUERTO! KILLER GANA!");
@@ -145,7 +177,6 @@ public class PlayerWinTrigger : MonoBehaviour
         if (gameWon) return;
         gameWon = true;
 
-        // Encontrar al Killer en el LobbyManager
         if (lobbyManager == null)
         {
             Debug.LogError("[PlayerWinTrigger] ❌ LobbyManager es NULL");
@@ -177,21 +208,17 @@ public class PlayerWinTrigger : MonoBehaviour
         {
             if (isHost)
             {
-                // Host: enviar a TODOS y cambiar escena
                 Debug.Log("[PlayerWinTrigger] → Host enviando WIN_GAME (Killer - Todos muertos) a TODOS");
                 await lobbyNetworkService.SendGameWinAsync(killerId, winnerType, isKillerWin);
-                
-                // ✅ Cambiar escena DESPUÉS de enviar
+
                 GameManager.ChangeScene("Win");
             }
             else if (isLocal)
             {
-                // Cliente local: solo el host puede procesar esto
                 Debug.Log("[PlayerWinTrigger] → Cliente local recibió notificación de todos muertos (esperando al host)");
             }
             else
             {
-                // Jugador remoto - nada que hacer
                 Debug.Log("[PlayerWinTrigger] → Jugador remoto - nada que hacer");
             }
         }
@@ -204,5 +231,7 @@ public class PlayerWinTrigger : MonoBehaviour
     public void Reset()
     {
         gameWon = false;
+        passedEscapists.Clear();
+        targetEscapists.Clear();
     }
 }

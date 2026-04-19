@@ -104,4 +104,20 @@ public class ClientPacketHandler
             Debug.LogError($"[ClientPacketHandler] Error enviando WIN_GAME: {e.Message}");
         }
     }
+
+    public async Task SendEscapistPassed(int escapistId)
+    {
+        Debug.Log($"[ClientPacketHandler] Enviando ESCAPIST_PASSED: escapistId={escapistId}");
+
+        try
+        {
+            var packet = builder.CreateEscapistPassed(escapistId);
+            await client.SendMessageAsync(packet);
+            Debug.Log("[ClientPacketHandler] ✅ ESCAPIST_PASSED enviado al host");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ClientPacketHandler] Error enviando ESCAPIST_PASSED: {e.Message}");
+        }
+    }
 }

@@ -9,6 +9,7 @@ public class PacketBuilder
     {
         this.serializer = serializer;
     }
+
     public ISerializer Serializer => serializer;
     public string CreateAssignPlayer(int id)
     {
@@ -133,6 +134,28 @@ public class PacketBuilder
         return serializer.Serialize(packet);
     }
 
+    public string CreateEscapistPassed(int escapistId)
+    {
+        var packet = new EscapistPassedPacket
+        {
+            type = "ESCAPIST_PASSED",
+            escapistId = escapistId
+        };
+        return serializer.Serialize(packet);
+    }
+
+    public string CreateEscapistsPassedSnapshot(IEnumerable<int> targetIds, IEnumerable<int> passedIds)
+    {
+        var packet = new EscapistsPassedSnapshotPacket
+        {
+            type = "ESCAPISTS_PASSED_SNAPSHOT",
+            targetEscapistIds = targetIds?.Distinct().OrderBy(id => id).ToList() ?? new List<int>(),
+            passedEscapistIds = passedIds?.Distinct().OrderBy(id => id).ToList() ?? new List<int>()
+        };
+
+        return serializer.Serialize(packet);
+    }
+
     public HealthUpdatePacket DeserializeHealthUpdate(string json)
     {
         return serializer.Deserialize<HealthUpdatePacket>(json);
@@ -149,5 +172,15 @@ public class PacketBuilder
     public LobbyStatePacket DeserializeLobbyState(string json)
     {
         return serializer.Deserialize<LobbyStatePacket>(json);
+    }
+
+    public EscapistPassedPacket DeserializeEscapistPassed(string json)
+    {
+        return serializer.Deserialize<EscapistPassedPacket>(json);
+    }
+
+    public EscapistsPassedSnapshotPacket DeserializeEscapistsPassedSnapshot(string json)
+    {
+        return serializer.Deserialize<EscapistsPassedSnapshotPacket>(json);
     }
 }

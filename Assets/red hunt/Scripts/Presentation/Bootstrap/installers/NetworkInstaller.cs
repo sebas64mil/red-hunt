@@ -328,6 +328,30 @@ public class NetworkInstaller
             }
         });
 
+        dispatcher.Register("ESCAPIST_PASSED", (json, sender) =>
+        {
+            try
+            {
+                lobbyNetworkService?.HandlePacketReceived(json);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[NetworkInstaller] Error procesando ESCAPIST_PASSED: {e.Message}");
+            }
+        });
+
+        dispatcher.Register("ESCAPISTS_PASSED_SNAPSHOT", (json, sender) =>
+        {
+            try
+            {
+                lobbyNetworkService?.HandlePacketReceived(json);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[NetworkInstaller] Error procesando ESCAPISTS_PASSED_SNAPSHOT: {e.Message}");
+            }
+        });
+
         if (isHost)
         {
             dispatcher.Register("DISCONNECT", async (json, sender) =>

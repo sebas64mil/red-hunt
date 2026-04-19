@@ -4834,7 +4834,7 @@ MonoBehaviour:
   shutdownButton: {fileID: 1703834867}
   killerTitle: El Hambre Fue Satisfecha
   killerDescription: "No dej\xF3 ni rastro\u2026 se devor\xF3 a las Caperucitas."
-  escapistTitle: 
+  escapistTitle: Caza Invertida
   escapistDescription: "Las Caperucitas escaparon\u2026 y el peligro desapareci\xF3."
 --- !u!114 &2040378136
 MonoBehaviour:
