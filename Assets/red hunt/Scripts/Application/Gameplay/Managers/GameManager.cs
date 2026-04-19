@@ -4,12 +4,16 @@ using UnityEngine.SceneManagement;
 public static class GameManager
 {
     public static bool IsPaused { get; private set; } = false;
+    public static bool IsHost { get; set; } = false;
+    public static AdminNetworkService AdminService { get; set; }
 
     // ----------------- Enable or disable cursor ------------------
     public static void SetCursorVisible(bool state)
     {
-        Cursor.visible = state;
-        Cursor.lockState = state ? CursorLockMode.None : CursorLockMode.Locked;
+        // Host siempre tiene cursor visible
+        bool actualState = IsHost ? true : state;
+        Cursor.visible = actualState;
+        Cursor.lockState = actualState ? CursorLockMode.None : CursorLockMode.Locked;
     }
 
     // ----------------- Change scene ------------------
@@ -35,9 +39,22 @@ public static class GameManager
     }
 
     // ----------------- Toggle Pause ------------------
-    public static void TogglePause()
+    public static async void TogglePause()
     {
-        SetPause(!IsPaused);
+        if (IsHost && AdminService != null)
+        {
+            bool newPause = !IsPaused;
+            await AdminService.SetGlobalPause(newPause);
+            SetPause(newPause); // Aplicar localmente también
+        }
+        else if (!IsHost)
+        {
+            Debug.LogWarning("Solo el host puede pausar el juego");
+        }
+        else
+        {
+            Debug.LogWarning("AdminService no inicializado");
+        }
     }
 
     // ----------------- Restart current scene ------------------

@@ -882,6 +882,11 @@ public class UIBindingBootstrap : MonoBehaviour
             {
                 try
                 {
+                    // Set IsHost before changing scene and locking cursor
+                    var isHost = network?.Services?.ClientState?.IsHost ?? false;
+                    GameManager.IsHost = isHost;
+                    Debug.Log($"[UIBinding] Set GameManager.IsHost = {isHost} before starting game");
+                    
                     GameManager.ChangeScene(sceneName);
                     GameManager.SetCursorVisible(false);
                 }

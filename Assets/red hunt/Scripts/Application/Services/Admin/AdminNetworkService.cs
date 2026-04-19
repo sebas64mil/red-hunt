@@ -57,7 +57,7 @@ public class AdminNetworkService
 
         if (!connectionManager.TryGetEndpointById(targetId, out var endpoint))
         {
-            Debug.LogWarning($"[AdminNetworkService] No se encontró endpoint para id {targetId}");
+            Debug.LogWarning($"[AdminNetworkService] No se encontrï¿½ endpoint para id {targetId}");
             return false;
         }
 
@@ -88,6 +88,28 @@ public class AdminNetworkService
     }
   
 
+
+    public async Task<bool> SetGlobalPause(bool pause)
+    {
+        if (!isHost)
+        {
+            Debug.LogWarning("[AdminNetworkService] Solo el host puede pausar el juego");
+            return false;
+        }
+
+        try
+        {
+            var pausePacket = adminBuilder.CreatePause(pause);
+            await broadcastService.SendToAll(pausePacket);
+            Debug.Log($"[AdminNetworkService] Pausa global enviada: {pause}");
+            return true;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[AdminNetworkService] Error enviando pausa: {e.Message}");
+            return false;
+        }
+    }
 
     public void HandlePacketReceived(string json, IPEndPoint sender)
     {

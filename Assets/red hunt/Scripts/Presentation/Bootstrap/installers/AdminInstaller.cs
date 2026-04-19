@@ -35,6 +35,22 @@ public static class AdminInstaller
                 }
             });
 
+            dispatcher.Register("ADMIN_PAUSE", (json, sender) =>
+            {
+                try
+                {
+                    adminHandler.Handle(json, sender);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"[AdminInstaller] Error procesando ADMIN_PAUSE: {e.Message}");
+                }
+            });
+
+            // Asignar AdminService a GameManager para acceso estático
+            GameManager.AdminService = adminService;
+            GameManager.IsHost = isHost;
+
             return adminService;
         }
         catch (Exception e)
