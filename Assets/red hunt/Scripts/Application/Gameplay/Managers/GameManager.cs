@@ -4,14 +4,12 @@ using UnityEngine.SceneManagement;
 public static class GameManager
 {
     public static bool IsPaused { get; private set; } = false;
-    public static bool IsHost { get; set; } = false;
 
     // ----------------- Enable or disable cursor ------------------
     public static void SetCursorVisible(bool state)
     {
-        bool actualState = IsHost ? true : state;
-        Cursor.visible = actualState;
-        Cursor.lockState = actualState ? CursorLockMode.None : CursorLockMode.Locked;
+        Cursor.visible = state;
+        Cursor.lockState = state ? CursorLockMode.None : CursorLockMode.Locked;
     }
 
     // ----------------- Change scene ------------------
