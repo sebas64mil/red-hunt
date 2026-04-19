@@ -413,7 +413,11 @@ public class NetworkInstaller
             var latencyService = new GameObject("[LatencyService]").AddComponent<LatencyService>();
             latencyService.Init(server, adminPacketBuilder, connectionManager);
             networkServices.LatencyService = latencyService;
-            Debug.Log("[NetworkInstaller] LatencyService inicializado en el host");
+            Debug.Log("[NetworkInstaller] ✅ LatencyService inicializado en el host");
+        }
+        else
+        {
+            Debug.Log("[NetworkInstaller] ℹ️ No es Host, LatencyService no se crea");
         }
 
         Debug.Log("[NetworkInstaller] ⭐ NetworkServices configurados completamente");

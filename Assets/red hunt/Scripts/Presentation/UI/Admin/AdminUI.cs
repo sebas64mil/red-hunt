@@ -23,6 +23,16 @@ public class AdminUI : MonoBehaviour
 
     private void Update()
     {
+        // 🔍 Buscar LatencyService si aún no está asignado
+        if (latencyService == null)
+        {
+            latencyService = UnityEngine.Object.FindFirstObjectByType<LatencyService>();
+            if (latencyService != null)
+            {
+                Debug.Log("[AdminUI] ✅ LatencyService encontrado automáticamente");
+            }
+        }
+
         if (latencyService == null || entries.Count == 0) return;
 
         foreach (var kvp in entries)
@@ -40,6 +50,16 @@ public class AdminUI : MonoBehaviour
         try
         {
             ModularLobbyBootstrap.Instance?.RegisterAdminUI(this);
+
+            // 🔍 Buscar LatencyService automáticamente
+            if (latencyService == null)
+            {
+                latencyService = UnityEngine.Object.FindFirstObjectByType<LatencyService>();
+                if (latencyService != null)
+                {
+                    Debug.Log("[AdminUI] ✅ LatencyService encontrado en OnEnable");
+                }
+            }
 
             DetectAndApplyHostStatus();
             RepopulatePlayersFromLobby();

@@ -161,18 +161,35 @@ public class UIBindingBootstrap : MonoBehaviour
         {
             if (network?.Services != null && network.Services.LatencyService == null)
             {
-                var installer = new NetworkInstaller();
-                var latencyService = installer.CreateAndInitializeLatencyService(
-                    network.Services.Server,
-                    new AdminPacketBuilder(network.Services.Serializer),
-                    network.Services.ConnectionManager
-                );
-
-                if (latencyService != null)
+                // 🔍 Intentar encontrar LatencyService existente en la escena
+                var existingService = UnityEngine.Object.FindFirstObjectByType<LatencyService>();
+                
+                if (existingService != null)
                 {
-                    network.Services.LatencyService = latencyService;
-                    adminUI?.SetLatencyService(latencyService);
-                    DebugLog("✅ LatencyService inicializado y conectado a AdminUI");
+                    network.Services.LatencyService = existingService;
+                    adminUI?.SetLatencyService(existingService);
+                    DebugLog("✅ LatencyService existente encontrado en la escena");
+                }
+                else if (network.Services.Server != null)
+                {
+                    // Solo crear on-demand si Server está disponible
+                    var installer = new NetworkInstaller();
+                    var latencyService = installer.CreateAndInitializeLatencyService(
+                        network.Services.Server,
+                        new AdminPacketBuilder(network.Services.Serializer),
+                        network.Services.ConnectionManager
+                    );
+
+                    if (latencyService != null)
+                    {
+                        network.Services.LatencyService = latencyService;
+                        adminUI?.SetLatencyService(latencyService);
+                        DebugLog("✅ LatencyService inicializado y conectado a AdminUI");
+                    }
+                }
+                else
+                {
+                    DebugLog("⚠️ Server es NULL, no se puede crear LatencyService");
                 }
             }
         }
@@ -705,14 +722,31 @@ public class UIBindingBootstrap : MonoBehaviour
         ui.OnKickRequested += admin_OnKickRequested;
 
         // === Conectar LatencyService ===
-        if (network?.Services?.LatencyService != null)
+        try
         {
-            ui.SetLatencyService(network.Services.LatencyService);
-            DebugLog("LatencyService conectado a AdminUI");
+            if (network?.Services?.LatencyService != null)
+            {
+                ui.SetLatencyService(network.Services.LatencyService);
+                DebugLog("✅ LatencyService conectado a AdminUI desde networkServices");
+            }
+            else
+            {
+                // 🔍 Si no está en networkServices, buscar en la escena
+                var latencyService = UnityEngine.Object.FindFirstObjectByType<LatencyService>();
+                if (latencyService != null)
+                {
+                    ui.SetLatencyService(latencyService);
+                    DebugLog("✅ LatencyService encontrado en la escena y conectado a AdminUI");
+                }
+                else
+                {
+                    DebugLog("⚠️ LatencyService no disponible (se buscará automáticamente en AdminUI)");
+                }
+            }
         }
-        else
+        catch (Exception ex)
         {
-            DebugLog("⚠️ LatencyService no disponible en AdminUI");
+            DebugLog($"⚠️ Error conectando LatencyService: {ex.Message}");
         }
 
         DebugLog("AdminUI eventos vinculados");

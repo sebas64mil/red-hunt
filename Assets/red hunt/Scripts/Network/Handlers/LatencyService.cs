@@ -12,6 +12,13 @@ public class LatencyService : MonoBehaviour
     private float lastPingTime = 0f;
     private const float PING_INTERVAL_SECONDS = 2.0f;
 
+    private void Awake()
+    {
+        // 🔒 Persistir entre escenas
+        DontDestroyOnLoad(gameObject);
+        Debug.Log("[LatencyService] DontDestroyOnLoad aplicado");
+    }
+
     public void Init(
         IServer server,
         AdminPacketBuilder adminBuilder,
