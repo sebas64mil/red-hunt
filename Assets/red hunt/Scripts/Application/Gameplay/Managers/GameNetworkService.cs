@@ -273,7 +273,6 @@ public class GameNetworkService : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[GameNetworkService] ESCAPIST_PASSED received: escapistId={packet.escapistId}");
 
         if (isHost)
         {
