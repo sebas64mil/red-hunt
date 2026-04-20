@@ -31,6 +31,8 @@
 
 **Red Hunt** es un juego multijugador asimétrico con arquitectura de red en 4 capas. Usa **UDP** para baja latencia y sincronización cada 100ms mediante snapshots. 
 
+**Máximo de jugadores:** 4 jugadores por sesión (testeado con Unity Multiplayer Center)
+
 **Mecánica central:** Un jugador es **Killer** (atacante con daño) y 1+ jugadores son **Escapists** (recolectores de pistas con salud limitada). El Killer debe derrotar a los Escapists antes de que estos logren sus objetivos.
 
 El proyecto está estructurado en:
