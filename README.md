@@ -1329,73 +1329,54 @@ Assets/red hunt/Scripts/
 
 ### Pantallas principales
 
-#### 1. Pantalla de selección (Start)
-```
-┌──────────────────────────────┐
-│      RED HUNT                │
-│                              │
-│  [HOST]  [CLIENT]           │
-│                              │
-│      ¿Qué rol eres?         │
-└──────────────────────────────┘
-```
+#### 1. Pantalla de Menu 
 
 <p align="center">
-  <img src="docs/screenshots/lobby.png" alt="Red Hunt Lobby" width="700"/>
+  <img src="ImageReadme/MainMenu.png" alt="Red Hunt Lobby" width="700"/>
 </p>
 
-#### 2. Pantalla de conexión (Connect)
-```
-HOST:
-┌──────────────────────────────┐
-│  Servidor escuchando...      │
-│  IP: 192.168.1.100           │
-│  Puerto: 12345               │
-│  Esperando clientes...       │
-│                              │
-│  [INICIAR PARTIDA]           │
-│  [DESCONECTAR]               │
-└──────────────────────────────┘
+#### 2. Pantalla de Selecciòn (Connect)
+<p align="center">
+  <img src="ImageReadme/SelectRole.png" alt="Red Hunt Lobby" width="700"/>
+</p>
 
-CLIENT:
-┌──────────────────────────────┐
-│  Conectar a servidor:        │
-│  IP: [_______________]       │
-│  Puerto: [12345___]          │
-│                              │
-│  [CONECTAR]                  │
-│  [CANCELAR]                  │
-└──────────────────────────────┘
-```
+#### 3. Pantalla de Caperucita Lobby (Players)
+<p align="center">
+  <img src="ImageReadme/CaperucitaLobby.png" alt="Red Hunt Lobby" width="700"/>
+</p>
 
-#### 3. Pantalla de lobby (Players)
-```
-┌──────────────────────────────────────┐
-│  LOBBY - 2/4 Jugadores               │
-│                                      │
-│  [1] Host           [KICK]           │
-│  [2] Player_2       [KICK]           │
-│  [3] (vacío)                         │
-│  [4] (vacío)                         │
-│                                      │
-│  [INICIAR PARTIDA]  [DESCONECTAR]   │
-└──────────────────────────────────────┘
-```
+#### 4. Pantalla de Vista Caperucita
+<p align="center">
+  <img src="ImageReadme/ViewCapericuta.png" alt="Red Hunt Lobby" width="700"/>
+</p>
 
-#### 4. Pantalla de admin
-```
-┌──────────────────────────────────────┐
-│  ADMINISTRACIÓN DE JUGADORES          │
-│                                      │
-│  ID | Nombre      | Estado  | Acción│
-│  ---|-------------|---------|-------|
-│   1 | Host        | Listo   | -     │
-│   2 | Player_A    | Listo   | KICK  │
-│   3 | Player_B    | Listo   | KICK  │
-│                                      │
-│  [CERRAR SERVIDOR]                   │
-└──────────────────────────────────────┘
-```
+#### 5. Pantalla de Vista muerte de Caperucita 
+<p align="center">
+  <img src="ImageReadme/LoboDiedcaperucita.png" alt="Red Hunt Lobby" width="700"/>
+</p>
+
+#### 6. Pantalla de Vista general de muerte Caperucita
+<p align="center">
+  <img src="ImageReadme/ViewDied.png" alt="Red Hunt Lobby" width="700"/>
+</p>
+
+#### 7. Pantalla de Vista de el lobby Lobo
+<p align="center">
+  <img src="ImageReadme/ViewDied.png" alt="Red Hunt Lobby" width="700"/>
+</p>
+
+#### 8. Pantalla de Vista victoria Lobo
+<p align="center">
+  <img src="ImageReadme/LoboHostVictory.png" alt="Red Hunt Lobby" width="700"/>
+</p>
+#### 9. Pantalla de Vista Pause
+<p align="center">
+  <img src="ImageReadme/PauseGame.png" alt="Red Hunt Lobby" width="700"/>
+</p>
+#### 9. Pantalla de Vista HostGame
+<p align="center">
+  <img src="ImageReadme/ViewHostGame.png" alt="Red Hunt Lobby" width="700"/>
+</p>
 
 ### Estados y transiciones
 
