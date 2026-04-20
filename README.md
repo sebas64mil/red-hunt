@@ -1362,7 +1362,7 @@ Assets/red hunt/Scripts/
 
 #### 7. Pantalla de Vista de el lobby Lobo
 <p align="center">
-  <img src="ImageReadme/ViewDied.png" alt="Red Hunt Lobby" width="700"/>
+  <img src="ImageReadme/LobyKiller.png" alt="Red Hunt Lobby" width="700"/>
 </p>
 
 #### 8. Pantalla de Vista victoria Lobo
@@ -1373,7 +1373,7 @@ Assets/red hunt/Scripts/
 <p align="center">
   <img src="ImageReadme/PauseGame.png" alt="Red Hunt Lobby" width="700"/>
 </p>
-#### 9. Pantalla de Vista HostGame
+#### 10. Pantalla de Vista HostGame
 <p align="center">
   <img src="ImageReadme/ViewHostGame.png" alt="Red Hunt Lobby" width="700"/>
 </p>
