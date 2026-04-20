@@ -84,7 +84,6 @@ public class EscapistHealth : MonoBehaviour
         int previousHealth = currentHealth;
         currentHealth = Mathf.Clamp(newHealth, 0, maxHealth);
         
-        Debug.Log($"[EscapistHealth] Health updated for player {playerId}: {previousHealth} → {currentHealth}/{maxHealth}");
         
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
 

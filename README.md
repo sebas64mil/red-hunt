@@ -1,6 +1,6 @@
  Red Hunt - Documentación de Implementación Real
 
-> Juego multijugador asimétrico en Unity con arquitectura de red robusta, sincronización en tiempo real y mecánicas de ataque/defensa/recolección.
+> Juego multijugador Player Host en Unity con arquitectura de red robusta, sincronización en tiempo real y mecánicas de ataque/defensa/recolección.
 
 ![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?logo=unity)
 ![.NET](https://img.shields.io/badge/.NET-4.7.1%2B-purple)
@@ -54,7 +54,8 @@ El proyecto está estructurado en:
 ┌────────────────────▼─────────────────────────┐
 │              APPLICATION LAYER                │
 │  LobbyManager · PlayerNetworkService          │
-│  SpawnManager · GameStateManager · Mechanics  │
+│  GameNetworkService · SpawnManager            │
+│  GameStateManager · Mechanics                 │
 └────────────────────┬─────────────────────────┘
                      │ Network Messages
 ┌────────────────────▼─────────────────────────┐
@@ -569,11 +570,10 @@ private async void HandleWinCollision()
     gameWon = true;
     passedEscapists.Add(playerId);
     
-    // Notificar al servidor
-    if (lobbyNetworkService != null)
+    // Notificar al servidor a través de GameNetworkService
+    if (gameNetworkService != null)
     {
-        var passedJson = builder.CreateEscapistsPassedSnapshot(passedEscapists);
-        await server.BroadcastMessage(passedJson);
+        await gameNetworkService.SendEscapistPassedAsync(playerId);
     }
     
     // Verificar si todos los Escapist pasaron
@@ -633,6 +633,7 @@ private void SendPlayerStateSnapshot()
 |--------|---------|
 | LobbyManager.cs | Control del estado del lobby y gestión de jugadores |
 | LobbyNetworkService.cs | Comunicación de red del lobby (join, leave, ready, start) |
+| GameNetworkService.cs | Comunicación de red durante el juego (victoria, pistas, estado) |
 | AdminNetworkService.cs | Gestión de admin (kick, pause, shutdown) |
 | PlayerRegistry.cs | Registro de IDs de jugadores con reutilización |
 
@@ -811,6 +812,7 @@ flowchart TB
   PlayerView["PlayerView"]
   LobbyManager["LobbyManager"]
   LobbyNetworkService["LobbyNetworkService"]
+  GameNetworkService["GameNetworkService"]
   AdminNetworkService["AdminNetworkService"]
   PlayerNetworkService["PlayerNetworkService "]
   RemotePlayerMovementManager["RemotePlayerMovementManager "]
@@ -844,6 +846,7 @@ flowchart TB
   ApplicationBootstrap --> LobbyManager
   ApplicationBootstrap --> SpawnManager
   ApplicationBootstrap --> LobbyNetworkService
+  ApplicationBootstrap --> GameNetworkService
   ApplicationBootstrap --> AdminNetworkService
   ApplicationBootstrap --> PlayerNetworkService
   ApplicationBootstrap --> RemotePlayerMovementManager
@@ -868,6 +871,9 @@ flowchart TB
   LobbyNetworkService --> PacketBuilder
   AdminNetworkService --> Client
   AdminNetworkService --> PacketBuilder
+  GameNetworkService --> Client
+  GameNetworkService --> PacketBuilder
+  GameNetworkService --> SpawnManager
   SpawnManager --> PlayerView
   
   %% Movimiento y entrada 
@@ -914,6 +920,14 @@ Assets/red hunt/Scripts/
 │   │   └── Session/
 │   │       ├── PlayerRegistry.cs            # Registro de IDs de jugadores
 │   │       └── PlayerSession.cs             # Sesión individual de jugador
+│   ├── Gameplay/
+│   │   ├── Managers/
+│   │   │   └── GameNetworkService.cs        # Comunicación de red durante gameplay
+│   │   └── Mechanics/
+│   │       ├── KillerAttack.cs              # Sistema de ataque del Killer
+│   │       ├── EscapistHealth.cs            # Sistema de salud Escapist
+│   │       ├── ClueCollector.cs             # Recolección de pistas
+│   │       └── PlayerWinTrigger.cs          # Validación de victoria
 │   └── Systems/
 │       ├── Player/
 │       │   ├── PlayerNetworkService.cs      # Sync de movimiento (snapshots/MOVEs)
