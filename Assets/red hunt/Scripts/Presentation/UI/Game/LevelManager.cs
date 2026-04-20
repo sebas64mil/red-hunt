@@ -13,7 +13,7 @@ public class LevelManager : MonoBehaviour
     [SerializeField] private GameObject hostPanel;
     [SerializeField] private TextMeshProUGUI mouseStatusText;
 
-    [Header("Input System (opcional)")]
+    [Header("Input System (optional)")]
     [SerializeField] private InputActionReference pauseActionReference;
     [SerializeField] private InputActionReference hostActionReference;
 
@@ -36,7 +36,7 @@ public class LevelManager : MonoBehaviour
     {
         if (Instance != null && Instance != this)
         {
-            Debug.LogWarning("[LevelManager] Ya existe una instancia, destruyendo la nueva.");
+            Debug.LogWarning("[LevelManager] An instance already exists, destroying the new one");
             Destroy(this);
             return;
         }
@@ -69,13 +69,11 @@ public class LevelManager : MonoBehaviour
 
     private void Update()
     {
-        // Sincronizar el panel de pausa con la pausa global
         if (GameManager.IsPaused != isLocallyPaused)
         {
             SetLocalPauseInstance(GameManager.IsPaused);
         }
 
-        // Actualizar visibilidad del texto del mouse según host y cursor visible
         UpdateMouseStatusTextVisibility();
     }
 
@@ -148,7 +146,7 @@ public class LevelManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("Solo el host puede continuar el juego");
+            Debug.LogWarning("[LevelManager] Only host can resume the game");
         }
     }
 
@@ -160,7 +158,7 @@ public class LevelManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("[LevelManager] Solo el host puede controlar el mouse");
+            Debug.LogWarning("[LevelManager] Only host can control the mouse");
         }
     }
 
@@ -191,14 +189,13 @@ public class LevelManager : MonoBehaviour
         UpdateMouseStatusDisplay();
         OnMouseStateChanged?.Invoke(isMouseEnabled);
 
-        Debug.Log($"[LevelManager] Mouse habilitado: {isMouseEnabled}");
     }
 
     public void ChangeSceneInstance(string sceneName)
     {
         if (string.IsNullOrWhiteSpace(sceneName))
         {
-            Debug.LogWarning("[LevelManager] ChangeScene: sceneName vacío");
+            Debug.LogWarning("[LevelManager] ChangeScene: sceneName is empty");
             return;
         }
 
@@ -218,7 +215,6 @@ public class LevelManager : MonoBehaviour
     {
         if (mouseStatusText == null) return;
 
-        // Solo visible si es host, NO está pausado Y el mouse está habilitado
         bool shouldBeVisible = GameManager.IsHost && !isLocallyPaused && isMouseEnabled;
         mouseStatusText.gameObject.SetActive(shouldBeVisible);
     }
@@ -227,7 +223,7 @@ public class LevelManager : MonoBehaviour
     {
         if (action == null)
         {
-            Debug.LogError("[LevelManager] ❌ pauseActionReference es NULL. Asigna una acción en el Inspector.");
+            Debug.LogError("[LevelManager] pauseActionReference is NULL. Assign an action in the Inspector");
             return;
         }
 
@@ -248,7 +244,7 @@ public class LevelManager : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError($"[LevelManager] ❌ Error registrando Pause action: {e.Message}");
+            Debug.LogError($"[LevelManager] Error registering Pause action: {e.Message}");
         }
     }
 
@@ -272,7 +268,7 @@ public class LevelManager : MonoBehaviour
     {
         if (action == null)
         {
-            Debug.LogError("[LevelManager] ❌ hostActionReference es NULL. Asigna una acción en el Inspector.");
+            Debug.LogError("[LevelManager] hostActionReference is NULL. Assign an action in the Inspector");
             return;
         }
 
@@ -291,7 +287,7 @@ public class LevelManager : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError($"[LevelManager] ❌ Error registrando Host action: {e.Message}");
+            Debug.LogError($"[LevelManager] Error registering Host action: {e.Message}");
         }
     }
 
@@ -316,7 +312,7 @@ public class LevelManager : MonoBehaviour
         if (Instance != null)
             Instance.RegisterPausePanelInstance(panel);
         else
-            Debug.LogWarning("[LevelManager] Ninguna instancia en escena al registrar panel. Añade LevelManager a la escena.");
+            Debug.LogWarning("[LevelManager] No instance in scene when registering panel. Add LevelManager to the scene");
     }
 
     public static void UnregisterPausePanel()
@@ -330,7 +326,7 @@ public class LevelManager : MonoBehaviour
         if (Instance != null)
             Instance.RegisterHostPanelInstance(panel);
         else
-            Debug.LogWarning("[LevelManager] Ninguna instancia en escena al registrar panel. Añade LevelManager a la escena.");
+            Debug.LogWarning("[LevelManager] No instance in scene when registering panel. Add LevelManager to the scene");
     }
 
     public static void UnregisterHostPanel()
@@ -344,7 +340,7 @@ public class LevelManager : MonoBehaviour
         if (Instance != null)
             Instance.RegisterMouseStatusTextInstance(text);
         else
-            Debug.LogWarning("[LevelManager] Ninguna instancia en escena al registrar texto. Añade LevelManager a la escena.");
+            Debug.LogWarning("[LevelManager] No instance in scene when registering text. Add LevelManager to the scene");
     }
 
     public static void UnregisterMouseStatusText()
@@ -358,7 +354,7 @@ public class LevelManager : MonoBehaviour
         if (Instance != null)
             Instance.RegisterPauseActionInstance(action);
         else
-            Debug.LogWarning("[LevelManager] Ninguna instancia en escena al registrar action. Añade LevelManager a la escena.");
+            Debug.LogWarning("[LevelManager] No instance in scene when registering action. Add LevelManager to the scene");
     }
 
     public static void UnregisterPauseAction()
@@ -372,7 +368,7 @@ public class LevelManager : MonoBehaviour
         if (Instance != null)
             Instance.RegisterHostActionInstance(action);
         else
-            Debug.LogWarning("[LevelManager] Ninguna instancia en escena al registrar host action. Añade LevelManager a la escena.");
+            Debug.LogWarning("[LevelManager] No instance in scene when registering host action. Add LevelManager to the scene");
     }
 
     public static void UnregisterHostAction()
@@ -386,7 +382,7 @@ public class LevelManager : MonoBehaviour
         if (Instance != null)
             Instance.ToggleLocalPauseInstance();
         else
-            Debug.LogWarning("[LevelManager] Ninguna instancia en escena al togglear pausa. Añade LevelManager a la escena.");
+            Debug.LogWarning("[LevelManager] No instance in scene when toggling pause. Add LevelManager to the scene");
     }
 
     public static void ToggleMouse()
@@ -394,7 +390,7 @@ public class LevelManager : MonoBehaviour
         if (Instance != null)
             Instance.ToggleMouseInstance();
         else
-            Debug.LogWarning("[LevelManager] Ninguna instancia en escena al togglear mouse. Añade LevelManager a la escena.");
+            Debug.LogWarning("[LevelManager] No instance in scene when toggling mouse. Add LevelManager to the scene");
     }
 
     public static void SetLocalPause(bool pause)
@@ -402,7 +398,7 @@ public class LevelManager : MonoBehaviour
         if (Instance != null)
             Instance.SetLocalPauseInstance(pause);
         else
-            Debug.LogWarning("[LevelManager] Ninguna instancia en escena al setear pausa. Añade LevelManager a la escena.");
+            Debug.LogWarning("[LevelManager] No instance in scene when setting pause. Add LevelManager to the scene");
     }
 
     public static void SetMouseEnabled(bool enabled)
@@ -410,7 +406,7 @@ public class LevelManager : MonoBehaviour
         if (Instance != null)
             Instance.SetMouseEnabledInstance(enabled);
         else
-            Debug.LogWarning("[LevelManager] Ninguna instancia en escena al setear mouse. Añade LevelManager a la escena.");
+            Debug.LogWarning("[LevelManager] No instance in scene when setting mouse. Add LevelManager to the scene");
     }
 
     public static void ChangeScene(string sceneName)

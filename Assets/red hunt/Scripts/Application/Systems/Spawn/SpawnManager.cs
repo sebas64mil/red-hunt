@@ -68,7 +68,6 @@ public class SpawnManager
             0f,
             0f)
     {
-        Debug.Log("[SpawnManager] ⚠️ Usando constructor antiguo - ambos tipos usan el mismo spawnParent");
     }
 
     public void SetLocalPlayerId(int id)
@@ -82,18 +81,16 @@ public class SpawnManager
     {
         if (players.ContainsKey(id))
         {
-            Debug.LogWarning($"[SpawnManager] Player con id {id} ya existe. Ignorando AddPlayer.");
+            Debug.LogWarning($"[SpawnManager] Player with id {id} already exists. Ignoring AddPlayer.");
             return;
         }
 
-        Debug.Log($"[SpawnManager] 👤 Agregando player {id} de tipo {type}");
 
         int escapistIndex = 0;
         if (type == PlayerType.Escapist)
         {
             escapistIndex = playerTypes.Values.Count(t => t == PlayerType.Escapist);
 
-            Debug.Log($"[SpawnManager] 📍 Escapista {id} con índice {escapistIndex} (basado en {escapistIndex} Escapistas ya están spawnead os)");
         }
 
         GameObject prefab = type == PlayerType.Killer ? killerPrefab : escapistPrefab;
@@ -106,7 +103,7 @@ public class SpawnManager
 
         if (parentTransform == null)
         {
-            Debug.LogError($"[SpawnManager] ❌ SpawnParent NULL para tipo {type}");
+            Debug.LogError($"[SpawnManager] SpawnParent NULL for type {type}");
             return;
         }
 
@@ -121,7 +118,7 @@ public class SpawnManager
         }
         else
         {
-            Debug.LogWarning($"[SpawnManager] ⚠️ Player {id} no tiene Rigidbody");
+            Debug.LogWarning($"[SpawnManager] Player {id} does not have Rigidbody");
         }
 
         var view = playerGO.GetComponent<PlayerView>();
@@ -141,7 +138,7 @@ public class SpawnManager
         }
         else
         {
-            Debug.LogWarning($"[SpawnManager] PlayerView no encontrado en {playerGO.name}");
+            Debug.LogWarning($"[SpawnManager] PlayerView not found in {playerGO.name}");
         }
 
         var escapistHealth = playerGO.GetComponent<EscapistHealth>();
@@ -149,18 +146,16 @@ public class SpawnManager
         {
             bool playerIsLocal = id == localPlayerId;
             escapistHealth.Init(id, playerIsLocal);
-            Debug.Log($"[SpawnManager] ✅ EscapistHealth.Init() llamado para player {id} (local={playerIsLocal})");
         }
 
         Collider playerCollider = playerGO.GetComponent<Collider>();
         if (playerCollider != null)
         {
             playerCollider.isTrigger = false;
-            Debug.Log($"[SpawnManager] ✅ Collider configurado para player {id} (física normal, NO trigger)");
         }
         else
         {
-            Debug.LogWarning($"[SpawnManager] ⚠️ Player {id} no tiene Collider - asignar uno en el prefab");
+            Debug.LogWarning($"[SpawnManager] Player {id} does not have Collider - assign one in the prefab");
         }
 
         var winTrigger = playerGO.AddComponent<PlayerWinTrigger>();
@@ -181,7 +176,6 @@ public class SpawnManager
         if (!players.ContainsKey(id)) return;
 
         var playerType = playerTypes[id];
-        Debug.Log($"[SpawnManager] 🗑️ Removiendo player {id} ({playerType})");
 
         GameObject.Destroy(players[id]);
         players.Remove(id);
@@ -220,8 +214,4 @@ public class SpawnManager
     public int GetKillerCount() => playerTypes.Values.Count(t => t == PlayerType.Killer);
     public int GetEscapistCount() => playerTypes.Values.Count(t => t == PlayerType.Escapist);
 
-    public void LogPlayerCounts()
-    {
-        Debug.Log($"[SpawnManager] 📊 Jugadores activos - Killers: {GetKillerCount()}, Escapists: {GetEscapistCount()}");
-    }
 }

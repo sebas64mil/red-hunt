@@ -27,7 +27,6 @@ public class Server : MonoBehaviour, IServer
 
     public void HandleMessage(string msg, IPEndPoint sender)
     {
-        Debug.Log($"[Server] Recibido: {msg}");
 
         OnMessageReceived?.Invoke(msg, sender);
         OnClientMessage?.Invoke(sender); 
@@ -41,7 +40,6 @@ public class Server : MonoBehaviour, IServer
         await transport.Start(port);
         isServerRunning = true;
 
-        Debug.Log("[Server] Server iniciado");
     }
 
     public async Task SendToClientAsync(string message, IPEndPoint client)
@@ -59,7 +57,6 @@ public class Server : MonoBehaviour, IServer
 
         transport.Stop();
 
-        Debug.Log("[Server] Desconectado");
 
         OnDisconnected?.Invoke();
     }

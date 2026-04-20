@@ -21,11 +21,9 @@ public class LatencyService : MonoBehaviour
         this.adminBuilder = adminBuilder ?? throw new ArgumentNullException(nameof(adminBuilder));
         this.connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
 
-        // Hacer persistente entre escenas
         DontDestroyOnLoad(gameObject);
 
         lastPingTime = Time.time;
-        Debug.Log("[LatencyService] Inicializado y marcado como DontDestroyOnLoad");
     }
 
     private void Update()
@@ -53,7 +51,6 @@ public class LatencyService : MonoBehaviour
 
                 await server.SendToClientAsync(pingPacket, endpoint);
 
-                // Guardar timestamp del PING enviado
                 var connection = connectionManager.GetClientConnection(endpoint);
                 if (connection != null)
                 {
@@ -61,11 +58,10 @@ public class LatencyService : MonoBehaviour
                 }
             }
 
-            Debug.Log($"[LatencyService] PINGs enviados a {clients.Count} clientes");
         }
         catch (Exception e)
         {
-            Debug.LogError($"[LatencyService] Error enviando PINGs: {e.Message}");
+            Debug.LogError($"[LatencyService] Error sending PINGs: {e.Message}");
         }
     }
 

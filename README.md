@@ -1,6 +1,6 @@
  Red Hunt - Documentación de Implementación Real
 
-> Juego multijugador asimétrico en Unity con arquitectura de red robusta, sincronización en tiempo real y mecánicas de ataque/defensa/recolección.
+> Juego multijugador Player Host en Unity con arquitectura de red robusta, sincronización en tiempo real y mecánicas de ataque/defensa/recolección.
 
 ![Unity](https://img.shields.io/badge/Unity-2021.3%2B-black?logo=unity)
 ![.NET](https://img.shields.io/badge/.NET-4.7.1%2B-purple)
@@ -17,12 +17,13 @@
 4. [Flujos de mensajes y envío](#flujos-de-mensajes-y-envío)
 5. [Estructura de los mensajes](#estructura-de-los-mensajes)
 6. [Mecánicas del juego](#mecánicas-del-juego)
-7. [Ejemplos de implementación real](#ejemplos-de-implementación-real)
-8. [Tabla de scripts](#tabla-de-scripts)
-9. [Estructura del proyecto](#estructura-del-proyecto)
-10. [Interfaz del usuario](#interfaz-del-usuario)
-11. [Flujo de juego](#flujo-de-juego)
-12. [Características principales](#características-principales)
+7. [Sistema Host: Latencia, Kick y Pausa](#sistema-host-latencia-kick-y-pausa)
+8. [Ejemplos de implementación real](#ejemplos-de-implementación-real)
+9. [Tabla de scripts](#tabla-de-scripts)
+10. [Estructura del proyecto](#estructura-del-proyecto)
+11. [Interfaz del usuario](#interfaz-del-usuario)
+12. [Flujo de juego](#flujo-de-juego)
+13. [Características principales](#características-principales)
 
 ---
 
@@ -54,7 +55,8 @@ El proyecto está estructurado en:
 ┌────────────────────▼─────────────────────────┐
 │              APPLICATION LAYER                │
 │  LobbyManager · PlayerNetworkService          │
-│  SpawnManager · GameStateManager · Mechanics  │
+│  GameNetworkService · SpawnManager            │
+│  GameStateManager · Mechanics                 │
 └────────────────────┬─────────────────────────┘
                      │ Network Messages
 ┌────────────────────▼─────────────────────────┐
@@ -445,6 +447,321 @@ La interpolación es **local y suave**, sin saltos de posición.
 
 ---
 
+## Sistema Host: Latencia, Kick y Pausa
+
+El Host cuenta con herramientas de administración para monitorear y controlar la sesión de juego en tiempo real. Estas incluyen medición de latencia, expulsión de jugadores y pausa global.
+
+### 📊 Sistema de Latencia (Ping/Pong)
+
+**Implementación:** `LatencyService.cs`, `AdminPacketBuilder.cs`
+
+El Host envía **pings periódicos a todos los clientes** para medir latencia de red.
+
+**Características:**
+- **Intervalo de ping:** Cada 2 segundos
+- **Tipo de paquete:** ADMIN_PING (servidor → cliente)
+- **Tipo de respuesta:** ADMIN_PONG (cliente → servidor)
+- **Cálculo:** Diferencia de timestamps entre envío y recepción
+- **Almacenamiento:** Se guarda en `ClientConnection.LastPingTimestamp`
+
+**Flujo de medición:**
+
+```
+LatencyService.Update() → cada 2s
+    ↓
+SendPingsToAllClients()
+    ↓
+Para cada cliente conectado:
+    ↓
+AdminPacketBuilder.CreatePing(clientId)
+    ↓
+ADMIN_PING { type, clientId } enviado vía UDP
+    ↓
+[Cliente recibe]
+    ↓
+ClientPingHandler responde inmediatamente
+    ↓
+ADMIN_PONG { type, clientId } enviado al servidor
+    ↓
+[Host recibe]
+    ↓
+LatencyHandler procesa PONG
+    ↓
+Latency = ReceivedTime - SentTime (ms)
+    ↓
+Se actualiza en AdminUI.cs para mostrar al Host
+```
+
+**Uso en UI:**
+
+```csharp
+// AdminPlayerEntry.cs
+public void Setup(int id, Action<int> onKick, int latency = 0)
+{
+    playerIdText.text = $"ID: {id}";
+    latencyText.text = $"{latency}ms";  // Muestra latencia en tiempo real
+    kickButton.onClick.AddListener(() => onKick.Invoke(id));
+}
+```
+
+**Ventajas:**
+- Monitoreo pasivo sin afectar gameplay
+- Ayuda a detectar conexiones lentas
+- Base para futuras mecánicas de compensación de lag
+- Visible en AdminUI para el Host
+
+---
+
+### 🚪 Sistema de Kick (Expulsión)
+
+**Implementación:** `AdminNetworkService.cs`, `AdminPacketBuilder.cs`, `AdminUI.cs`
+
+El Host puede expulsar jugadores del lobby o durante la partida mediante el panel de administración.
+
+**Características:**
+- **Solo Host puede kickear:** `AdminNetworkService` valida autoridad
+- **Efecto inmediato:** El jugador es removido del servidor y los demás clientes
+- **Limpieza:** Se remueven datos del lobby, spawn y conexiones
+- **Notificación:** Todos los clientes reciben REMOVE_PLAYER packet
+
+**Flujo de expulsión:**
+
+```
+Host click en botón KICK → AdminUI.HandleKickClicked(targetId)
+    ↓
+AdminUI.OnKickRequested?.Invoke(targetId)
+    ↓
+AdminNetworkService.KickPlayer(targetId)
+    ↓
+Validar: isHost == true
+    ↓
+ConnectionManager.TryGetEndpointById(targetId)
+    ↓
+LobbyManager.RemovePlayerRemote(targetId)
+    ↓
+SpawnManager.RemovePlayer(targetId)
+    ↓
+BroadcastService.SendToAll(REMOVE_PLAYER packet)
+    ↓
+ConnectionManager.RemoveClient(endpoint)
+    ↓
+Server.SendToClientAsync(KICK packet, endpoint)
+    ↓
+[Clientes afectados]
+    ↓
+Reciben REMOVE_PLAYER
+    ↓
+UI se actualiza (jugador desaparece del lobby)
+    ↓
+[Jugador kickeado]
+    ↓
+Recibe KICK packet
+    ↓
+Desconexión automática
+    ↓
+Vuelve a Start screen
+```
+
+**Código de expulsión (AdminNetworkService.cs):**
+
+```csharp
+public async Task<bool> KickPlayer(int targetId)
+{
+    if (!isHost)
+    {
+        Debug.LogWarning("[AdminNetworkService] Only host can execute KickPlayer");
+        return false;
+    }
+
+    if (!connectionManager.TryGetEndpointById(targetId, out var endpoint))
+    {
+        Debug.LogWarning($"[AdminNetworkService] Endpoint not found for id {targetId}");
+        return false;
+    }
+
+    try
+    {
+        // 1. Remover del lobby
+        lobbyManager.RemovePlayerRemote(targetId);
+        
+        // 2. Remover del spawn
+        spawnManager?.RemovePlayer(targetId);
+
+        // 3. Notificar a todos
+        var removePacket = packetBuilder.CreateRemovePlayer(targetId);
+        await broadcastService.SendToAll(removePacket);
+
+        // 4. Cerrar conexión
+        connectionManager.RemoveClient(endpoint);
+
+        // 5. Enviar paquete de KICK al cliente (informar)
+        var adminKick = adminBuilder.CreateKick(targetId);
+        await server.SendToClientAsync(adminKick, endpoint);
+
+        return true;
+    }
+    catch (System.Exception e)
+    {
+        Debug.LogError($"[AdminNetworkService] Error kicking player {targetId}: {e.Message}");
+        return false;
+    }
+}
+```
+
+**Paquete de Kick:**
+
+```json
+{
+  "type": "ADMIN_KICK",
+  "playerId": 2,
+  "reason": "Kicked by host"
+}
+```
+
+---
+
+### ⏸️ Sistema de Pausa Global
+
+**Implementación:** `AdminNetworkService.cs`, `GameManager.cs`, `AdminPacketBuilder.cs`
+
+El Host puede pausar/reanudar la partida para todos los jugadores simultáneamente.
+
+**Características:**
+- **Sincronización global:** La pausa afecta a TODOS los clientes
+- **Control centralizado:** Solo el Host puede pausar
+- **Persistencia:** El estado de pausa se mantiene hasta que el Host reanude
+- **Preserva estado:** Los jugadores no pierden salud, pistas ni progreso
+
+**Flujo de pausa:**
+
+```
+Host presiona TAB o click en botón PAUSA → AdminUI.TogglePause()
+    ↓
+AdminNetworkService.SetGlobalPause(true/false)
+    ↓
+Validar: isHost == true
+    ↓
+AdminPacketBuilder.CreatePause(paused)
+    ↓
+BroadcastService.SendToAll(PAUSE packet)
+    ↓
+[Todos los clientes]
+    ↓
+Reciben ADMIN_PAUSE { type, paused: true }
+    ↓
+AdminPacketHandler.HandlePausePacket()
+    ↓
+GameManager.SetPaused(true)
+    ↓
+Time.timeScale = 0f  (congela TODO: movimiento, física, animaciones)
+    ↓
+GameplayUI muestra "PAUSADO"
+    ↓
+Jugadores pueden ver el mapa pero no actúan
+    ↓
+[Host reanuda]
+    ↓
+Presiona TAB nuevamente
+    ↓
+SetGlobalPause(false)
+    ↓
+Broadcast: ADMIN_PAUSE { paused: false }
+    ↓
+Time.timeScale = 1f  (reanuda todo)
+```
+
+**Código de pausa (AdminNetworkService.cs):**
+
+```csharp
+public async Task<bool> SetGlobalPause(bool pause)
+{
+    if (!isHost)
+    {
+        Debug.LogWarning("[AdminNetworkService] Only host can pause the game");
+        return false;
+    }
+
+    try
+    {
+        var pausePacket = adminBuilder.CreatePause(pause);
+        await broadcastService.SendToAll(pausePacket);
+        return true;
+    }
+    catch (System.Exception e)
+    {
+        Debug.LogError($"[AdminNetworkService] Error sending pause: {e.Message}");
+        return false;
+    }
+}
+```
+
+**Implementación en GameManager:**
+
+```csharp
+// GameManager.cs
+private static bool gamePaused = false;
+public static bool GamePaused => gamePaused;
+
+public static void SetPaused(bool paused)
+{
+    gamePaused = paused;
+    Time.timeScale = paused ? 0f : 1f;
+    
+    Debug.Log($"[GameManager] Game paused: {paused}");
+    OnGamePausedChanged?.Invoke(paused);
+}
+```
+
+**Paquete de Pausa:**
+
+```json
+{
+  "type": "ADMIN_PAUSE",
+  "paused": true,
+  "timestamp": 1234567890
+}
+```
+
+---
+
+### 📋 Tabla de paquetes Admin
+
+| Tipo | Dirección | Descripción |
+|------|-----------|-------------|
+| ADMIN_PING | Host → Cliente | Solicitud de latencia (timestamp) |
+| ADMIN_PONG | Cliente → Host | Respuesta de latencia (timestamp) |
+| ADMIN_KICK | Host → Cliente | Expulsión del jugador |
+| ADMIN_PAUSE | Host → Todos | Control global de pausa |
+
+---
+
+### 🎮 Interfaz de administración
+
+El **AdminUI** presenta un panel exclusivo para el Host:
+
+```
+┌──────────────────────────────────────────┐
+│         ADMINISTRACIÓN DE JUGADORES       │
+├──────────────────────────────────────────┤
+│ ID | Nombre      | Latencia | Acción    │
+├────┼─────────────┼──────────┼───────────┤
+│  1 | Host        | 0ms      | -         │
+│  2 | Player_A    | 45ms     | [KICK]    │
+│  3 | Player_B    | 67ms     | [KICK]    │
+│  4 | Player_C    | 23ms     | [KICK]    │
+├──────────────────────────────────────────┤
+│ [PAUSAR JUEGO]  [CERRAR SERVIDOR]       │
+└──────────────────────────────────────────┘
+```
+
+**Elementos:**
+- **Latencia en tiempo real:** Se actualiza cada 2 segundos
+- **Botón KICK:** Expulsa al jugador inmediatamente
+- **Botón PAUSAR:** Pausa/reanuda la partida
+- **Botón CERRAR:** Apaga el servidor
+
+---
+
 ## Ejemplos de implementación real
 
 ### Ejemplo 1: Killer ataca a Escapist
@@ -569,11 +886,10 @@ private async void HandleWinCollision()
     gameWon = true;
     passedEscapists.Add(playerId);
     
-    // Notificar al servidor
-    if (lobbyNetworkService != null)
+    // Notificar al servidor a través de GameNetworkService
+    if (gameNetworkService != null)
     {
-        var passedJson = builder.CreateEscapistsPassedSnapshot(passedEscapists);
-        await server.BroadcastMessage(passedJson);
+        await gameNetworkService.SendEscapistPassedAsync(playerId);
     }
     
     // Verificar si todos los Escapist pasaron
@@ -633,6 +949,7 @@ private void SendPlayerStateSnapshot()
 |--------|---------|
 | LobbyManager.cs | Control del estado del lobby y gestión de jugadores |
 | LobbyNetworkService.cs | Comunicación de red del lobby (join, leave, ready, start) |
+| GameNetworkService.cs | Comunicación de red durante el juego (victoria, pistas, estado) |
 | AdminNetworkService.cs | Gestión de admin (kick, pause, shutdown) |
 | PlayerRegistry.cs | Registro de IDs de jugadores con reutilización |
 
@@ -811,6 +1128,7 @@ flowchart TB
   PlayerView["PlayerView"]
   LobbyManager["LobbyManager"]
   LobbyNetworkService["LobbyNetworkService"]
+  GameNetworkService["GameNetworkService"]
   AdminNetworkService["AdminNetworkService"]
   PlayerNetworkService["PlayerNetworkService "]
   RemotePlayerMovementManager["RemotePlayerMovementManager "]
@@ -844,6 +1162,7 @@ flowchart TB
   ApplicationBootstrap --> LobbyManager
   ApplicationBootstrap --> SpawnManager
   ApplicationBootstrap --> LobbyNetworkService
+  ApplicationBootstrap --> GameNetworkService
   ApplicationBootstrap --> AdminNetworkService
   ApplicationBootstrap --> PlayerNetworkService
   ApplicationBootstrap --> RemotePlayerMovementManager
@@ -868,6 +1187,9 @@ flowchart TB
   LobbyNetworkService --> PacketBuilder
   AdminNetworkService --> Client
   AdminNetworkService --> PacketBuilder
+  GameNetworkService --> Client
+  GameNetworkService --> PacketBuilder
+  GameNetworkService --> SpawnManager
   SpawnManager --> PlayerView
   
   %% Movimiento y entrada 
@@ -914,6 +1236,14 @@ Assets/red hunt/Scripts/
 │   │   └── Session/
 │   │       ├── PlayerRegistry.cs            # Registro de IDs de jugadores
 │   │       └── PlayerSession.cs             # Sesión individual de jugador
+│   ├── Gameplay/
+│   │   ├── Managers/
+│   │   │   └── GameNetworkService.cs        # Comunicación de red durante gameplay
+│   │   └── Mechanics/
+│   │       ├── KillerAttack.cs              # Sistema de ataque del Killer
+│   │       ├── EscapistHealth.cs            # Sistema de salud Escapist
+│   │       ├── ClueCollector.cs             # Recolección de pistas
+│   │       └── PlayerWinTrigger.cs          # Validación de victoria
 │   └── Systems/
 │       ├── Player/
 │       │   ├── PlayerNetworkService.cs      # Sync de movimiento (snapshots/MOVEs)

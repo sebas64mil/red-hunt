@@ -26,14 +26,13 @@ public class GameStateManager : MonoBehaviour
     {
         playerHealthStates.Clear();
         allEscapistsDeadNotified = false;
-        Debug.Log("[GameStateManager] 🔄 Estado reseteado");
     }
 
     public void InitializePlayer(int playerId, int maxHealth, PlayerType playerType = PlayerType.Escapist)
     {
         if (playerHealthStates.ContainsKey(playerId))
         {
-            Debug.LogWarning($"[GameStateManager] Player {playerId} ya inicializado");
+            Debug.LogWarning($"[GameStateManager] Player {playerId} already initialized");
             return;
         }
 
@@ -47,7 +46,6 @@ public class GameStateManager : MonoBehaviour
 
         playerHealthStates[playerId] = state;
 
-        Debug.Log($"[GameStateManager] ✅ Player {playerId} inicializado - Tipo: {playerType}, Salud: {maxHealth}/{maxHealth}");
     }
 
     public void RemovePlayer(int playerId)
@@ -59,7 +57,6 @@ public class GameStateManager : MonoBehaviour
 
         playerHealthStates.Remove(playerId);
 
-        Debug.Log($"[GameStateManager] 🧹 Player {playerId} eliminado del estado (tipo={state.PlayerType})");
 
         if (state.PlayerType == PlayerType.Escapist)
         {
@@ -71,7 +68,7 @@ public class GameStateManager : MonoBehaviour
     {
         if (!playerHealthStates.TryGetValue(playerId, out var state))
         {
-            Debug.LogWarning($"[GameStateManager] ⚠️ Player {playerId} no inicializado");
+            Debug.LogWarning($"[GameStateManager] Player {playerId} not initialized");
             return;
         }
 
@@ -85,29 +82,19 @@ public class GameStateManager : MonoBehaviour
 
         state.CurrentHealth = clampedHealth;
 
-        Debug.Log($"[GameStateManager] 🏥 Player {playerId}: {oldHealth} → {state.CurrentHealth}/{state.MaxHealth}");
 
         OnPlayerHealthChanged?.Invoke(playerId, state.CurrentHealth, state.MaxHealth);
 
         if (state.PlayerType == PlayerType.Escapist && oldHealth > 0 && state.CurrentHealth <= 0)
         {
-            Debug.Log($"[GameStateManager] 💀 Escapista {playerId} ha muerto");
             OnEscapistKilled?.Invoke();
 
             CheckAllEscapistsDead();
         }
     }
 
-    public void NotifyEscapistKilled()
-    {
-        Debug.Log("[GameStateManager] 💀 Un escapista ha sido asesinado");
-        OnEscapistKilled?.Invoke();
-        CheckAllEscapistsDead();
-    }
-
     public void NotifyEscapistKilled(int playerId)
     {
-        Debug.Log($"[GameStateManager] 💀 Un escapista ha sido asesinado (playerId={playerId})");
 
         if (playerId > 0 && playerHealthStates.TryGetValue(playerId, out var state))
         {
@@ -119,7 +106,7 @@ public class GameStateManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning($"[GameStateManager] ⚠️ NotifyEscapistKilled(playerId={playerId}) pero no está inicializado en el diccionario");
+            Debug.LogWarning($"[GameStateManager] NotifyEscapistKilled(playerId={playerId}) but not initialized in dictionary");
         }
 
         OnEscapistKilled?.Invoke();
@@ -136,7 +123,6 @@ public class GameStateManager : MonoBehaviour
         int totalEscapists = playerHealthStates.Values.Count(state => state.PlayerType == PlayerType.Escapist);
         int aliveEscapists = playerHealthStates.Values.Count(state => state.PlayerType == PlayerType.Escapist && state.IsAlive);
 
-        Debug.Log($"[GameStateManager] 📊 Escapistas vivos: {aliveEscapists}/{totalEscapists}");
 
         if (totalEscapists <= 0)
         {
@@ -146,7 +132,6 @@ public class GameStateManager : MonoBehaviour
         if (aliveEscapists == 0)
         {
             allEscapistsDeadNotified = true;
-            Debug.Log("[GameStateManager] 🎉 ¡TODOS LOS ESCAPISTAS HAN MUERTO!");
             OnAllEscapistsDead?.Invoke();
         }
     }
@@ -158,20 +143,4 @@ public class GameStateManager : MonoBehaviour
             .Count();
     }
 
-    public int GetTotalEscapistCount()
-    {
-        return playerHealthStates.Values
-            .Where(state => state.PlayerType == PlayerType.Escapist)
-            .Count();
-    }
-
-    public void SubscribeToEscapistKilled(Action callback)
-    {
-        OnEscapistKilled += callback;
-    }
-
-    public void UnsubscribeFromEscapistKilled(Action callback)
-    {
-        OnEscapistKilled -= callback;
-    }
 }

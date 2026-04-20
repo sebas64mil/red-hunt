@@ -2,7 +2,7 @@
 
 public class PlayerMovement : MonoBehaviour
 {
-    [Header("Movimiento")]
+    [Header("Movement")]
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float jumpForce = 5f;
     [SerializeField] private float groundDrag = 5f;
@@ -12,14 +12,14 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float mouseSensitivity = 100f;
     [SerializeField] private float maxLookAngle = 90f;
 
-    [Header("Suelo")]
+    [Header("Ground")]
     [SerializeField] private LayerMask groundLayer;
     [SerializeField] private float groundCheckDistance = 0.2f;
 
-    [Header("Cámara")]
-    [SerializeField] private Transform cameraHolder;  // ⭐ CAMBIO: Ahora es [SerializeField]
+    [Header("Camera")]
+    [SerializeField] private Transform cameraHolder;  
 
-    [Header("Posición de la Cámara por Estado")]
+    [Header("Camera Position by State")]
     [SerializeField] private Vector3 cameraPositionIdle = new Vector3(0f, 0.6f, 0f);
     [SerializeField] private Vector3 cameraPositionWalk = new Vector3(0f, 0.5f, 0f);
     [SerializeField] private float cameraSmoothSpeed = 5f;
@@ -46,24 +46,21 @@ public class PlayerMovement : MonoBehaviour
         {
             cameraHolder = transform.Find("CameraHolder");
         }
-        else
-        {
-            Debug.Log($"[PlayerMovement] ✅ CameraHolder asignado: {cameraHolder.gameObject.name}");
-        }
+
 
         if (rb == null)
         {
-            Debug.LogError("[PlayerMovement] Rigidbody no encontrado");
+            Debug.LogError("[PlayerMovement] Rigidbody not found");
         }
 
         if (inputHandler == null)
         {
-            Debug.LogWarning("[PlayerMovement] PlayerInputHandler no encontrado");
+            Debug.LogWarning("[PlayerMovement] PlayerInputHandler not found");
         }
 
         if (cameraHolder == null)
         {
-            Debug.LogError("[PlayerMovement] ❌ CameraHolder no pudo ser asignado");
+            Debug.LogError("[PlayerMovement] CameraHolder could not be assigned");
         }
 
         if (rb != null)
@@ -77,7 +74,6 @@ public class PlayerMovement : MonoBehaviour
         if (inputHandler != null)
         {
             inputHandler.OnJump += HandleJump;
-            Debug.Log("[PlayerMovement] ✅ Evento OnJump suscrito");
         }
         hasLoggedInputCheck = false;
 
@@ -103,7 +99,7 @@ public class PlayerMovement : MonoBehaviour
         {
             if (!hasLoggedInputCheck)
             {
-                Debug.LogWarning("[PlayerMovement] ⚠️ inputHandler es NULL");
+                Debug.LogWarning("[PlayerMovement] inputHandler is NULL");
                 hasLoggedInputCheck = true;
             }
             return;
@@ -120,7 +116,6 @@ public class PlayerMovement : MonoBehaviour
         HandleMove(moveInput);
         HandleLook(lookInput);
 
-        // Llamar al controlador de animaciones con la velocidad actual
         if (animationController != null)
         {
             animationController.UpdateMovementAnimation(CurrentVelocity);
@@ -191,7 +186,6 @@ public class PlayerMovement : MonoBehaviour
 
         int currentMovementState = animationController.GetCurrentMovementState();
 
-        // Solo actualizar si el estado cambió para evitar cálculos innecesarios
         if (previousMovementState != currentMovementState)
         {
             previousMovementState = currentMovementState;

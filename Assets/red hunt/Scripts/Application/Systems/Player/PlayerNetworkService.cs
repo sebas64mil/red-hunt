@@ -4,9 +4,9 @@ using UnityEngine;
 
 public class PlayerNetworkService : MonoBehaviour
 {
-    [Header("Sincronización")]
+    [Header("Synchronization")]
     [SerializeField] private float syncRate = 0.1f;
-    [SerializeField] private float snapshotRate = 0.1f;  // ⭐ NUEVO: Snapshot cada 100ms
+    [SerializeField] private float snapshotRate = 0.1f;
     [SerializeField] private float connectionCheckInterval = 0.5f;
     [SerializeField] private float positionThreshold = 0.01f;
     [SerializeField] private float rotationThreshold = 0.5f;
@@ -20,22 +20,19 @@ public class PlayerNetworkService : MonoBehaviour
     private PlayerMovement playerMovement;
     private Transform playerTransform;
 
-    // ⭐ Cache de última posición/rotación enviada
     private Vector3 lastSentPosition = Vector3.zero;
     private Quaternion lastSentRotation = Quaternion.identity;
     private Vector3 lastSentVelocity = Vector3.zero;
     private bool lastSentIsJumping = false;
 
     private float timeSinceLastSync = 0f;
-    private float timeSinceLastSnapshot = 0f;  // ⭐ NUEVO
+    private float timeSinceLastSnapshot = 0f;
     private float timeSinceLastConnectionCheck = 0f;
     private bool connectionReady = false;
 
-    // ⭐ NUEVO: Referencia al SpawnManager para acceder a todos los jugadores
     private SpawnManager spawnManager;
     private LobbyManager lobbyManager;
 
-    public event Action<MovePacket> OnRemotePlayerMove;
 
     private void Awake()
     {
@@ -49,18 +46,17 @@ public class PlayerNetworkService : MonoBehaviour
         ISerializer serializer, 
         bool hostFlag, 
         BroadcastService broadcastServiceInstance = null,
-        SpawnManager spawnManagerInstance = null,  // ⭐ NUEVO
-        LobbyManager lobbyManagerInstance = null)   // ⭐ NUEVO
+        SpawnManager spawnManagerInstance = null,
+        LobbyManager lobbyManagerInstance = null)
     {
         playerId = id;
         client = clientInstance;
         broadcastService = broadcastServiceInstance;
         playerPacketBuilder = new PlayerPacketBuilder(serializer ?? throw new ArgumentNullException(nameof(serializer)));
         isHost = hostFlag;
-        spawnManager = spawnManagerInstance;  // ⭐ NUEVO
-        lobbyManager = lobbyManagerInstance;   // ⭐ NUEVO
+        spawnManager = spawnManagerInstance;
+        lobbyManager = lobbyManagerInstance;
 
-        // Inicializar cache con valores actuales
         if (playerTransform != null)
         {
             lastSentPosition = playerTransform.position;
@@ -69,13 +65,12 @@ public class PlayerNetworkService : MonoBehaviour
 
         UpdateConnectionStatus();
 
-        Debug.Log($"[PlayerNetworkService] Inicializado para PlayerId {playerId} (Host: {isHost}, Conectado: {connectionReady})");
     }
 
     private void OnEnable()
     {
         timeSinceLastSync = 0f;
-        timeSinceLastSnapshot = 0f;  // ⭐ NUEVO
+        timeSinceLastSnapshot = 0f;
         timeSinceLastConnectionCheck = 0f;
     }
 
@@ -95,10 +90,8 @@ public class PlayerNetworkService : MonoBehaviour
             return;
         }
 
-        // ⭐ NUEVO: Lógica diferente para host y cliente
         if (isHost)
         {
-            // HOST: Enviar snapshot de todos los jugadores
             timeSinceLastSnapshot += Time.fixedDeltaTime;
             if (timeSinceLastSnapshot >= snapshotRate)
             {
@@ -108,7 +101,6 @@ public class PlayerNetworkService : MonoBehaviour
         }
         else
         {
-            // CLIENTE: Enviar solo su MOVE
             timeSinceLastSync += Time.fixedDeltaTime;
             if (timeSinceLastSync >= syncRate)
             {
@@ -125,7 +117,7 @@ public class PlayerNetworkService : MonoBehaviour
             connectionReady = broadcastService != null;
             if (!connectionReady)
             {
-                Debug.LogWarning($"[PlayerNetworkService] ⚠️ Host {playerId} sin BroadcastService. Estado: {connectionReady}");
+                Debug.LogWarning($"[PlayerNetworkService] Host {playerId} without BroadcastService. Status: {connectionReady}");
             }
         }
         else
@@ -133,17 +125,16 @@ public class PlayerNetworkService : MonoBehaviour
             connectionReady = client != null && client.isConnected;
             if (!connectionReady)
             {
-                Debug.LogWarning($"[PlayerNetworkService] ⚠️ Cliente {playerId} no conectado. Estado: {client?.isConnected ?? false}");
+                Debug.LogWarning($"[PlayerNetworkService] Client {playerId} not connected. Status: {client?.isConnected ?? false}");
             }
         }
     }
 
-    // ⭐ NUEVO: Enviar snapshot de TODOS los jugadores (solo host)
     private void SendPlayerStateSnapshot()
     {
         if (lobbyManager == null || spawnManager == null || broadcastService == null)
         {
-            Debug.LogWarning("[PlayerNetworkService] ❌ No se puede enviar snapshot: lobbyManager, spawnManager o broadcastService es NULL");
+            Debug.LogWarning("[PlayerNetworkService] Cannot send snapshot: lobbyManager, spawnManager or broadcastService is NULL");
             return;
         }
 
@@ -151,21 +142,20 @@ public class PlayerNetworkService : MonoBehaviour
         {
             var playersData = new Dictionary<int, (Transform transform, Vector3 velocity, bool isJumping)>();
 
-            // Recolectar datos de TODOS los jugadores
             var allPlayers = lobbyManager.GetAllPlayers();
             foreach (var playerSession in allPlayers)
             {
                 var playerGO = spawnManager.GetPlayerGameObject(playerSession.Id);
                 if (playerGO == null)
                 {
-                    Debug.LogWarning($"[PlayerNetworkService] ⚠️ Player GameObject no encontrado para {playerSession.Id}");
+                    Debug.LogWarning($"[PlayerNetworkService] Player GameObject not found for {playerSession.Id}");
                     continue;
                 }
 
                 var playerMovementComponent = playerGO.GetComponent<PlayerMovement>();
                 if (playerMovementComponent == null)
                 {
-                    Debug.LogWarning($"[PlayerNetworkService] ⚠️ PlayerMovement no encontrado para {playerSession.Id}");
+                    Debug.LogWarning($"[PlayerNetworkService] PlayerMovement not found for {playerSession.Id}");
                     continue;
                 }
 
@@ -178,7 +168,7 @@ public class PlayerNetworkService : MonoBehaviour
 
             if (playersData.Count == 0)
             {
-                Debug.LogWarning("[PlayerNetworkService] ⚠️ No hay datos de jugadores para el snapshot");
+                Debug.LogWarning("[PlayerNetworkService] No player data available for snapshot");
                 return;
             }
 
@@ -189,16 +179,14 @@ public class PlayerNetworkService : MonoBehaviour
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[PlayerNetworkService] ❌ Error enviando snapshot: {ex.Message}\n{ex.StackTrace}");
+            Debug.LogError($"[PlayerNetworkService] Error sending snapshot: {ex.Message}\n{ex.StackTrace}");
         }
     }
 
-    // ⭐ ORIGINAL: Enviar solo el MOVE del jugador local (cliente)
     private void SendLocalPlayerPosition()
     {
         if (playerMovement == null || playerTransform == null) return;
 
-        // Verificar si hay cambios significativos
         if (!HasSignificantChange())
         {
             return;
@@ -213,7 +201,6 @@ public class PlayerNetworkService : MonoBehaviour
                 playerMovement.IsJumping
             );
 
-            // Actualizar cache después de crear el packet
             lastSentPosition = playerTransform.position;
             lastSentRotation = playerTransform.rotation;
             lastSentVelocity = playerMovement.CurrentVelocity;
@@ -222,12 +209,11 @@ public class PlayerNetworkService : MonoBehaviour
             if (!isHost && client != null && client.isConnected)
             {
                 _ = client.SendMessageAsync(movePacketJson);
-                Debug.Log($"[PlayerNetworkService] 📤 Cliente {playerId} enviando MOVE: pos={playerTransform.position}");
             }
         }
         catch (Exception ex)
         {
-            Debug.LogWarning($"[PlayerNetworkService] Error enviando posición: {ex.Message}");
+            Debug.LogWarning($"[PlayerNetworkService] Error sending position: {ex.Message}");
         }
     }
 
@@ -238,28 +224,24 @@ public class PlayerNetworkService : MonoBehaviour
         Vector3 currentVel = playerMovement.CurrentVelocity;
         bool currentIsJumping = playerMovement.IsJumping;
 
-        // Cambio de posición
         float positionDistance = Vector3.Distance(currentPos, lastSentPosition);
         if (positionDistance > positionThreshold)
         {
             return true;
         }
 
-        // Cambio de rotación (en grados)
         float rotationAngle = Quaternion.Angle(currentRot, lastSentRotation);
         if (rotationAngle > rotationThreshold)
         {
             return true;
         }
 
-        // Cambio en velocidad
         float velocityChange = Vector3.Distance(currentVel, lastSentVelocity);
         if (velocityChange > 0.1f)
         {
             return true;
         }
 
-        // Cambio en estado de salto
         if (currentIsJumping != lastSentIsJumping)
         {
             return true;
@@ -268,25 +250,7 @@ public class PlayerNetworkService : MonoBehaviour
         return false;
     }
 
-    public void HandleRemotePlayerMove(string movePacketJson)
-    {
-        if (!IsInitialized()) return;
-
-        try
-        {
-            var movePacket = playerPacketBuilder.DeserializeMovePacket(movePacketJson);
-            if (movePacket == null) return;
-
-            OnRemotePlayerMove?.Invoke(movePacket);
-        }
-        catch (Exception ex)
-        {
-            Debug.LogWarning($"[PlayerNetworkService] Error procesando posición remota: {ex.Message}");
-        }
-    }
 
     public bool IsInitialized() => (isHost ? broadcastService != null : client != null) && playerPacketBuilder != null;
 
-    public int GetPlayerId() => playerId;
-    public bool IsHost() => isHost;
 }

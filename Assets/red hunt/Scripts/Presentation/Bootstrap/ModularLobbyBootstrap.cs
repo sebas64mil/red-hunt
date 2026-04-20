@@ -25,7 +25,6 @@ public class ModularLobbyBootstrap : MonoBehaviour
     {
         if (Instance != null && Instance != this)
         {
-            Debug.Log("[ModularBootstrap] Otra instancia detectada, destruyendo esta.");
             Destroy(gameObject);
             return;
         }
@@ -33,76 +32,60 @@ public class ModularLobbyBootstrap : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        Debug.Log("[ModularBootstrap] ============ INICIANDO SISTEMA (orquestador) ============");
-
         try
         {
             OrchestrateBootstraps();
-            Debug.Log("[ModularBootstrap] SISTEMA ORQUESTADO CORRECTAMENTE");
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[ModularBootstrap] ERROR orquestando bootstraps: {ex.Message}\n{ex.StackTrace}");
+            Debug.LogError($"[ModularLobbyBootstrap] Error orchestrating bootstraps: {ex.Message}\n{ex.StackTrace}");
             throw;
         }
     }
 
     private void OrchestrateBootstraps()
     {
-        // 1) Application
         appBoot = gameObject.GetComponent<ApplicationBootstrap>() ?? gameObject.AddComponent<ApplicationBootstrap>();
         appBoot.Init();
 
-        // 2) Network - NetworkBootstrap gestiona sus propios Server/Client (autónomo)
         networkBoot = gameObject.GetComponent<NetworkBootstrap>() ?? gameObject.AddComponent<NetworkBootstrap>();
         networkBoot.Init(appBoot.Services, false);
 
-        // 3) Presentation
         presentationBoot = gameObject.GetComponent<PresentationBootstrap>() ?? gameObject.AddComponent<PresentationBootstrap>();
         presentationBoot.Init(lobbyUI, spawnUI);
 
-        // Conectar Presentation a Application y Network para que gestione UI en respuesta a eventos
         presentationBoot.AttachApplication(appBoot);
         presentationBoot.AttachNetwork(networkBoot);
 
-        // Registrar AdminUI para que Presentation actualice la lista si hace falta
         if (adminUI != null)
             presentationBoot.RegisterAdminUI(adminUI);
 
-        // 4) UIBinding (gestiona eventos de UI y ejecuta flows usando Network/Presentation/Application)
         uiBinding = gameObject.GetComponent<UIBindingBootstrap>() ?? gameObject.AddComponent<UIBindingBootstrap>();
         uiBinding.Bind(lobbyUI, adminUI, networkBoot, appBoot, presentationBoot);
 
         presentationBoot.AttachUIBinding(uiBinding);
 
-        // Suscribir UIBinding al evento público para recepcionar solicitudes externas de StartGame
         if (uiBinding != null)
         {
             OnRequestStartGame -= uiBinding.HandleExternalStartRequest;
             OnRequestStartGame += uiBinding.HandleExternalStartRequest;
         }
 
-        // Agregar GameplayBootstrap con GameUI inyectado
         gameplayBootstrap = gameObject.AddComponent<GameplayBootstrap>();
         gameplayBootstrap.Init(networkBoot, appBoot, presentationBoot, gameUI);
 
         if (uiBinding != null)
             uiBinding.SetGameUI(gameUI);
 
-        Debug.Log("[ModularLobbyBootstrap] GameplayBootstrap inicializado");
-
-        // Agregar WinBootstrap
         winBootstrap = gameObject.AddComponent<WinBootstrap>();
         winBootstrap.Init(networkBoot, appBoot, presentationBoot);
-
-        Debug.Log("[ModularLobbyBootstrap] WinBootstrap inicializado");
     }
 
     public void RequestStartGame(string sceneName)
     {
         if (string.IsNullOrWhiteSpace(sceneName))
         {
-            Debug.LogWarning("[ModularLobbyBootstrap] RequestStartGame: sceneName vacío.");
+            Debug.LogWarning("[ModularLobbyBootstrap] RequestStartGame: sceneName is empty");
             return;
         }
 
@@ -155,8 +138,6 @@ public class ModularLobbyBootstrap : MonoBehaviour
 
         if (uiBinding != null && appBoot != null && networkBoot != null && presentationBoot != null)
             uiBinding.Bind(lobbyUI, adminUI, networkBoot, appBoot, presentationBoot);
-
-        Debug.Log("[ModularBootstrap] LobbyUI registrada (delegada)");
     }
 
     public void UnregisterLobbyUI(LobbyUI ui)
@@ -171,7 +152,6 @@ public class ModularLobbyBootstrap : MonoBehaviour
             uiBinding.Bind(null, adminUI, networkBoot, appBoot, presentationBoot);
 
         lobbyUI = null;
-        Debug.Log("[ModularBootstrap] LobbyUI desregistrada (delegada)");
     }
 
     public void RegisterSpawnUI(SpawnUI ui)
@@ -181,8 +161,6 @@ public class ModularLobbyBootstrap : MonoBehaviour
 
         if (presentationBoot != null)
             presentationBoot.RegisterSpawnUI(ui);
-
-        Debug.Log("[ModularBootstrap] SpawnUI registrada (delegada)");
     }
 
     public void UnregisterSpawnUI(SpawnUI ui)
@@ -190,7 +168,6 @@ public class ModularLobbyBootstrap : MonoBehaviour
         if (ui == null) return;
         if (spawnUI != ui) return;
         spawnUI = null;
-        Debug.Log("[ModularBootstrap] SpawnUI desregistrada (delegada)");
     }
 
     public void RegisterAdminUI(AdminUI ui)
@@ -203,8 +180,6 @@ public class ModularLobbyBootstrap : MonoBehaviour
 
         if (uiBinding != null && appBoot != null && networkBoot != null && presentationBoot != null)
             uiBinding.Bind(lobbyUI, adminUI, networkBoot, appBoot, presentationBoot);
-
-        Debug.Log("[ModularBootstrap] AdminUI registrada (delegada)");
     }
 
     public void UnregisterAdminUI(AdminUI ui)
@@ -216,7 +191,6 @@ public class ModularLobbyBootstrap : MonoBehaviour
             presentationBoot.RegisterAdminUI(null);
 
         adminUI = null;
-        Debug.Log("[ModularBootstrap] AdminUI desregistrada (delegada)");
     }
 
     public void RegisterGameUI(GameUI ui)
@@ -229,8 +203,6 @@ public class ModularLobbyBootstrap : MonoBehaviour
 
         if (uiBinding != null)
             uiBinding.SetGameUI(gameUI);
-
-        Debug.Log("[ModularBootstrap] GameUI registrada (delegada)");
     }
 
     public void UnregisterGameUI(GameUI ui)
@@ -245,7 +217,6 @@ public class ModularLobbyBootstrap : MonoBehaviour
             uiBinding.SetGameUI(null);
 
         gameUI = null;
-        Debug.Log("[ModularBootstrap] GameUI desregistrada (delegada)");
     }
 
     public void RegisterWinUI(WinUI ui)
@@ -254,8 +225,6 @@ public class ModularLobbyBootstrap : MonoBehaviour
 
         if (winBootstrap != null)
             winBootstrap.SetWinUI(ui);
-
-        Debug.Log("[ModularBootstrap] WinUI registrada (delegada)");
     }
 
     public void RegisterWinCameraManager(WinCameraManager manager)
@@ -264,48 +233,6 @@ public class ModularLobbyBootstrap : MonoBehaviour
 
         if (winBootstrap != null)
             winBootstrap.SetWinCameraManager(manager);
-
-        Debug.Log("[ModularBootstrap] WinCameraManager registrado (delegado)");
-    }
-
-    // ==================== CURSOR MONITORING ====================
-
-    private void OnEnable()
-    {
-        SceneManager.sceneLoaded += OnSceneLoaded;
-        Debug.Log("[CursorMonitor] Monitoreo de cursor activado");
-    }
-
-    private void OnDisable()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-    }
-
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        Debug.Log($"[CursorMonitor] Escena cargada: {scene.name}");
-        LogCursorStatus("OnSceneLoaded");
-    }
-
-    private void Update()
-    {
-        // Verificar cambios en el cursor cada frame (solo en desarrollo)
-        if (Application.isEditor && Time.frameCount % 120 == 0) // Cada ~2 segundos a 60 FPS
-        {
-            LogCursorStatus("PeriodicCheck");
-        }
-    }
-
-    private void LogCursorStatus(string context)
-    {
-        string status = $"[CursorMonitor:{context}] IsHost={GameManager.IsHost}, Cursor.visible={Cursor.visible}, Cursor.lockState={Cursor.lockState}, Scene={SceneManager.GetActiveScene().name}";
-        Debug.Log(status);
-    }
-
-    // Método público para forzar log desde otros scripts
-    public void LogCursorStatus()
-    {
-        LogCursorStatus("Manual");
     }
 
     private void OnDestroy()

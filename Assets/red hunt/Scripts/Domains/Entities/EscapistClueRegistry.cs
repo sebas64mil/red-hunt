@@ -71,7 +71,6 @@ public class EscapistClueRegistry
         return globalCollectedClues.Count;
     }
 
-    // ⭐ NUEVO: Conteo global (alias explícito para UI)
     public int GetGlobalCollectedCount()
     {
         return globalCollectedClues.Count;
@@ -94,7 +93,6 @@ public class EscapistClueRegistry
     {
         if (cluesByEscapist == null) return;
 
-        Debug.Log("[EscapistClueRegistry] 📥 Sincronizando desde snapshot...");
 
         globalCollectedClues.Clear();
         cluesByEscapistId.Clear();
@@ -128,9 +126,7 @@ public class EscapistClueRegistry
                 cluesByEscapistId[escapistId].Add(clueId);
             }
 
-            Debug.Log($"[EscapistClueRegistry] ✅ Sincronizado Escapist {escapistId}: {clueIds.Count} pistas");
         }
 
-        Debug.Log($"[EscapistClueRegistry] ✅ Snapshot sincronizado completamente - Total pistas globales: {globalCollectedClues.Count}");
     }
 }

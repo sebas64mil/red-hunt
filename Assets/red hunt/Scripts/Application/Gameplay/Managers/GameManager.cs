@@ -7,14 +7,12 @@ public static class GameManager
     public static bool IsHost { get; set; } = false;
     public static AdminNetworkService AdminService { get; set; }
 
-    // ----------------- Enable or disable cursor ------------------
     public static void SetCursorVisible(bool state)
     {
         Cursor.visible = state;
         Cursor.lockState = state ? CursorLockMode.None : CursorLockMode.Locked;
     }
 
-    // ----------------- Change scene ------------------
     public static void ChangeScene(string sceneName)
     {
         Time.timeScale = 1f;
@@ -22,21 +20,18 @@ public static class GameManager
         SceneManager.LoadScene(sceneName);
     }
 
-    // ----------------- Quit game ------------------
     public static void QuitGame()
     {
         Debug.Log("Quitting game...");
         Application.Quit();
     }
 
-    // ----------------- Pause / Resume ------------------
     public static void SetPause(bool pause)
     {
         IsPaused = pause;
         Time.timeScale = pause ? 0f : 1f;
     }
 
-    // ----------------- Toggle Pause ------------------
     public static async void TogglePause()
     {
         bool newPause = !IsPaused;
@@ -50,21 +45,20 @@ public static class GameManager
             }
             else
             {
-                Debug.LogWarning("[GameManager] No se pudo enviar la pausa global al servidor");
+                Debug.LogWarning("[GameManager] Could not send global pause to server");
             }
         }
         else if (IsHost)
         {
-            Debug.LogWarning("[GameManager] AdminService no inicializado; aplicando pausa localmente");
+            Debug.LogWarning("[GameManager] AdminService not initialized; applying pause locally");
             SetPause(newPause);
         }
         else
         {
-            Debug.LogWarning("[GameManager] Solo el host puede alternar la pausa global");
+            Debug.LogWarning("[GameManager] Only host can toggle global pause");
         }
     }
 
-    // ----------------- Restart current scene ------------------
     public static void RestartScene()
     {
         Time.timeScale = 1f;

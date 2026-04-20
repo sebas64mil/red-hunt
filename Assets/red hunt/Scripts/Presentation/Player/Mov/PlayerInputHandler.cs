@@ -4,13 +4,10 @@ using UnityEngine.InputSystem;
 
 public class PlayerInputHandler : MonoBehaviour
 {
-    // ⭐ NUEVO: Evento de ataque
     public event Action OnAttack;
 
-    // ⭐ SOLO evento de salto, los otros se leen directamente
     public event Action OnJump;
 
-    // ⭐ NUEVO: Evento de interacción
     public event Action OnInteract;
 
     private PlayerInput playerInput;
@@ -34,7 +31,7 @@ public class PlayerInputHandler : MonoBehaviour
         playerInput = GetComponent<PlayerInput>();
         if (playerInput == null)
         {
-            Debug.LogError("[PlayerInputHandler] ❌ PlayerInput no encontrado en GameObject. Asegúrate de que existe.");
+            Debug.LogError("[PlayerInputHandler] PlayerInput not found in GameObject. Make sure it exists");
             return;
         }
 
@@ -48,22 +45,20 @@ public class PlayerInputHandler : MonoBehaviour
 
             if (moveAction == null || lookAction == null || jumpAction == null)
             {
-                Debug.LogError("[PlayerInputHandler] ❌ InputActions no encontradas. Verifica que existan 'Move', 'Look' y 'Jump'");
+                Debug.LogError("[PlayerInputHandler] InputActions not found. Verify that 'Move', 'Look' and 'Jump' exist");
                 return;
             }
 
-            // ⭐ NUEVO: Validar attack action (opcional para jugadores que no sean killers)
             if (attackAction == null)
             {
-                Debug.LogWarning("[PlayerInputHandler] ⚠️ InputAction 'Attack' no encontrada. Los killers no podrán atacar.");
+                Debug.LogWarning("[PlayerInputHandler] InputAction 'Attack' not found. Killers will not be able to attack");
             }
 
             isInitialized = true;
-            Debug.Log("[PlayerInputHandler] ✅ InputActions inicializadas correctamente");
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[PlayerInputHandler] ❌ Error inicializando InputActions: {ex.Message}");
+            Debug.LogError($"[PlayerInputHandler] Error initializing InputActions: {ex.Message}");
         }
     }
 
@@ -77,36 +72,29 @@ public class PlayerInputHandler : MonoBehaviour
         if (moveAction != null)
         {
             moveAction.Enable();
-            Debug.Log("[PlayerInputHandler] ✅ Move action habilitada");
         }
 
         if (lookAction != null)
         {
             lookAction.Enable();
-            Debug.Log("[PlayerInputHandler] ✅ Look action habilitada");
         }
 
         if (jumpAction != null)
         {
             jumpAction.Enable();
             jumpAction.started += HandleJumpInput;
-            Debug.Log("[PlayerInputHandler] ✅ Jump action habilitada");
         }
 
-        // ⭐ NUEVO: Habilitar action de ataque
         if (attackAction != null)
         {
             attackAction.Enable();
             attackAction.started += HandleAttackInput;
-            Debug.Log("[PlayerInputHandler] ✅ Attack action habilitada");
         }
 
-        // ⭐ NUEVO: Habilitar action de interacción
         if (interactAction != null)
         {
             interactAction.Enable();
             interactAction.started += HandleInteractInput;
-            Debug.Log("[PlayerInputHandler] ✅ Interact action habilitada");
         }
     }
 
@@ -128,14 +116,12 @@ public class PlayerInputHandler : MonoBehaviour
             jumpAction.Disable();
         }
 
-        // ⭐ NUEVO: Deshabilitar action de ataque
         if (attackAction != null)
         {
             attackAction.started -= HandleAttackInput;
             attackAction.Disable();
         }
 
-        // ⭐ NUEVO: Deshabilitar action de interacción
         if (interactAction != null)
         {
             interactAction.started -= HandleInteractInput;
@@ -148,13 +134,11 @@ public class PlayerInputHandler : MonoBehaviour
         OnJump?.Invoke();
     }
 
-    // ⭐ NUEVO: Handler para ataque
     private void HandleAttackInput(InputAction.CallbackContext context)
     {
         OnAttack?.Invoke();
     }
 
-    // ⭐ NUEVO: Handler para interacción
     private void HandleInteractInput(InputAction.CallbackContext context)
     {
         OnInteract?.Invoke();

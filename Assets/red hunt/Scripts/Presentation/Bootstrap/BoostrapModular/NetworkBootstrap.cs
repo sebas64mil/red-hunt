@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class NetworkBootstrap : MonoBehaviour
 {
-    [Header("Network (autónomo)")]
+    [Header("Network (autonomous)")]
     [SerializeField] private Server server;
     [SerializeField] private Client client;
 
@@ -34,20 +34,17 @@ public class NetworkBootstrap : MonoBehaviour
         Services.ClientState.OnPlayerIdAssigned += HandlePlayerIdAssigned;
 
         lobbyNetworkService.OnLocalJoinAccepted += HandleLocalJoinAccepted;
-
-        Debug.Log("[NetworkBootstrap] NetworkServices inicializados y eventos vinculados.");
     }
 
     private void HandleClientDisconnected()
     {
         try
         {
-            Debug.Log("[NetworkBootstrap] Cliente desconectado");
             OnClientDisconnected?.Invoke();
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[NetworkBootstrap] Error en HandleClientDisconnected: {e.Message}");
+            Debug.LogWarning($"[NetworkBootstrap] Error in HandleClientDisconnected: {e.Message}");
         }
     }
 
@@ -55,12 +52,11 @@ public class NetworkBootstrap : MonoBehaviour
     {
         try
         {
-            Debug.Log($"[NetworkBootstrap] PlayerId asignado: {id}");
             OnPlayerIdAssigned?.Invoke(id);
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[NetworkBootstrap] Error en HandlePlayerIdAssigned: {e.Message}");
+            Debug.LogWarning($"[NetworkBootstrap] Error in HandlePlayerIdAssigned: {e.Message}");
         }
     }
 
@@ -68,24 +64,23 @@ public class NetworkBootstrap : MonoBehaviour
     {
         try
         {
-            Debug.Log($"[NetworkBootstrap] OnLocalJoinAccepted: {id}");
             OnLocalJoinAccepted?.Invoke(id);
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[NetworkBootstrap] Error en HandleLocalJoinAccepted: {e.Message}");
+            Debug.LogWarning($"[NetworkBootstrap] Error in HandleLocalJoinAccepted: {e.Message}");
         }
     }
 
     public Task<bool> ConnectToServer(string ip, int port)
     {
-        if (Services == null) throw new InvalidOperationException("NetworkBootstrap no inicializado. Llama Init(...) primero.");
+        if (Services == null) throw new InvalidOperationException("NetworkBootstrap not initialized. Call Init(...) first.");
         return Services.Client.ConnectToServer(ip, port);
     }
 
     public Task StartServer(int port)
     {
-        if (Services == null) throw new InvalidOperationException("NetworkBootstrap no inicializado. Llama Init(...) primero.");
+        if (Services == null) throw new InvalidOperationException("NetworkBootstrap not initialized. Call Init(...) first.");
         return Services.Server.StartServer(port);
     }
 

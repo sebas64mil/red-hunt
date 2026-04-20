@@ -24,15 +24,11 @@ public class AdminUI : MonoBehaviour
 
     private void Update()
     {
-        // Buscar LatencyService si no se ha encontrado aún
         if (latencyService == null && !latencyServiceSearched)
         {
             latencyService = FindFirstObjectByType<LatencyService>();
             latencyServiceSearched = true;
-            if (latencyService != null)
-            {
-                Debug.Log("[AdminUI] LatencyService encontrado en Update");
-            }
+
         }
 
         if (latencyService == null || entries.Count == 0) return;
@@ -56,23 +52,15 @@ public class AdminUI : MonoBehaviour
             DetectAndApplyHostStatus();
             RepopulatePlayersFromLobby();
 
-            // Buscar LatencyService
             if (latencyService == null)
             {
                 latencyService = FindFirstObjectByType<LatencyService>();
-                if (latencyService != null)
-                {
-                    Debug.Log("[AdminUI] LatencyService encontrado en escena");
-                }
-                else
-                {
-                    Debug.Log("[AdminUI] LatencyService no encontrado, se buscará en Update");
-                }
+
             }
         }
         catch (Exception ex)
         {
-            Debug.LogWarning($"[AdminUI]  Error en OnEnable: {ex.Message}");
+            Debug.LogWarning($"[AdminUI] Error in OnEnable: {ex.Message}");
         }
     }
 
@@ -98,7 +86,7 @@ public class AdminUI : MonoBehaviour
             var allPlayers = lobbyManager.GetAllPlayers();
             if (allPlayers == null)
             {
-                Debug.LogWarning("[AdminUI] No hay players en LobbyManager");
+                Debug.LogWarning("[AdminUI] No players in LobbyManager");
                 return;
             }
 
@@ -112,7 +100,7 @@ public class AdminUI : MonoBehaviour
         }
         catch (Exception ex)
         {
-            Debug.LogWarning($"[AdminUI] Error repoblando: {ex.Message}");
+            Debug.LogWarning($"[AdminUI] Error repopulating: {ex.Message}");
         }
     }
 
@@ -129,11 +117,10 @@ public class AdminUI : MonoBehaviour
             bool isHost = lobbyNetworkService.IsHost;
             SetIsHost(isHost);
             
-            Debug.Log($"[AdminUI] Host status detectado: {isHost}");
         }
         catch (Exception ex)
         {
-            Debug.LogWarning($"[AdminUI] Error detectando host status: {ex.Message}");
+            Debug.LogWarning($"[AdminUI] Error detecting host status: {ex.Message}");
         }
     }
 
@@ -148,19 +135,19 @@ public class AdminUI : MonoBehaviour
     {
         if (entries.ContainsKey(playerId))
         {
-            Debug.LogWarning($"[AdminUI] Entrada para player {playerId} ya existe");
+            Debug.LogWarning($"[AdminUI] Entry for player {playerId} already exists");
             return;
         }
 
         if (playerEntryPrefab == null)
         {
-            Debug.LogError("[AdminUI] playerEntryPrefab es NULL");
+            Debug.LogError("[AdminUI] playerEntryPrefab is NULL");
             return;
         }
 
         if (contentParent == null)
         {
-            Debug.LogError("[AdminUI] contentParent es NULL");
+            Debug.LogError("[AdminUI] contentParent is NULL");
             return;
         }
 
@@ -169,7 +156,7 @@ public class AdminUI : MonoBehaviour
 
         if (entry == null)
         {
-            Debug.LogWarning("[AdminUI] Prefab no contiene AdminPlayerEntry");
+            Debug.LogWarning("[AdminUI] Prefab does not contain AdminPlayerEntry");
             Destroy(go);
             return;
         }
@@ -188,7 +175,7 @@ public class AdminUI : MonoBehaviour
     {
         if (!entries.TryGetValue(playerId, out var entry))
         {
-            Debug.LogWarning($"[AdminUI] Entrada para player {playerId} no existe");
+            Debug.LogWarning($"[AdminUI] Entry for player {playerId} does not exist");
             return;
         }
 

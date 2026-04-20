@@ -20,7 +20,7 @@ public class LatencyHandler
             var pongPacket = serializer.Deserialize<PongPacket>(json);
             if (pongPacket == null)
             {
-                Debug.LogWarning("[LatencyHandler] PongPacket inválido");
+                Debug.LogWarning("[LatencyHandler] Invalid PongPacket");
                 return;
             }
 
@@ -32,16 +32,15 @@ public class LatencyHandler
             {
                 connection.LastPingMs = latencyMs;
                 connection.PingCount++;
-                Debug.Log($"[LatencyHandler] Client {pongPacket.clientId} latency: {latencyMs}ms (count: {connection.PingCount})");
             }
             else
             {
-                Debug.LogWarning($"[LatencyHandler] No encontré conexión para {sender}");
+                Debug.LogWarning($"[LatencyHandler] Connection not found for {sender}");
             }
         }
         catch (Exception e)
         {
-            Debug.LogError($"[LatencyHandler] Error procesando PONG: {e.Message}");
+            Debug.LogError($"[LatencyHandler] Error processing PONG: {e.Message}");
         }
     }
 }

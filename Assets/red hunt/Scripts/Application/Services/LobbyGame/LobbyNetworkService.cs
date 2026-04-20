@@ -20,7 +20,6 @@ public class LobbyNetworkService : MonoBehaviour
     public event Action<int> OnLocalJoinAccepted;
     public event Action OnReturnToLobbyReceived;
     public event Action<int, string, bool> OnGameWinReceived;
-    public event Action<int> OnEscapistPassed;
 
     public event Action<IReadOnlyCollection<int>, IReadOnlyCollection<int>> OnEscapistsPassedSnapshot;
 
@@ -33,10 +32,6 @@ public class LobbyNetworkService : MonoBehaviour
 
     private readonly HashSet<int> passedEscapistsHost = new();
 
-
-    // ⭐ AGREGAR ESTE EVENTO EN LA SECCIÓN DE EVENTOS
-
-    // ⭐ AGREGAR ESTE REGISTRO EN Awake/Init
     private EscapistClueRegistry cluesRegistry = new();
 
     public void Init(
@@ -100,11 +95,10 @@ public class LobbyNetworkService : MonoBehaviour
                 : PlayerType.Escapist.ToString();
         }
 
-        Debug.Log($"[LobbyNetworkService] JoinLobby called. isHost={isHost}, resolvedType={resolvedType}");
 
         if (GameStarted)
         {
-            Debug.LogWarning("[LobbyNetworkService] JoinLobby ignorado: la partida ya ha comenzado.");
+            Debug.LogWarning("[LobbyNetworkService] JoinLobby ignored: game has already started");
             return;
         }
 
@@ -135,7 +129,7 @@ public class LobbyNetworkService : MonoBehaviour
                 }
                 catch (Exception e)
                 {
-                    Debug.LogWarning($"[LobbyNetworkService] Error invocando OnLocalJoinAccepted: {e.Message}");
+                    Debug.LogWarning($"[LobbyNetworkService] Error invoking OnLocalJoinAccepted: {e.Message}");
                 }
             }
 
@@ -148,7 +142,6 @@ public class LobbyNetworkService : MonoBehaviour
 
     public async Task LeaveLobby()
     {
-        Debug.Log("[LobbyNetworkService] Leaving lobby...");
 
         if (!isHost)
         {
@@ -168,19 +161,17 @@ public class LobbyNetworkService : MonoBehaviour
             }
             catch (System.Exception e)
             {
-                Debug.LogWarning($"[LobbyNetworkService] Error limpiando estado local en LeaveLobby: {e.Message}");
+                Debug.LogWarning($"[LobbyNetworkService] Error cleaning local state in LeaveLobby: {e.Message}");
             }
 
             return;
         }
 
-        Debug.Log("[LobbyNetworkService] Host leave requested - implementar cierre del host si es necesario");
         await ShutdownServer();
     }
 
     public async Task ShutdownServer()
     {
-        Debug.Log("[LobbyNetworkService] ShutdownServer: enviando DISCONNECT a todos los clientes");
 
         try
         {
@@ -199,11 +190,10 @@ public class LobbyNetworkService : MonoBehaviour
                 SpawnManagerInstance?.RemovePlayer(p.Id);
             }
 
-            Debug.Log("[LobbyNetworkService] DISCONNECT enviado, el Server debe desconectarse ahora.");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LobbyNetworkService] Error en ShutdownServer: {e.Message}");
+            Debug.LogError($"[LobbyNetworkService] Error in ShutdownServer: {e.Message}");
         }
     }
 
@@ -214,28 +204,22 @@ public class LobbyNetworkService : MonoBehaviour
             return;
         }
 
-        // Evitar múltiples llamadas a StartGame
         if (GameStarted)
         {
-            Debug.LogWarning("[LobbyNetworkService] StartGame ya fue invocado - ignorando llamada duplicada");
+            Debug.LogWarning("[LobbyNetworkService] StartGame already invoked - ignoring duplicate call");
             return;
         }
 
         try
         {
-            // Marcar que la partida empezó para bloquear joins posteriores
             GameStarted = true;
 
-            Debug.Log($"[LobbyNetworkService] Enviando START_GAME('{sceneName}') a todos los clientes");
             var startPacket = packetBuilder.CreateStartGame(sceneName);
             await broadcastService.SendToAll(startPacket);
 
-            // Dar tiempo a que los clientes carguen la escena y registren su SpawnUI
             const int postStartDelayMs = 500;
             await Task.Delay(postStartDelayMs);
 
-            // Reenviar estado de players para que cada cliente pueda spawnear sus players en la nueva escena
-            Debug.Log("[LobbyNetworkService] Reenviando PLAYER packets tras START_GAME");
             var allPlayers = lobbyManager.GetAllPlayers().ToList();
             foreach (var p in allPlayers)
             {
@@ -245,7 +229,7 @@ public class LobbyNetworkService : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError($"[LobbyNetworkService] Error en StartGame: {e.Message}");
+            Debug.LogError($"[LobbyNetworkService] Error in StartGame: {e.Message}");
         }
     }
 
@@ -253,7 +237,6 @@ public class LobbyNetworkService : MonoBehaviour
     {
         if (!isHost) return;
 
-        Debug.Log("[LobbyNetworkService] Broadcasting PLAYER packets");
 
         var allPlayers = lobbyManager.GetAllPlayers();
         int hostId = allPlayers.Min(p => p.Id);
@@ -267,7 +250,6 @@ public class LobbyNetworkService : MonoBehaviour
 
     private async Task HandlePlayerReady(int playerId)
     {
-        Debug.Log($"[LobbyNetworkService] Player Ready: {playerId}");
 
         string packetJson = packetBuilder.CreatePlayerReady(playerId);
         await broadcastService.SendToAll(packetJson);
@@ -275,7 +257,6 @@ public class LobbyNetworkService : MonoBehaviour
 
     private void HandlePlayerLeft(int id)
     {
-        Debug.Log($"[LobbyNetworkService] Removing player {id}");
 
         passedEscapistsHost.Remove(id);
 
@@ -296,7 +277,7 @@ public class LobbyNetworkService : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[LobbyNetworkService] Error actualizando GameStateManager al salir player {id}: {e.Message}");
+            Debug.LogWarning($"[LobbyNetworkService] Error updating GameStateManager when player {id} left: {e.Message}");
         }
 
         if (!isHost)
@@ -323,7 +304,6 @@ public class LobbyNetworkService : MonoBehaviour
 
             if (broadcastService != null)
             {
-                Debug.Log($"[LobbyNetworkService] 📡 HOST: reenviando ESCAPISTS_PASSED_SNAPSHOT tras disconnect/kick (passed={passedIds.Count}/{targetIds.Count})");
                 _ = broadcastService.SendToAll(snapshotJson);
             }
 
@@ -331,7 +311,7 @@ public class LobbyNetworkService : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[LobbyNetworkService] Error reenviando snapshot de escapistas tras Left: {e.Message}");
+            Debug.LogWarning($"[LobbyNetworkService] Error resending snapshot of passed escapists after Left: {e.Message}");
         }
     }
 
@@ -362,7 +342,6 @@ public class LobbyNetworkService : MonoBehaviour
                 break;
 
             case "ASSIGN_REJECT":
-                Debug.Log("[LobbyNetworkService] ASSIGN_REJECT recibido");
                 break;
 
             case "START_GAME":
@@ -370,31 +349,27 @@ public class LobbyNetworkService : MonoBehaviour
                 break;
 
             case "RETURN_TO_LOBBY":
-                Debug.Log("[LobbyNetworkService] RETURN_TO_LOBBY recibido");
                 HandleReturnToLobbyPacket();
                 break;
 
             default:
-                Debug.LogWarning($"[LobbyNetworkService] Paquete desconocido recibido: {packetType}");
+                Debug.LogWarning($"[LobbyNetworkService] Unknown packet received: {packetType}");
                 break;
         }
     }
 
-   
     private void HandleWinGamePacket(string json)
     {
         var packet = packetBuilder.Serializer.Deserialize<WinGamePacket>(json);
         if (packet == null)
         {
-            Debug.LogWarning("[LobbyNetworkService] WIN_GAME packet inválido");
+            Debug.LogWarning("[LobbyNetworkService] Invalid WIN_GAME packet");
             return;
         }
 
-        Debug.Log($"[LobbyNetworkService] WIN_GAME recibido: winnerId={packet.winnerId}, winnerType={packet.winnerType}, isKillerWin={packet.isKillerWin}");
 
         if (isHost)
         {
-            Debug.Log($"[LobbyNetworkService] 📡 Soy HOST - rebroadcasteando WIN_GAME a todos los clientes");
             _ = BroadcastGameWin(packet.winnerId, packet.winnerType, packet.isKillerWin);
         }
 
@@ -404,7 +379,7 @@ public class LobbyNetworkService : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[LobbyNetworkService] Error invocando OnGameWinReceived: {e.Message}");
+            Debug.LogWarning($"[LobbyNetworkService] Error invoking OnGameWinReceived: {e.Message}");
         }
     }
 
@@ -416,76 +391,25 @@ public class LobbyNetworkService : MonoBehaviour
         {
             var winPacket = packetBuilder.CreateWinGame(winnerId, winnerType, isKillerWin);
 
-            Debug.Log($"[LobbyNetworkService] 📤 Reenviando WIN_GAME a todos: winnerId={winnerId}");
 
             await broadcastService.SendToAll(winPacket);
 
             await Task.Delay(100);
 
-            Debug.Log("[LobbyNetworkService] ✅ WIN_GAME reenviado a todos los clientes");
         }
         catch (Exception e)
         {
-            Debug.LogError($"[LobbyNetworkService] ❌ Error rebroadcasteando WIN_GAME: {e.Message}");
+            Debug.LogError($"[LobbyNetworkService] Error rebroadcasting WIN_GAME: {e.Message}");
         }
     }
 
-    private void HandleEscapistPassedPacket(string json)
-    {
-        var packet = packetBuilder.DeserializeEscapistPassed(json);
-        if (packet == null)
-        {
-            Debug.LogWarning("[LobbyNetworkService] ESCAPIST_PASSED packet inválido");
-            return;
-        }
-
-        Debug.Log($"[LobbyNetworkService] ESCAPIST_PASSED recibido: escapistId={packet.escapistId}");
-
-        if (isHost)
-        {
-            passedEscapistsHost.Add(packet.escapistId);
-
-            var targetIds = lobbyManager.GetAllPlayers()
-                .Where(p => p.PlayerType == PlayerType.Escapist.ToString() && p.IsConnected)
-                .Select(p => p.Id)
-                .Distinct()
-                .OrderBy(id => id)
-                .ToList();
-
-            var passedIds = passedEscapistsHost
-                .Where(id => targetIds.Contains(id))
-                .Distinct()
-                .OrderBy(id => id)
-                .ToList();
-
-            var snapshotJson = packetBuilder.CreateEscapistsPassedSnapshot(targetIds, passedIds);
-
-            if (broadcastService != null)
-            {
-                Debug.Log($"[LobbyNetworkService] 📡 Soy HOST - enviando ESCAPISTS_PASSED_SNAPSHOT (passed={passedIds.Count}/{targetIds.Count})");
-                _ = broadcastService.SendToAll(snapshotJson);
-            }
-
-            HandleEscapistsPassedSnapshotPacket(snapshotJson);
-            return;
-        }
-
-        try
-        {
-            OnEscapistPassed?.Invoke(packet.escapistId);
-        }
-        catch (Exception e)
-        {
-            Debug.LogWarning($"[LobbyNetworkService] Error invocando OnEscapistPassed: {e.Message}");
-        }
-    }
 
     private void HandleEscapistsPassedSnapshotPacket(string json)
     {
         var packet = packetBuilder.DeserializeEscapistsPassedSnapshot(json);
         if (packet == null)
         {
-            Debug.LogWarning("[LobbyNetworkService] ESCAPISTS_PASSED_SNAPSHOT inválido");
+            Debug.LogWarning("[LobbyNetworkService] Invalid ESCAPISTS_PASSED_SNAPSHOT");
             return;
         }
 
@@ -495,7 +419,7 @@ public class LobbyNetworkService : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[LobbyNetworkService] Error invocando OnEscapistsPassedSnapshot: {e.Message}");
+            Debug.LogWarning($"[LobbyNetworkService] Error invoking OnEscapistsPassedSnapshot: {e.Message}");
         }
     }
 
@@ -511,7 +435,7 @@ public class LobbyNetworkService : MonoBehaviour
             var existsHost = lobbyManager.GetAllPlayers().FirstOrDefault(p => p.Id == playerPacket.id);
             if (existsHost == null)
             {
-                Debug.LogWarning($"[LobbyNetworkService] Ignorando intento de join de player {playerPacket.id} porque la partida ya ha comenzado.");
+                Debug.LogWarning($"[LobbyNetworkService] Ignoring join attempt from player {playerPacket.id} because game has already started");
 
                 try
                 {
@@ -522,27 +446,24 @@ public class LobbyNetworkService : MonoBehaviour
                         if (connectionManager.TryGetEndpointById(playerPacket.id, out IPEndPoint endpoint) && endpoint != null)
                         {
                             _ = server.SendToClientAsync(rejectPacket, endpoint);
-                            Debug.Log($"[LobbyNetworkService] ASSIGN_REJECT dirigido enviado a {endpoint} para player {playerPacket.id}");
 
                             try
                             {
                                 var disconnectPacket = packetBuilder.CreateDisconnect();
                                 _ = server.SendToClientAsync(disconnectPacket, endpoint);
-                                Debug.Log($"[LobbyNetworkService] DISCONNECT dirigido enviado a {endpoint} para player {playerPacket.id}");
                             }
                             catch (Exception exDisconnect)
                             {
-                                Debug.LogWarning($"[LobbyNetworkService] Error enviando DISCONNECT dirigido a {endpoint}: {exDisconnect.Message}");
+                                Debug.LogWarning($"[LobbyNetworkService] Error sending DISCONNECT to {endpoint}: {exDisconnect.Message}");
                             }
 
                             try
                             {
                                 connectionManager.RemoveClient(endpoint);
-                                Debug.Log($"[LobbyNetworkService] Endpoint {endpoint} eliminado del ConnectionManager para player {playerPacket.id}");
                             }
                             catch (Exception exRemove)
                             {
-                                Debug.LogWarning($"[LobbyNetworkService] Error eliminando endpoint del ConnectionManager: {exRemove.Message}");
+                                Debug.LogWarning($"[LobbyNetworkService] Error removing endpoint from ConnectionManager: {exRemove.Message}");
                             }
 
                             return;
@@ -550,11 +471,10 @@ public class LobbyNetworkService : MonoBehaviour
                     }
 
                     _ = broadcastService.SendToAll(rejectPacket);
-                    Debug.Log($"[LobbyNetworkService] ASSIGN_REJECT enviado por broadcast para player {playerPacket.id}");
                 }
                 catch (Exception e)
                 {
-                    Debug.LogWarning($"[LobbyNetworkService] Error enviando ASSIGN_REJECT: {e.Message}");
+                    Debug.LogWarning($"[LobbyNetworkService] Error sending ASSIGN_REJECT: {e.Message}");
                 }
 
                 return;
@@ -578,7 +498,6 @@ public class LobbyNetworkService : MonoBehaviour
             {
                 if (requestedType != PlayerType.Killer.ToString())
                 {
-                    Debug.Log("[LobbyNetworkService] Host es Escapist y no hay Killer; promoviendo este cliente a Killer");
                     requestedType = PlayerType.Killer.ToString();
                 }
             }
@@ -586,7 +505,6 @@ public class LobbyNetworkService : MonoBehaviour
             {
                 if (requestedType == PlayerType.Killer.ToString() && anyKiller)
                 {
-                    Debug.Log("[LobbyNetworkService] Ya existe un Killer; asignando Escapist en su lugar");
                     requestedType = PlayerType.Escapist.ToString();
                 }
             }
@@ -597,7 +515,6 @@ public class LobbyNetworkService : MonoBehaviour
         {
             if (existing.PlayerType != requestedType)
             {
-                Debug.Log($"[LobbyNetworkService] Actualizando tipo player {playerPacket.id} -> {requestedType}");
                 var updated = lobbyManager.UpdatePlayerTypeRemote(playerPacket.id, requestedType);
                 if (updated)
                 {
@@ -615,7 +532,7 @@ public class LobbyNetworkService : MonoBehaviour
         var added = lobbyManager.AddPlayerRemote(playerPacket.id, requestedType);
         if (added == null)
         {
-            Debug.LogWarning($"[LobbyNetworkService] Player {playerPacket.id} no pudo ser añadido (lobby lleno u error)");
+            Debug.LogWarning($"[LobbyNetworkService] Player {playerPacket.id} could not be added (lobby full or error)");
 
             try
             {
@@ -626,18 +543,16 @@ public class LobbyNetworkService : MonoBehaviour
                     if (connectionManager.TryGetEndpointById(playerPacket.id, out IPEndPoint endpoint) && endpoint != null)
                     {
                         _ = server.SendToClientAsync(rejectPacket, endpoint);
-                        Debug.Log($"[LobbyNetworkService] ASSIGN_REJECT dirigido enviado a {endpoint} para player {playerPacket.id}");
                     }
                 }
                 else
                 {
                     _ = broadcastService.SendToAll(rejectPacket);
-                    Debug.Log($"[LobbyNetworkService] ASSIGN_REJECT enviado por broadcast para player {playerPacket.id}");
                 }
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"[LobbyNetworkService] Error enviando ASSIGN_REJECT: {e.Message}");
+                Debug.LogWarning($"[LobbyNetworkService] Error sending ASSIGN_REJECT: {e.Message}");
             }
 
             return;
@@ -651,7 +566,7 @@ public class LobbyNetworkService : MonoBehaviour
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"[LobbyNetworkService] Error invocando OnLocalJoinAccepted: {e.Message}");
+                Debug.LogWarning($"[LobbyNetworkService] Error invoking OnLocalJoinAccepted: {e.Message}");
             }
         }
     }
@@ -681,7 +596,6 @@ public class LobbyNetworkService : MonoBehaviour
         var assignPacket = packetBuilder.Serializer.Deserialize<AssignPlayerPacket>(json);
         if (assignPacket == null) return;
 
-        Debug.Log($"[LobbyNetworkService] Received ASSIGN for id {assignPacket.id}");
     }
 
     private void HandleRemovePlayerPacket(string json)
@@ -689,7 +603,6 @@ public class LobbyNetworkService : MonoBehaviour
         var packet = packetBuilder.Serializer.Deserialize<RemovePlayerPacket>(json);
         if (packet == null) return;
 
-        Debug.Log($"[LobbyNetworkService] Player {packet.id} disconnected");
 
         lobbyManager.RemovePlayerRemote(packet.id);
     }
@@ -699,18 +612,17 @@ public class LobbyNetworkService : MonoBehaviour
         var packet = packetBuilder.Serializer.Deserialize<StartGamePacket>(json);
         if (packet == null)
         {
-            Debug.LogWarning("[LobbyNetworkService] START_GAME recibido pero packet inválido");
+            Debug.LogWarning("[LobbyNetworkService] START_GAME received but packet invalid");
             return;
         }
 
-        Debug.Log($"[LobbyNetworkService] START_GAME recibido -> escena: {packet.sceneName}");
         try
         {
             OnStartGameReceived?.Invoke(packet.sceneName);
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[LobbyNetworkService] Error invocando OnStartGameReceived: {e.Message}");
+            Debug.LogWarning($"[LobbyNetworkService] Error invoking OnStartGameReceived: {e.Message}");
         }
     }
 
@@ -730,14 +642,14 @@ public class LobbyNetworkService : MonoBehaviour
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"[LobbyNetworkService] Error limpiando players: {e.Message}");
+                Debug.LogWarning($"[LobbyNetworkService] Error cleaning players: {e.Message}");
             }
 
             OnReturnToLobbyReceived?.Invoke();
         }
         catch (Exception e)
         {
-            Debug.LogError($"[LobbyNetworkService] Error en HandleReturnToLobbyPacket: {e.Message}");
+            Debug.LogError($"[LobbyNetworkService] Error in HandleReturnToLobbyPacket: {e.Message}");
         }
     }
 
@@ -767,22 +679,20 @@ public class LobbyNetworkService : MonoBehaviour
     {
         if (!isHost)
         {
-            Debug.LogWarning("[LobbyNetworkService] ReturnAllPlayersToLobby: solo el host puede usarlo");
+            Debug.LogWarning("[LobbyNetworkService] ReturnAllPlayersToLobby: only host can use it");
             return;
         }
 
-        Debug.Log("[LobbyNetworkService] Enviando RETURN_TO_LOBBY a todos los clientes");
 
         try
         {
             var returnPacket = packetBuilder.CreateReturnToLobby();
             await broadcastService.SendToAll(returnPacket);
 
-            Debug.Log("[LobbyNetworkService] RETURN_TO_LOBBY enviado a todos los clientes");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LobbyNetworkService] Error en ReturnAllPlayersToLobby: {e.Message}");
+            Debug.LogError($"[LobbyNetworkService] Error in ReturnAllPlayersToLobby: {e.Message}");
         }
     }
 
@@ -795,13 +705,13 @@ public class LobbyNetworkService : MonoBehaviour
     {
         if (!isHost)
         {
-            Debug.LogWarning("[LobbyNetworkService] SendGameWinAsync: Solo el host puede enviar WIN_GAME a todos");
+            Debug.LogWarning("[LobbyNetworkService] SendGameWinAsync: Only host can send WIN_GAME to all");
             return;
         }
 
         if (broadcastService == null)
         {
-            Debug.LogError("[LobbyNetworkService] SendGameWinAsync: BroadcastService no disponible");
+            Debug.LogError("[LobbyNetworkService] SendGameWinAsync: BroadcastService not available");
             return;
         }
 
@@ -809,23 +719,21 @@ public class LobbyNetworkService : MonoBehaviour
         {
             var winPacket = packetBuilder.CreateWinGame(winnerId, winnerType, isKillerWin);
 
-            Debug.Log($"[LobbyNetworkService] 📡 Enviando WIN_GAME a TODOS: winnerId={winnerId}, winnerType={winnerType}");
 
             await broadcastService.SendToAll(winPacket);
 
             HandleWinGamePacket(winPacket);
 
-            Debug.Log("[LobbyNetworkService] ✅ WIN_GAME enviado a todos los clientes - seguro cambiar escena");
         }
         catch (Exception e)
         {
-            Debug.LogError($"[LobbyNetworkService] ❌ Error en SendGameWinAsync: {e.Message}\n{e.StackTrace}");
+            Debug.LogError($"[LobbyNetworkService] Error in SendGameWinAsync: {e.Message}\n{e.StackTrace}");
         }
     }
+
     public void ResetGameWin()
     {
         GameStarted = false;
-        Debug.Log("[LobbyNetworkService] Game win state resetted");
     }
 
   

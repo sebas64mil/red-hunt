@@ -14,8 +14,6 @@ public class NetworkInstaller
         GameNetworkService gameNetworkService,
         bool isHost)
     {
-        Debug.Log("[NetworkInstaller] Iniciando instalación de Network...");
-
         var serializer = new JsonSerializer();
         var builder = new PacketBuilder(serializer);
         var playerPacketBuilder = new PlayerPacketBuilder(serializer);
@@ -57,7 +55,7 @@ public class NetworkInstaller
             }
             catch (Exception e)
             {
-                Debug.LogError($"[NetworkInstaller] Error procesando ASSIGN_REJECT: {e.Message}");
+                Debug.LogError($"[NetworkInstaller] Error processing ASSIGN_REJECT: {e.Message}");
             }
         });
 
@@ -77,7 +75,7 @@ public class NetworkInstaller
 
                     if (packet.playerType == PlayerType.Killer.ToString() && existingKillers >= 1)
                     {
-                        var rejectJson = builder.CreateAssignReject(packet.id, "Ya existe un Killer en el lobby");
+                        var rejectJson = builder.CreateAssignReject(packet.id, "Killer already exists in lobby");
                         try
                         {
                             if (server != null)
@@ -85,17 +83,16 @@ public class NetworkInstaller
                         }
                         catch (Exception sendEx)
                         {
-                            Debug.LogWarning($"[NetworkInstaller] Error enviando ASSIGN_REJECT al emisor: {sendEx.Message}");
+                            Debug.LogWarning($"[NetworkInstaller] Error sending ASSIGN_REJECT to sender: {sendEx.Message}");
                         }
 
                         try
                         {
                             connectionManager?.RemoveClient(sender);
-                            Debug.Log($"[NetworkInstaller] ConnectionManager: cliente {sender} removido tras ASSIGN_REJECT (id liberado)");
                         }
                         catch (Exception rmEx)
                         {
-                            Debug.LogWarning($"[NetworkInstaller] Error liberando id en ConnectionManager tras ASSIGN_REJECT: {rmEx.Message}");
+                            Debug.LogWarning($"[NetworkInstaller] Error freeing id in ConnectionManager after ASSIGN_REJECT: {rmEx.Message}");
                         }
 
                         return;
@@ -106,7 +103,7 @@ public class NetworkInstaller
             }
             catch (Exception e)
             {
-                Debug.LogError($"[NetworkInstaller] Error procesando PLAYER: {e.Message}");
+                Debug.LogError($"[NetworkInstaller] Error processing PLAYER: {e.Message}");
             }
         });
 
@@ -121,7 +118,7 @@ public class NetworkInstaller
             }
             catch (Exception e)
             {
-                Debug.LogError($"[NetworkInstaller] Error procesando PLAYER_READY: {e.Message}");
+                Debug.LogError($"[NetworkInstaller] Error processing PLAYER_READY: {e.Message}");
             }
         });
 
@@ -133,7 +130,7 @@ public class NetworkInstaller
             }
             catch (Exception e)
             {
-                Debug.LogError($"[NetworkInstaller] Error procesando REMOVE_PLAYER: {e.Message}");
+                Debug.LogError($"[NetworkInstaller] Error processing REMOVE_PLAYER: {e.Message}");
             }
         });
 
@@ -144,7 +141,7 @@ public class NetworkInstaller
                 var movePacket = playerPacketBuilder.DeserializeMovePacket(json);
                 if (movePacket == null)
                 {
-                    Debug.LogWarning("[NetworkInstaller] ❌ MOVE packet inválido");
+                    Debug.LogWarning("[NetworkInstaller] Invalid MOVE packet");
                     return;
                 }
 
@@ -158,24 +155,16 @@ public class NetworkInstaller
 
                     if (movePacket.playerId != myPlayerId)
                     {
-                        if (networkServices.OnRemotePlayerMoveReceived == null)
-                        {
-                            Debug.LogWarning("[NetworkInstaller] ⚠️ OnRemotePlayerMoveReceived aún es NULL");
-                        }
-                        else
+                        if (networkServices.OnRemotePlayerMoveReceived != null)
                         {
                             networkServices.OnRemotePlayerMoveReceived.Invoke(movePacket);
                         }
-                    }
-                    else
-                    {
-                        Debug.Log($"[NetworkInstaller] ⏭️ CLIENTE: MOVE propio ignorado");
                     }
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError($"[NetworkInstaller] ❌ Error procesando MOVE: {e.Message}\n{e.StackTrace}");
+                Debug.LogError($"[NetworkInstaller] Error processing MOVE: {e.Message}\n{e.StackTrace}");
             }
         });
 
@@ -185,27 +174,24 @@ public class NetworkInstaller
             {
                 if (isHost)
                 {
-                    Debug.Log("[NetworkInstaller] ⏭️ Host ignorando su propio snapshot");
                     return;
                 }
 
                 var snapshot = playerPacketBuilder.DeserializePlayerStateSnapshot(json);
                 if (snapshot == null)
                 {
-                    Debug.LogWarning("[NetworkInstaller] ❌ PlayerStateSnapshot inválido o NULL");
+                    Debug.LogWarning("[NetworkInstaller] Invalid or null PlayerStateSnapshot");
                     return;
                 }
 
-
                 if (snapshot.players == null || snapshot.players.Count == 0)
                 {
-                    Debug.LogWarning("[NetworkInstaller] ⚠️ Snapshot sin jugadores");
+                    Debug.LogWarning("[NetworkInstaller] Snapshot with no players");
                     return;
                 }
 
                 foreach (var playerState in snapshot.players)
                 {
-
                     if (playerState.playerId != clientState.PlayerId)
                     {
                         var movePacket = new MovePacket
@@ -226,23 +212,20 @@ public class NetworkInstaller
                             timestamp = snapshot.timestamp
                         };
 
-
                         if (networkServices?.OnRemotePlayerMoveReceived != null)
                         {
                             networkServices.OnRemotePlayerMoveReceived.Invoke(movePacket);
                         }
                         else
                         {
-                            Debug.LogError($"[NetworkInstaller] ❌ OnRemotePlayerMoveReceived es NULL - GameplayBootstrap no se ha inicializado?");
+                            Debug.LogError("[NetworkInstaller] OnRemotePlayerMoveReceived is null - GameplayBootstrap not initialized");
                         }
                     }
-
                 }
-
             }
             catch (Exception e)
             {
-                Debug.LogError($"[NetworkInstaller] ❌ Error procesando PLAYER_STATE_SNAPSHOT: {e.Message}\n{e.StackTrace}");
+                Debug.LogError($"[NetworkInstaller] Error processing PLAYER_STATE_SNAPSHOT: {e.Message}\n{e.StackTrace}");
             }
         });
 
@@ -253,13 +236,11 @@ public class NetworkInstaller
                 var packet = serializer.Deserialize<StartGamePacket>(json);
                 if (packet == null) return;
 
-                Debug.Log($"[NetworkInstaller] START_GAME recibido -> escena: {packet.sceneName}");
-
                 lobbyNetworkService?.HandlePacketReceived(json);
             }
             catch (Exception e)
             {
-                Debug.LogError($"[NetworkInstaller] Error procesando START_GAME: {e.Message}");
+                Debug.LogError($"[NetworkInstaller] Error processing START_GAME: {e.Message}");
             }
         });
 
@@ -267,16 +248,13 @@ public class NetworkInstaller
         {
             try
             {
-                Debug.Log("[NetworkInstaller] RETURN_TO_LOBBY recibido");
                 lobbyNetworkService?.HandlePacketReceived(json);
             }
             catch (Exception e)
             {
-                Debug.LogError($"[NetworkInstaller] Error procesando RETURN_TO_LOBBY: {e.Message}");
+                Debug.LogError($"[NetworkInstaller] Error processing RETURN_TO_LOBBY: {e.Message}");
             }
         });
-
-        // ===================== GAME PACKETS =====================
 
         dispatcher.Register("WIN_GAME", (json, sender) =>
         {
@@ -286,7 +264,7 @@ public class NetworkInstaller
             }
             catch (Exception e)
             {
-                Debug.LogError($"[NetworkInstaller] Error procesando WIN_GAME: {e.Message}");
+                Debug.LogError($"[NetworkInstaller] Error processing WIN_GAME: {e.Message}");
             }
         });
 
@@ -297,7 +275,7 @@ public class NetworkInstaller
                 var packet = serializer.Deserialize<HealthUpdatePacket>(json);
                 if (packet == null)
                 {
-                    Debug.LogWarning("[NetworkInstaller] ❌ HEALTH_UPDATE packet inválido");
+                    Debug.LogWarning("[NetworkInstaller] Invalid HEALTH_UPDATE packet");
                     return;
                 }
 
@@ -310,7 +288,7 @@ public class NetworkInstaller
             }
             catch (Exception e)
             {
-                Debug.LogError($"[NetworkInstaller] ❌ Error procesando HEALTH_UPDATE: {e.Message}");
+                Debug.LogError($"[NetworkInstaller] Error processing HEALTH_UPDATE: {e.Message}");
             }
         });
 
@@ -322,7 +300,7 @@ public class NetworkInstaller
             }
             catch (Exception e)
             {
-                Debug.LogError($"[NetworkInstaller] Error procesando ESCAPIST_PASSED: {e.Message}");
+                Debug.LogError($"[NetworkInstaller] Error processing ESCAPIST_PASSED: {e.Message}");
             }
         });
 
@@ -334,7 +312,7 @@ public class NetworkInstaller
             }
             catch (Exception e)
             {
-                Debug.LogError($"[NetworkInstaller] Error procesando ESCAPISTS_PASSED_SNAPSHOT: {e.Message}");
+                Debug.LogError($"[NetworkInstaller] Error processing ESCAPISTS_PASSED_SNAPSHOT: {e.Message}");
             }
         });
 
@@ -345,7 +323,7 @@ public class NetworkInstaller
                 var packet = serializer.Deserialize<EscapistClueCollectedPacket>(json);
                 if (packet == null)
                 {
-                    Debug.LogWarning("[NetworkInstaller] ❌ ESCAPIST_CLUE_COLLECTED packet inválido");
+                    Debug.LogWarning("[NetworkInstaller] Invalid ESCAPIST_CLUE_COLLECTED packet");
                     return;
                 }
 
@@ -358,7 +336,7 @@ public class NetworkInstaller
             }
             catch (Exception e)
             {
-                Debug.LogError($"[NetworkInstaller] ❌ Error procesando ESCAPIST_CLUE_COLLECTED: {e.Message}");
+                Debug.LogError($"[NetworkInstaller] Error processing ESCAPIST_CLUE_COLLECTED: {e.Message}");
             }
         });
 
@@ -370,7 +348,7 @@ public class NetworkInstaller
             }
             catch (Exception e)
             {
-                Debug.LogError($"[NetworkInstaller] Error procesando ESCAPISTS_CLUES_SNAPSHOT: {e.Message}");
+                Debug.LogError($"[NetworkInstaller] Error processing ESCAPISTS_CLUES_SNAPSHOT: {e.Message}");
             }
         });
 
@@ -380,13 +358,11 @@ public class NetworkInstaller
             {
                 try
                 {
-                    Debug.Log("[NetworkInstaller] DISCONNECT recibido (servidor)");
-
                     var clientId = connectionManager.GetClientId(sender);
 
                     if (clientId <= 0)
                     {
-                        Debug.LogWarning($"[NetworkInstaller] ⚠️ ClientId inválido ({clientId}) para sender {sender} - cliente ya fue removido");
+                        Debug.LogWarning($"[NetworkInstaller] Invalid ClientId ({clientId}) for sender {sender} - client already removed");
                         return;
                     }
 
@@ -396,22 +372,21 @@ public class NetworkInstaller
                     }
                     catch (KeyNotFoundException ex)
                     {
-                        Debug.LogWarning($"[NetworkInstaller] ⚠️ Cliente {sender} ya removido del ConnectionManager: {ex.Message}");
+                        Debug.LogWarning($"[NetworkInstaller] Client {sender} already removed from ConnectionManager: {ex.Message}");
                     }
                     
                     lobbyManager.RemovePlayerRemote(clientId);
 
                     var removePacket = builder.CreateRemovePlayer(clientId);
                     await broadcastService.SendToAll(removePacket);
-                    
                 }
                 catch (KeyNotFoundException ex)
                 {
-                    Debug.LogWarning($"[NetworkInstaller] ⚠️ DISCONNECT: Clave {sender} no encontrada. Error: {ex.Message}");
+                    Debug.LogWarning($"[NetworkInstaller] DISCONNECT: Key {sender} not found. Error: {ex.Message}");
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[NetworkInstaller] ❌ Error en DISCONNECT (servidor): {e.Message}");
+                    Debug.LogError($"[NetworkInstaller] Error in DISCONNECT (server): {e.Message}");
                 }
             });
         }
@@ -421,8 +396,6 @@ public class NetworkInstaller
             {
                 try
                 {
-                    Debug.Log("[NetworkInstaller] DISCONNECT recibido (cliente)");
-
                     var players = lobbyManager.GetAllPlayers().ToList();
                     foreach (var p in players)
                     {
@@ -433,12 +406,11 @@ public class NetworkInstaller
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[NetworkInstaller] Error en DISCONNECT (cliente): {e.Message}");
+                    Debug.LogError($"[NetworkInstaller] Error in DISCONNECT (client): {e.Message}");
                 }
             });
         }
 
-        // === LATENCY PING/PONG SYSTEM ===
         var adminPacketBuilder = new AdminPacketBuilder(serializer);
         var latencyHandler = new LatencyHandler(connectionManager, serializer);
         var clientPingHandler = new ClientPingHandler(client, serializer, adminPacketBuilder, clientState);
@@ -451,7 +423,7 @@ public class NetworkInstaller
             }
             catch (Exception e)
             {
-                Debug.LogError($"[NetworkInstaller] Error procesando ADMIN_PONG: {e.Message}");
+                Debug.LogError($"[NetworkInstaller] Error processing ADMIN_PONG: {e.Message}");
             }
         });
 
@@ -463,16 +435,13 @@ public class NetworkInstaller
             }
             catch (Exception e)
             {
-                Debug.LogError($"[NetworkInstaller] Error procesando ADMIN_PING: {e.Message}");
+                Debug.LogError($"[NetworkInstaller] Error processing ADMIN_PING: {e.Message}");
             }
         });
-
-        Debug.Log("[NetworkInstaller] Network inicializado");
 
         lobbyNetworkService?.Init(lobbyManager, broadcastService, builder, isHost, clientState, clientPacketHandler, server, connectionManager);
         gameNetworkService?.Init(lobbyManager, broadcastService, builder, isHost, clientState, clientPacketHandler);
 
-        // ⭐ Configurar networkServices AL FINAL
         networkServices.Server = server;
         networkServices.Client = client;
         networkServices.Dispatcher = dispatcher;
@@ -484,16 +453,12 @@ public class NetworkInstaller
         networkServices.BroadcastService = broadcastService;
         networkServices.AdminService = adminService;
 
-        // === Inicializar LatencyService (solo en servidor/host) ===
         if (isHost)
         {
             var latencyService = new GameObject("[LatencyService]").AddComponent<LatencyService>();
             latencyService.Init(server, adminPacketBuilder, connectionManager);
             networkServices.LatencyService = latencyService;
-            Debug.Log("[NetworkInstaller] LatencyService inicializado en el host");
         }
-
-        Debug.Log("[NetworkInstaller] ⭐ NetworkServices configurados completamente");
 
         return networkServices;
     }
@@ -509,19 +474,18 @@ public class NetworkInstaller
         {
             if (server == null)
             {
-                Debug.LogError("[NetworkInstaller] IServer es NULL, no se puede crear LatencyService");
+                Debug.LogError("[NetworkInstaller] IServer is null, cannot create LatencyService");
                 return null;
             }
 
             var latencyService = new GameObject("[LatencyService]").AddComponent<LatencyService>();
             latencyService.Init(server, adminBuilder, connectionManager);
 
-            Debug.Log("[NetworkInstaller] ✅ LatencyService creado on-demand para HOST");
             return latencyService;
         }
         catch (Exception e)
         {
-            Debug.LogError($"[NetworkInstaller] Error creando LatencyService on-demand: {e.Message}");
+            Debug.LogError($"[NetworkInstaller] Error creating LatencyService on-demand: {e.Message}");
             return null;
         }
     }
@@ -551,13 +515,11 @@ public class NetworkServices
             {
                 try
                 {
-                    Debug.Log("[NetworkServices] DISCONNECT recibido (servidor)");
-
                     var clientId = ConnectionManager.GetClientId(sender);
                     
                     if (clientId <= 0)
                     {
-                        Debug.LogWarning($"[NetworkServices] ⚠️ ClientId inválido ({clientId}) para sender {sender} - cliente ya fue removido");
+                        Debug.LogWarning($"[NetworkServices] Invalid ClientId ({clientId}) for sender {sender} - client already removed");
                         return;
                     }
 
@@ -567,23 +529,21 @@ public class NetworkServices
                     }
                     catch (KeyNotFoundException ex)
                     {
-                        Debug.LogWarning($"[NetworkServices] ⚠️ Cliente {sender} ya removido del ConnectionManager: {ex.Message}");
+                        Debug.LogWarning($"[NetworkServices] Client {sender} already removed from ConnectionManager: {ex.Message}");
                     }
                     
                     lobbyManager.RemovePlayerRemote(clientId);
 
                     var packet = Builder.CreateRemovePlayer(clientId);
                     await BroadcastService.SendToAll(packet);
-                    
-                    Debug.Log($"[NetworkServices] ✅ DISCONNECT procesado para cliente {clientId}");
                 }
                 catch (KeyNotFoundException ex)
                 {
-                    Debug.LogWarning($"[NetworkServices] ⚠️ DISCONNECT: Clave {sender} no encontrada. Error: {ex.Message}");
+                    Debug.LogWarning($"[NetworkServices] DISCONNECT: Key {sender} not found. Error: {ex.Message}");
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[NetworkServices] ❌ Error en DISCONNECT (servidor): {e.Message}");
+                    Debug.LogError($"[NetworkServices] Error in DISCONNECT (server): {e.Message}");
                 }
             };
         }
@@ -593,8 +553,6 @@ public class NetworkServices
             {
                 try
                 {
-                    Debug.Log("[NetworkServices] DISCONNECT recibido (cliente) - servidor se está cerrando");
-
                     var players = lobbyManager.GetAllPlayers().ToList();
                     foreach (var p in players)
                         lobbyManager.RemovePlayerRemote(p.Id);
@@ -603,7 +561,7 @@ public class NetworkServices
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[NetworkServices] Error en DISCONNECT (cliente): {e.Message}");
+                    Debug.LogError($"[NetworkServices] Error in DISCONNECT (client): {e.Message}");
                 }
             };
         }

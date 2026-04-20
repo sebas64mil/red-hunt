@@ -33,8 +33,6 @@ public class UIBindingBootstrap : MonoBehaviour
     private Action winUI_OnLeaveLobby;
     private Action winUI_OnReturnToLobby;
 
-    private void DebugLog(string msg) => Debug.Log($"[UIBinding] {msg}");
-
     public void Bind(LobbyUI ui, AdminUI admin, NetworkBootstrap networkBootstrap, ApplicationBootstrap appBootstrap, PresentationBootstrap presentationBootstrap)
     {
         lobbyUI = ui;
@@ -53,9 +51,6 @@ public class UIBindingBootstrap : MonoBehaviour
         network.OnClientDisconnected -= HandleNetworkDisconnected;
         network.OnClientDisconnected += HandleNetworkDisconnected;
 
-        network.OnPlayerIdAssigned -= HandleNetworkPlayerIdAssigned;
-        network.OnPlayerIdAssigned += HandleNetworkPlayerIdAssigned;
-
         network.OnLocalJoinAccepted -= HandleNetworkLocalJoinAccepted;
         network.OnLocalJoinAccepted += HandleNetworkLocalJoinAccepted;
 
@@ -73,8 +68,6 @@ public class UIBindingBootstrap : MonoBehaviour
         
         UpdateStartButtonAvailability();
 
-        DebugLog("Bind completado.");
-
         if (gameNetworkService != null)
         {
             gameNetworkService.OnGameWinReceived -= HandleGameWin;
@@ -84,7 +77,6 @@ public class UIBindingBootstrap : MonoBehaviour
 
     private void HandleNetworkDisconnected()
     {
-        DebugLog("Network disconnected -> limpiando estado local");
         clientConnected = false;
         lastSelectionIsHost = false;
 
@@ -97,14 +89,8 @@ public class UIBindingBootstrap : MonoBehaviour
         UpdateStartButtonAvailability();
     }
 
-    private void HandleNetworkPlayerIdAssigned(int id)
-    {
-        DebugLog($"Network asignó playerId {id}");
-    }
-
     private void HandleNetworkLocalJoinAccepted(int id)
     {
-        DebugLog($"Network local join accepted {id}");
         clientConnected = true;
         UpdateStartButtonAvailability();
     }
@@ -116,7 +102,6 @@ public class UIBindingBootstrap : MonoBehaviour
             var localId = network?.Services?.ClientState?.PlayerId ?? -1;
             if (playerId == localId)
             {
-                DebugLog($"Jugador local ({localId}) fue removido del lobby -> limpiando estado local");
                 clientConnected = false;
                 lastSelectionIsHost = false;
                 try { network?.Services?.ClientState?.ClearPendingPlayerType(); } catch { }
@@ -126,7 +111,7 @@ public class UIBindingBootstrap : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[UIBinding] Error en HandleAppPlayerLeft: {e.Message}");
+            Debug.LogWarning($"[UIBinding] Error in HandleAppPlayerLeft: {e.Message}");
         }
     }
 
@@ -134,21 +119,19 @@ public class UIBindingBootstrap : MonoBehaviour
     {
         try
         {
-            DebugLog($"Application reported PlayerJoined: {player.Id} ({player.PlayerType})");
             UpdateStartButtonAvailability();
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[UIBinding] Error en HandleAppPlayerJoined: {e.Message}");
+            Debug.LogWarning($"[UIBinding] Error in HandleAppPlayerJoined: {e.Message}");
         }
     }
 
     public async Task StartHostFlow(int port)
     {
-        if (network == null) throw new InvalidOperationException("NetworkBootstrap no inyectado");
-        if (presentation?.Presentation?.LobbyUI == null) throw new InvalidOperationException("Presentation no inicializada");
+        if (network == null) throw new InvalidOperationException("NetworkBootstrap not injected");
+        if (presentation?.Presentation?.LobbyUI == null) throw new InvalidOperationException("Presentation not initialized");
 
-        DebugLog($"StartHostFlow port={port}");
         await network.StartServer(port);
         serverStarted = true;
 
@@ -164,7 +147,6 @@ public class UIBindingBootstrap : MonoBehaviour
         presentation.Presentation.LobbyUI.SetConnected(true);
         network.Services.SwitchToHost(appServicesProvider.Services.LobbyManager);
 
-        // === Inicializar LatencyService para el HOST ===
         try
         {
             if (network?.Services != null && network.Services.LatencyService == null)
@@ -180,13 +162,12 @@ public class UIBindingBootstrap : MonoBehaviour
                 {
                     network.Services.LatencyService = latencyService;
                     adminUI?.SetLatencyService(latencyService);
-                    DebugLog("✅ LatencyService inicializado y conectado a AdminUI");
                 }
             }
         }
         catch (Exception e)
         {
-            DebugLog($"⚠️ Error inicializando LatencyService: {e.Message}");
+            Debug.LogWarning($"[UIBinding] Error initializing LatencyService: {e.Message}");
         }
 
         UpdateStartButtonAvailability();
@@ -194,8 +175,7 @@ public class UIBindingBootstrap : MonoBehaviour
 
     public async Task<bool> StartClientFlow(string ip, int port)
     {
-        if (network == null) throw new InvalidOperationException("NetworkBootstrap no inyectado");
-        DebugLog($"StartClientFlow ip={ip} port={port}");
+        if (network == null) throw new InvalidOperationException("NetworkBootstrap not injected");
 
         bool success = await network.ConnectToServer(ip, port);
         if (!success)
@@ -226,25 +206,20 @@ public class UIBindingBootstrap : MonoBehaviour
     {
         lobby_OnHostChosen = () =>
         {
-            DebugLog("OnHostChosen recibido (intención host)");
             lastSelectionIsHost = true;
         };
 
         lobby_OnJoinChosen = () =>
         {
-            DebugLog("OnJoinChosen recibido (intención join)");
             lastSelectionIsHost = false;
         };
 
         lobby_OnConfirmRole = async (role) =>
         {
-            DebugLog($"Role confirmado: {role} (lastSelectionIsHost={lastSelectionIsHost}, serverStarted={serverStarted}, clientConnected={clientConnected})");
-
             if (lastSelectionIsHost)
             {
                 if (!serverStarted)
                 {
-                    DebugLog("Iniciando host (StartServer) desde OnConfirmRole");
                     try
                     {
                         await StartHostFlow(presentation.Presentation.LobbyUI.Port);
@@ -253,7 +228,7 @@ public class UIBindingBootstrap : MonoBehaviour
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogWarning($"Error iniciando host desde OnConfirmRole: {ex.Message}");
+                        Debug.LogWarning($"[UIBinding] Error starting host from OnConfirmRole: {ex.Message}");
                         presentation.Presentation?.LobbyUI?.ResetAllToMain();
                         adminUI?.ClearAll();
                         serverStarted = false;
@@ -262,7 +237,6 @@ public class UIBindingBootstrap : MonoBehaviour
                 }
                 else
                 {
-                    DebugLog("Host ya iniciado, no reiniciando server");
                     presentation.Presentation.LobbyUI.SetIsHost(true);
                     presentation.Presentation.LobbyUI.ShowLobbyPanel();
                 }
@@ -271,7 +245,6 @@ public class UIBindingBootstrap : MonoBehaviour
             {
                 if (!clientConnected)
                 {
-                    DebugLog("Conectando cliente (ConnectToServer) desde OnConfirmRole");
                     try
                     {
                         network.Services.ClientState.SetPendingPlayerType(role.ToString());
@@ -279,7 +252,7 @@ public class UIBindingBootstrap : MonoBehaviour
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogWarning($"Error conectando cliente desde OnConfirmRole: {ex.Message}");
+                        Debug.LogWarning($"[UIBinding] Error connecting client from OnConfirmRole: {ex.Message}");
                         presentation.Presentation?.LobbyUI?.ResetAllToMain();
                         adminUI?.ClearAll();
                         clientConnected = false;
@@ -287,27 +260,20 @@ public class UIBindingBootstrap : MonoBehaviour
                         return;
                     }
                 }
-                else
-                {
-                    DebugLog("Cliente ya conectado, usando conexión existente");
-                }
             }
 
             try
             {
-                DebugLog($"Llamando JoinLobby con role {role}");
                 lobbyNetworkService?.JoinLobby(role.ToString());
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"Error en JoinLobby: {ex.Message}");
+                Debug.LogWarning($"[UIBinding] Error in JoinLobby: {ex.Message}");
             }
         };
 
         lobby_OnCreateLobby = async (ip, port) =>
         {
-            DebugLog($"Crear Lobby {ip}:{port}");
-
             if (!serverStarted)
             {
                 await network.StartServer(port);
@@ -323,16 +289,10 @@ public class UIBindingBootstrap : MonoBehaviour
 
                 UpdateStartButtonAvailability();
             }
-            else
-            {
-                DebugLog("StartServer solicitado pero serverStarted ya es true; ignorando");
-            }
         };
 
         lobby_OnJoinLobby = async (ip, port) =>
         {
-            DebugLog($"Unirse a Lobby {ip}:{port}");
-
             if (!clientConnected)
             {
                 try
@@ -340,7 +300,7 @@ public class UIBindingBootstrap : MonoBehaviour
                     bool success = await network.ConnectToServer(ip, port);
                     if (!success)
                     {
-                        Debug.LogWarning("Conexión al servidor fallida en OnJoinLobby");
+                        Debug.LogWarning("[UIBinding] Server connection failed in OnJoinLobby");
                         presentation.Presentation?.LobbyUI?.ResetAllToMain();
                         adminUI?.ClearAll();
                         clientConnected = false;
@@ -361,22 +321,16 @@ public class UIBindingBootstrap : MonoBehaviour
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogWarning($"Error al conectar cliente en OnJoinLobby: {ex.Message}");
+                    Debug.LogWarning($"[UIBinding] Error connecting client in OnJoinLobby: {ex.Message}");
                     presentation.Presentation?.LobbyUI?.ResetAllToMain();
                     adminUI?.ClearAll();
                     clientConnected = false;
                 }
             }
-            else
-            {
-                DebugLog("ConnectToServer solicitado pero clientConnected ya es true; ignorando");
-            }
         };
 
         lobby_OnLeaveLobby = async () =>
         {
-            DebugLog("Usuario solicitó abandonar el lobby (voluntario)");
-
             await lobbyNetworkService?.LeaveLobby();
 
             presentation.Presentation?.LobbyUI?.ResetAllToMain();
@@ -393,7 +347,7 @@ public class UIBindingBootstrap : MonoBehaviour
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"Error limpiando spawns tras LeaveLobby: {e.Message}");
+                Debug.LogWarning($"[UIBinding] Error cleaning spawns after LeaveLobby: {e.Message}");
             }
 
             clientConnected = false;
@@ -403,8 +357,6 @@ public class UIBindingBootstrap : MonoBehaviour
 
         lobby_OnShutdownServer = async () =>
         {
-            DebugLog("Host solicitó apagar el servidor desde la UI");
-
             await lobbyNetworkService?.LeaveLobby();
 
             network.Services.Server?.Disconnect();
@@ -426,7 +378,7 @@ public class UIBindingBootstrap : MonoBehaviour
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"Error limpiando spawns tras ShutdownServer: {e.Message}");
+                Debug.LogWarning($"[UIBinding] Error cleaning spawns after ShutdownServer: {e.Message}");
             }
 
             serverStarted = false;
@@ -437,7 +389,6 @@ public class UIBindingBootstrap : MonoBehaviour
 
         admin_OnKickRequested = async (targetId) =>
         {
-            DebugLog($"Kick solicitado para player {targetId}");
             if (network.Services.AdminService != null)
             {
                 await network.Services.AdminService.KickPlayer(targetId);
@@ -446,7 +397,6 @@ public class UIBindingBootstrap : MonoBehaviour
 
         gameUI_OnLeaveLobby = async () =>
         {
-            DebugLog("GameUI: Cliente solicitó abandonar desde la escena de juego");
             await lobbyNetworkService?.LeaveLobby();
             
             presentation.SetReturningFromGameScene(true);
@@ -464,7 +414,7 @@ public class UIBindingBootstrap : MonoBehaviour
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"Error limpiando spawns: {e.Message}");
+                Debug.LogWarning($"[UIBinding] Error cleaning spawns: {e.Message}");
             }
 
             clientConnected = false;
@@ -500,17 +450,12 @@ public class UIBindingBootstrap : MonoBehaviour
             }
             
             GameManager.ChangeScene("Lobby");
-            
-            DebugLog("Host y clientes volviendo al lobby");
         };
 
-        // ⭐ NUEVOS: Handlers para WinUI
         winUI_OnLeaveLobby = async () =>
         {
-            DebugLog("WinUI: Cliente solicitó abandonar desde la escena de Win");
             await lobbyNetworkService?.LeaveLobby();
             
-            // ⭐ CRÍTICO: Usar SetReturningFromGameScene(true) para que ResetAllToMain() se ejecute
             presentation.SetReturningFromGameScene(true);
             
             adminUI?.ClearAll();
@@ -526,7 +471,7 @@ public class UIBindingBootstrap : MonoBehaviour
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"Error limpiando spawns en WinUI: {e.Message}");
+                Debug.LogWarning($"[UIBinding] Error cleaning spawns in WinUI: {e.Message}");
             }
 
             clientConnected = false;
@@ -540,8 +485,6 @@ public class UIBindingBootstrap : MonoBehaviour
 
         winUI_OnReturnToLobby = async () =>
         {
-            DebugLog("WinUI: Host solicitó volver al lobby desde Win");
-            
             if (lobbyNetworkService != null)
             {
                 lobbyNetworkService.ResetGameStarted();  
@@ -559,15 +502,11 @@ public class UIBindingBootstrap : MonoBehaviour
             
             GameManager.SetCursorVisible(true);
             GameManager.ChangeScene("Lobby");
-            
-            DebugLog("Host y clientes volviendo al lobby desde Win");
         };
     }
 
     private async void HandleGameWin(int winnerId, string winnerType, bool isKillerWin)
     {
-        DebugLog($"🎮 WIN_GAME recibido: {winnerType} ganó (winnerId={winnerId}, isKillerWin={isKillerWin})");
-        
         try
         {
             GameManager.ChangeScene("Win");
@@ -579,7 +518,7 @@ public class UIBindingBootstrap : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[UIBinding] Error cambiando a escena Win: {e.Message}");
+            Debug.LogWarning($"[UIBinding] Error changing to Win scene: {e.Message}");
         }
     }
 
@@ -587,54 +526,43 @@ public class UIBindingBootstrap : MonoBehaviour
     {
         try
         {
-            DebugLog("🎯 Inicializando escena Win...");
-
             if (winBootstrap == null)
             {
                 winBootstrap = GetComponent<WinBootstrap>();
                 if (winBootstrap == null)
                 {
-                    Debug.LogError("[UIBinding] ❌ WinBootstrap no encontrado");
+                    Debug.LogError("[UIBinding] WinBootstrap not found");
                     return;
                 }
             }
 
             winBootstrap.Init(network, appServicesProvider, presentation);
-            DebugLog("✅ WinBootstrap inicializado");
 
             var winUI = FindFirstObjectByType<WinUI>();
             if (winUI == null)
             {
-                Debug.LogError("[UIBinding] ❌ WinUI no encontrado en escena Win");
+                Debug.LogError("[UIBinding] WinUI not found in Win scene");
                 return;
             }
 
             var winCameraManager = FindFirstObjectByType<WinCameraManager>();
             if (winCameraManager == null)
             {
-                Debug.LogError("[UIBinding] ❌ WinCameraManager no encontrado en escena Win");
+                Debug.LogError("[UIBinding] WinCameraManager not found in Win scene");
                 return;
             }
 
             winBootstrap.SetWinUIAndCamera(winUI, winCameraManager);
-            DebugLog("✅ WinUI y WinCameraManager asignados");
-
             winBootstrap.SetWinData(winnerId, winnerType, isKillerWin);
-            DebugLog($"✅ Datos de victoria establecidos: {winnerType} ganó (isKillerWin={isKillerWin})");
 
-            // ⭐ NUEVO: Vincular eventos de WinUI
             BindWinUI(winUI);
-            DebugLog("✅ Eventos de WinUI vinculados");
-
-            DebugLog("🎉 Escena Win completamente inicializada");
         }
         catch (Exception e)
         {
-            Debug.LogError($"[UIBinding] ❌ Error inicializando escena Win: {e.Message}\n{e.StackTrace}");
+            Debug.LogError($"[UIBinding] Error initializing Win scene: {e.Message}\n{e.StackTrace}");
         }
     }
 
-    // ⭐ NUEVO: Método para vincular eventos de WinUI
     private void BindWinUI(WinUI ui)
     {
         if (ui == null) return;
@@ -646,11 +574,8 @@ public class UIBindingBootstrap : MonoBehaviour
 
         ui.OnReturnToLobby -= winUI_OnReturnToLobby;
         ui.OnReturnToLobby += winUI_OnReturnToLobby;
-
-        DebugLog("WinUI eventos vinculados");
     }
 
-    // ⭐ NUEVO: Método para desvincular eventos de WinUI
     private void UnbindWinUI(WinUI ui)
     {
         if (ui == null) return;
@@ -688,8 +613,6 @@ public class UIBindingBootstrap : MonoBehaviour
 
         ui.OnShutdownServer -= lobby_OnShutdownServer;
         ui.OnShutdownServer += lobby_OnShutdownServer;
-
-        DebugLog("LobbyUI eventos vinculados");
     }
 
     private void UnbindLobbyUI(LobbyUI ui)
@@ -717,33 +640,20 @@ public class UIBindingBootstrap : MonoBehaviour
         ui.OnKickRequested -= admin_OnKickRequested;
         ui.OnKickRequested += admin_OnKickRequested;
 
-        // === Conectar LatencyService ===
         LatencyService latencyService = null;
         if (network?.Services?.LatencyService != null)
         {
             latencyService = network.Services.LatencyService;
-            DebugLog("✅ LatencyService conectado a AdminUI desde networkServices");
         }
         else
         {
-            // Buscar en la escena
             latencyService = FindFirstObjectByType<LatencyService>();
-            if (latencyService != null)
-            {
-                DebugLog("✅ LatencyService encontrado en escena y conectado a AdminUI");
-            }
-            else
-            {
-                DebugLog("⚠️ LatencyService no disponible (se buscará automáticamente en AdminUI)");
-            }
         }
 
         if (latencyService != null)
         {
             ui.SetLatencyService(latencyService);
         }
-
-        DebugLog("AdminUI eventos vinculados");
     }
 
     private void UnbindAdminUI(AdminUI ui)
@@ -768,16 +678,14 @@ public class UIBindingBootstrap : MonoBehaviour
         gameUI = ui;
         BindGameUI(gameUI);
         
-        // ⭐ NUEVO: Conectar EscapistCluesDisplay con LobbyNetworkService
         BindCluesUI();
     }
 
-    // ⭐ REEMPLAZAR el método BindCluesUI() COMPLETO
     private void BindCluesUI()
     {
         if (gameNetworkService == null)
         {
-            Debug.LogWarning("[UIBinding] ⚠️ GameNetworkService no disponible para CluesUI");
+            Debug.LogWarning("[UIBinding] GameNetworkService not available for CluesUI");
             return;
         }
 
@@ -786,7 +694,7 @@ public class UIBindingBootstrap : MonoBehaviour
             var cluesDisplay = FindFirstObjectByType<EscapistCluesDisplay>();
             if (cluesDisplay == null)
             {
-                Debug.LogWarning("[UIBinding] ⚠️ EscapistCluesDisplay no encontrado en escena");
+                Debug.LogWarning("[UIBinding] EscapistCluesDisplay not found in scene");
                 return;
             }
 
@@ -803,21 +711,18 @@ public class UIBindingBootstrap : MonoBehaviour
                     var localPlayerId = network?.Services?.ClientState?.PlayerId ?? -1;
                     if (localPlayerId > 0 && escapistId == localPlayerId)
                     {
-                        Debug.Log($"[UIBinding] 🔑 Clue recolectado para player local: {clueId}");
                         cluesDisplay.OnClueObtained(escapistId, clueId);
                     }
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[UIBinding] ❌ Error en HandleEscapistClueCollected: {e.Message}");
+                    Debug.LogError($"[UIBinding] Error in HandleEscapistClueCollected: {e.Message}");
                 }
             }
-
-            DebugLog("✅ EscapistCluesDisplay conectado a eventos de pistas (GameNetworkService)");
         }
         catch (Exception e)
         {
-            Debug.LogError($"[UIBinding] ❌ Error en BindCluesUI: {e.Message}");
+            Debug.LogError($"[UIBinding] Error in BindCluesUI: {e.Message}");
         }
     }
 
@@ -832,8 +737,6 @@ public class UIBindingBootstrap : MonoBehaviour
 
         ui.OnReturnToLobby -= gameUI_OnReturnToLobby;
         ui.OnReturnToLobby += gameUI_OnReturnToLobby;
-
-        DebugLog("GameUI eventos vinculados");
     }
 
     private void UnbindGameUI(GameUI ui)
@@ -864,7 +767,7 @@ public class UIBindingBootstrap : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[UIBinding] Error actualizando StartButtonAvailability: {e.Message}");
+            Debug.LogWarning($"[UIBinding] Error updating StartButtonAvailability: {e.Message}");
         }
     }
 
@@ -878,7 +781,6 @@ public class UIBindingBootstrap : MonoBehaviour
             if (network != null)
             {
                 network.OnClientDisconnected -= HandleNetworkDisconnected;
-                network.OnPlayerIdAssigned -= HandleNetworkPlayerIdAssigned;
                 network.OnLocalJoinAccepted -= HandleNetworkLocalJoinAccepted;
             }
 
@@ -900,30 +802,27 @@ public class UIBindingBootstrap : MonoBehaviour
     {
         try
         {
-            Debug.Log($"[UIBinding] RequestStartGame invoked for scene '{sceneName}'");
             await lobbyNetworkService?.StartGame(sceneName);
 
             if (!string.IsNullOrEmpty(sceneName))
             {
                 try
                 {
-                    // Set IsHost before changing scene and locking cursor
                     var isHost = network?.Services?.ClientState?.IsHost ?? false;
                     GameManager.IsHost = isHost;
-                    Debug.Log($"[UIBinding] Set GameManager.IsHost = {isHost} before starting game");
                     
                     GameManager.ChangeScene(sceneName);
                     GameManager.SetCursorVisible(false);
                 }
                 catch (Exception e)
                 {
-                    Debug.LogWarning($"[UIBinding] Error cambiando escena local en RequestStartGame: {e.Message}");
+                    Debug.LogWarning($"[UIBinding] Error changing local scene in RequestStartGame: {e.Message}");
                 }
             }
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[UIBinding] Error en RequestStartGame: {e.Message}");
+            Debug.LogWarning($"[UIBinding] Error in RequestStartGame: {e.Message}");
         }
     }
 
@@ -931,10 +830,9 @@ public class UIBindingBootstrap : MonoBehaviour
     {
         if (string.IsNullOrWhiteSpace(sceneName))
         {
-            Debug.LogWarning("[UIBinding] HandleExternalStartRequest: sceneName vacío.");
+            Debug.LogWarning("[UIBinding] HandleExternalStartRequest: sceneName is empty.");
             return;
         }
-         Debug.Log($"[UIBinding] HandleExternalStartRequest recibido para escena '{sceneName}'");
         _ = RequestStartGame(sceneName);
     }
 }

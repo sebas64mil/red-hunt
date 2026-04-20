@@ -205,7 +205,6 @@ public class PacketBuilder
         return serializer.Deserialize<EscapistsCluesSnapshotPacket>(json);
     }
 
-    // ===================== EXISTENTE =====================
 
     public HealthUpdatePacket DeserializeHealthUpdate(string json)
     {

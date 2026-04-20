@@ -30,21 +30,19 @@ public class ConnectionHandler
         {
             if (lobbyNetworkService != null && lobbyNetworkService.IsHost && lobbyNetworkService.GameStarted)
             {
-                Debug.LogWarning($"[Connection] Rechazando CONNECT de {sender} porque la partida ya ha comenzado.");
+                Debug.LogWarning($"[Connection] Rejecting CONNECT from {sender} because game has already started");
 
                 var rejectJson = builder.CreateAssignReject(-1, "Game already started");
                 await server.SendToClientAsync(rejectJson, sender);
-                Debug.Log($"[Connection] ASSIGN_REJECT enviado a {sender}");
 
                 try
                 {
                     var disconnectJson = builder.CreateDisconnect();
                     await server.SendToClientAsync(disconnectJson, sender);
-                    Debug.Log($"[Connection] DISCONNECT dirigido enviado a {sender}");
                 }
                 catch (System.Exception exDisconnect)
                 {
-                    Debug.LogWarning($"[Connection] Error enviando DISCONNECT dirigido a {sender}: {exDisconnect.Message}");
+                    Debug.LogWarning($"[Connection] Error sending DISCONNECT to {sender}: {exDisconnect.Message}");
                 }
 
                 return;
@@ -55,7 +53,6 @@ public class ConnectionHandler
 
             if (connectionManager.GetClientCount() >= connectionManager.MaxClients)
             {
-                Debug.Log("[Connection] Límite de conexiones alcanzado, rechazando conexión");
                 return;
             }
 
@@ -63,18 +60,17 @@ public class ConnectionHandler
 
             if (playerId <= 0)
             {
-                Debug.LogWarning("[Connection] AddClient devolvió id inválido, rechazando conexión");
+                Debug.LogWarning("[Connection] AddClient returned invalid id, rejecting connection");
                 return;
             }
 
             var packet = builder.CreateAssignPlayer(playerId);
             await server.SendToClientAsync(packet, sender);
 
-            Debug.Log($"[Connection] Cliente {sender} asignado ID {playerId}");
         }
         catch (System.Exception e)
         {
-            Debug.LogWarning($"[Connection] Error en HandleConnect para {sender}: {e.Message}");
+            Debug.LogWarning($"[Connection] Error in HandleConnect for {sender}: {e.Message}");
         }
     }
 }

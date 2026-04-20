@@ -22,7 +22,6 @@ public class PresentationBootstrap : MonoBehaviour
 
     private bool isReturningFromGameScene = false;
     
-    // ⭐ NUEVO: Referencia al GameStateManager
     private GameStateManager gameStateManager;
 
     public void Init(LobbyUI lobbyUI = null, SpawnUI spawnUI = null)
@@ -92,8 +91,6 @@ public class PresentationBootstrap : MonoBehaviour
             if (gameNetworkService != null)
                 game_network_service_assign(newSpawnManager);
 
-            Debug.Log("[PresentationBootstrap] ✅ SpawnUI re-registrada con spawnParents SEPARADOS");
-
             try
             {
                 var players = appBootstrap?.Services?.LobbyManager?.GetAllPlayers();
@@ -110,19 +107,19 @@ public class PresentationBootstrap : MonoBehaviour
                         }
                         catch (Exception exSpawn)
                         {
-                            Debug.LogWarning($"[PresentationBootstrap] Error al repoblar player {p.Id}: {exSpawn.Message}");
+                            Debug.LogWarning($"[PresentationBootstrap] Error repopulating player {p.Id}: {exSpawn.Message}");
                         }
                     }
                 }
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"[PresentationBootstrap] Error repoblando spawns: {e.Message}");
+                Debug.LogWarning($"[PresentationBootstrap] Error repopulating spawns: {e.Message}");
             }
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[PresentationBootstrap] Error re-registrando SpawnUI: {e.Message}");
+            Debug.LogWarning($"[PresentationBootstrap] Error re-registering SpawnUI: {e.Message}");
         }
     }
 
@@ -134,7 +131,7 @@ public class PresentationBootstrap : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[PresentationBootstrap] No se pudo asignar SpawnManager a LobbyNetworkService: {e.Message}");
+            Debug.LogWarning($"[PresentationBootstrap] Could not assign SpawnManager to LobbyNetworkService: {e.Message}");
         }
     }
 
@@ -146,7 +143,7 @@ public class PresentationBootstrap : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[PresentationBootstrap] No se pudo asignar SpawnManager a GameNetworkService: {e.Message}");
+            Debug.LogWarning($"[PresentationBootstrap] Could not assign SpawnManager to GameNetworkService: {e.Message}");
         }
     }
 
@@ -189,12 +186,10 @@ public class PresentationBootstrap : MonoBehaviour
                 Presentation.LobbyUI.ResetAllToMain();
                 isReturningFromGameScene = false;
             }
-
-            Debug.Log("[PresentationBootstrap] ✅ LobbyUI re-registrada.");
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[PresentationBootstrap] Error re-registrando LobbyUI: {e.Message}");
+            Debug.LogWarning($"[PresentationBootstrap] Error re-registering LobbyUI: {e.Message}");
         }
     }
 
@@ -241,30 +236,26 @@ public class PresentationBootstrap : MonoBehaviour
         }
     }
 
-
     private void HandleStartGameReceived(string sceneName)
     {
         try
         {
-            Debug.Log($"[PresentationBootstrap] START_GAME recibido (cliente) -> cambiando a escena '{sceneName}'");
-            
             if (!string.IsNullOrEmpty(sceneName))
             {
                 if (uiBindingBootstrap != null)
                 {
-                    Debug.Log("[PresentationBootstrap] Delegando a UIBindingBootstrap.HandleExternalStartRequest()");
                     uiBindingBootstrap.HandleExternalStartRequest(sceneName);
                 }
                 else
                 {
-                    Debug.LogWarning("[PresentationBootstrap] UIBindingBootstrap no está asignado, cambiando escena sin desactivar cursor");
+                    Debug.LogWarning("[PresentationBootstrap] UIBindingBootstrap not assigned, changing scene without disabling cursor");
                     GameManager.ChangeScene(sceneName);
                 }
             }
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[PresentationBootstrap] Error en HandleStartGameReceived: {e.Message}");
+            Debug.LogWarning($"[PresentationBootstrap] Error in HandleStartGameReceived: {e.Message}");
         }
     }
 
@@ -272,17 +263,12 @@ public class PresentationBootstrap : MonoBehaviour
     {
         try
         {
-            Debug.Log("[PresentationBootstrap] RETURN_TO_LOBBY recibido - cambiando a escena Lobby");
-            
             GameManager.ChangeScene("Lobby");
-
             GameManager.SetCursorVisible(true);
-
-            Debug.Log("[PresentationBootstrap] ✅ Escena Lobby cargada, LobbyPanel se mostrará al registrarse");
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[PresentationBootstrap] Error en HandleReturnToLobby: {e.Message}");
+            Debug.LogWarning($"[PresentationBootstrap] Error in HandleReturnToLobby: {e.Message}");
         }
     }
 
@@ -291,7 +277,6 @@ public class PresentationBootstrap : MonoBehaviour
         shouldSuppressShowForLocal = predicate;
     }
 
-    // ⭐ NUEVO: Crear GameStateManager cuando sea necesario
     public GameStateManager GetOrCreateGameStateManager()
     {
         if (gameStateManager == null)
@@ -302,11 +287,6 @@ public class PresentationBootstrap : MonoBehaviour
             {
                 var gsManagerGO = new GameObject("[GameStateManager]");
                 gameStateManager = gsManagerGO.AddComponent<GameStateManager>();
-                Debug.Log("[PresentationBootstrap] ✅ GameStateManager creado en escena");
-            }
-            else
-            {
-                Debug.Log("[PresentationBootstrap] ✅ GameStateManager encontrado en escena");
             }
         }
 
@@ -319,7 +299,6 @@ public class PresentationBootstrap : MonoBehaviour
 
         if (queuedLobbyUI == null || queuedSpawnUI == null)
         {
-            Debug.Log("[PresentationBootstrap] UIs incompletas, esperando registro.");
             return;
         }
 
@@ -329,14 +308,12 @@ public class PresentationBootstrap : MonoBehaviour
             lobbyNetworkService.SpawnManagerInstance = Presentation.SpawnManager;
 
         installed = true;
-        Debug.Log("[PresentationBootstrap] PresentationServices instaladas.");
     }
 
     private void HandlePlayerJoined(PlayerSession player)
     {
         try
         {
-            Debug.Log($"[PresentationBootstrap] Player Joined: {player.Id}");
             if (Presentation?.SpawnUI != null)
                 Presentation.SpawnUI.OnPlayerAssigned(player.Id, player.PlayerType);
 
@@ -346,7 +323,7 @@ public class PresentationBootstrap : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[PresentationBootstrap] Error en HandlePlayerJoined: {e.Message}");
+            Debug.LogWarning($"[PresentationBootstrap] Error in HandlePlayerJoined: {e.Message}");
         }
     }
 
@@ -354,14 +331,13 @@ public class PresentationBootstrap : MonoBehaviour
     {
         try
         {
-            Debug.Log($"[PresentationBootstrap] Player Left: {playerId}");
             Presentation?.SpawnUI?.HandlePlayerDisconnected(playerId);
 
             adminUI?.RemovePlayerEntry(playerId);
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[PresentationBootstrap] Error en HandlePlayerLeft: {e.Message}");
+            Debug.LogWarning($"[PresentationBootstrap] Error in HandlePlayerLeft: {e.Message}");
         }
     }
 
@@ -369,7 +345,6 @@ public class PresentationBootstrap : MonoBehaviour
     {
         try
         {
-            Debug.Log($"[PresentationBootstrap] PlayerId asignado: {id}");
             Presentation?.SpawnManager?.SetLocalPlayerId(id);
             Presentation?.LobbyUI?.SetLocalPlayerId(id);
             Presentation?.LobbyUI?.ResetReadyState();
@@ -378,7 +353,7 @@ public class PresentationBootstrap : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[PresentationBootstrap] Error en HandlePlayerIdAssigned: {e.Message}");
+            Debug.LogWarning($"[PresentationBootstrap] Error in HandlePlayerIdAssigned: {e.Message}");
         }
     }
 
@@ -386,12 +361,11 @@ public class PresentationBootstrap : MonoBehaviour
     {
         try
         {
-            Debug.Log($"[PresentationBootstrap] LocalJoinAccepted para id: {id}");
             TryShowLobbyForLocalIfNeeded(id);
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[PresentationBootstrap] Error en HandleLocalJoinAccepted: {e.Message}");
+            Debug.LogWarning($"[PresentationBootstrap] Error in HandleLocalJoinAccepted: {e.Message}");
         }
     }
 
@@ -399,10 +373,7 @@ public class PresentationBootstrap : MonoBehaviour
     {
         try
         {
-            Debug.Log("[PresentationBootstrap] Cliente desconectado - limpiando UI");
-
             Presentation?.LobbyUI?.ResetAllToMain();
-            // limpiar spawns
             var players = appBootstrap?.Services?.LobbyManager?.GetAllPlayers();
             if (players != null)
             {
@@ -414,7 +385,7 @@ public class PresentationBootstrap : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[PresentationBootstrap] Error en HandleClientDisconnected: {e.Message}");
+            Debug.LogWarning($"[PresentationBootstrap] Error in HandleClientDisconnected: {e.Message}");
         }
     }
 
@@ -426,7 +397,6 @@ public class PresentationBootstrap : MonoBehaviour
 
             if (shouldSuppressShowForLocal != null && shouldSuppressShowForLocal())
             {
-                Debug.Log("[PresentationBootstrap] Supresión de mostrar lobby para local activada; omitiendo ShowLobbyPanel");
                 return;
             }
 
@@ -437,7 +407,6 @@ public class PresentationBootstrap : MonoBehaviour
             var exists = appBootstrap.Services.LobbyManager.GetAllPlayers()?.Any(p => p.Id == id) ?? false;
             if (!exists)
             {
-                Debug.Log($"[PresentationBootstrap] player {id} no está aún en LobbyManager, esperando broadcast");
                 return;
             }
 
@@ -446,7 +415,7 @@ public class PresentationBootstrap : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[PresentationBootstrap] Error en TryShowLobbyForLocalIfNeeded: {e.Message}");
+            Debug.LogWarning($"[PresentationBootstrap] Error in TryShowLobbyForLocalIfNeeded: {e.Message}");
         }
     }
 

@@ -64,13 +64,11 @@ public class GameUI : MonoBehaviour
 
     private void OnLeaveButton()
     {
-        Debug.Log("[GameUI] Cliente presionó Leave - abandonando el servidor");
         OnLeaveLobby?.Invoke();
     }
 
     private void OnReturnToLobbyButton()
     {
-        Debug.Log("[GameUI] Host presionó Return to Lobby");
         OnReturnToLobby?.Invoke();
     }
 }

@@ -4,24 +4,21 @@ public class PresentationInstaller
 {
     public PresentationServices Install(LobbyUI lobbyUI, SpawnUI spawnUI, int localPlayerId)
     {
-        Debug.Log("[PresentationInstaller] Iniciando instalación...");
-
         if (lobbyUI == null)
-            throw new System.Exception("LobbyUI no asignado");
+            throw new System.Exception("LobbyUI not assigned");
 
         if (spawnUI == null)
-            throw new System.Exception("SpawnUI no asignado");
+            throw new System.Exception("SpawnUI not assigned");
 
         var killerSpawnParent = spawnUI.GetKillerSpawnParent();
         var escapistSpawnParent = spawnUI.GetEscapistSpawnParent();
 
         if (killerSpawnParent == null)
-            throw new System.Exception("Killer SpawnParent no configurado");
+            throw new System.Exception("Killer SpawnParent not configured");
 
         if (escapistSpawnParent == null)
-            throw new System.Exception("Escapist SpawnParent no configurado");
+            throw new System.Exception("Escapist SpawnParent not configured");
 
-        // ✅ Pasar también las rotaciones Y
         var spawnManager = new SpawnManager(
             killerSpawnParent,
             escapistSpawnParent,

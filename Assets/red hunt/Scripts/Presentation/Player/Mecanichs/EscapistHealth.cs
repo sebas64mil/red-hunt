@@ -16,7 +16,6 @@ public class EscapistHealth : MonoBehaviour
     public int MaxHealth => maxHealth;
     public bool IsAlive => currentHealth > 0;
 
-    // Referencias
     private PlayerAnimationController animationController;
     private PlayerMovement playerMovement;
     private PlayerInputHandler playerInputHandler;
@@ -32,25 +31,24 @@ public class EscapistHealth : MonoBehaviour
         
         if (animationController == null)
         {
-            Debug.LogWarning("[EscapistHealth] ⚠️ PlayerAnimationController no encontrado");
+            Debug.LogWarning("[EscapistHealth] PlayerAnimationController not found");
         }
 
         if (playerMovement == null)
         {
-            Debug.LogWarning("[EscapistHealth] ⚠️ PlayerMovement no encontrado");
+            Debug.LogWarning("[EscapistHealth] PlayerMovement not found");
         }
 
         if (playerInputHandler == null)
         {
-            Debug.LogWarning("[EscapistHealth] ⚠️ PlayerInputHandler no encontrado");
+            Debug.LogWarning("[EscapistHealth] PlayerInputHandler not found");
         }
 
         if (gameStateManager == null)
         {
-            Debug.LogWarning("[EscapistHealth] ⚠️ GameStateManager no encontrado");
+            Debug.LogWarning("[EscapistHealth] GameStateManager not found");
         }
         
-        Debug.Log($"[EscapistHealth] Inicializado con salud: {currentHealth}/{maxHealth}");
     }
 
     public void Init(int id, bool local)
@@ -59,21 +57,19 @@ public class EscapistHealth : MonoBehaviour
         isLocal = local;
         currentHealth = maxHealth;
         hasAlreadyDied = false;
-        Debug.Log($"[EscapistHealth] 🏥 Inicializado para player {playerId} (local: {isLocal})");
     }
 
     public void TakeDamage(int damage)
     {
         if (!IsAlive)
         {
-            Debug.LogWarning($"[EscapistHealth] Player {playerId} ya está muerto");
+            Debug.LogWarning($"[EscapistHealth] Player {playerId} is already dead");
             return;
         }
 
         int previousHealth = currentHealth;
         currentHealth = Mathf.Max(0, currentHealth - damage);
 
-        Debug.Log($"[EscapistHealth] 🔴 Player {playerId} recibió {damage} daño: {previousHealth} → {currentHealth}");
 
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
 
@@ -88,11 +84,9 @@ public class EscapistHealth : MonoBehaviour
         int previousHealth = currentHealth;
         currentHealth = Mathf.Clamp(newHealth, 0, maxHealth);
         
-        Debug.Log($"[EscapistHealth] Salud actualizada para player {playerId}: {previousHealth} → {currentHealth}/{maxHealth}");
         
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
 
-        // ⭐ CRÍTICO: Si la salud llega a 0 (desde la red), disparar evento de muerte
         if (currentHealth == 0 && previousHealth > 0 && !hasAlreadyDied)
         {
             HandlePlayerDeath();
@@ -103,52 +97,42 @@ public class EscapistHealth : MonoBehaviour
     {
         if (hasAlreadyDied)
         {
-            Debug.LogWarning($"[EscapistHealth] ⚠️ Player {playerId} ya fue marcado como muerto");
+            Debug.LogWarning($"[EscapistHealth] Player {playerId} already marked as dead");
             return;
         }
 
         hasAlreadyDied = true;
 
-        Debug.Log($"[EscapistHealth] 💀 Player {playerId} ha muerto");
         
-        // 1️⃣ Desactivar controles del jugador
         DisablePlayerControls();
         
-        // 2️⃣ Actualizar animación de muerte
         if (animationController != null)
         {
             animationController.SetDeadAnimation(true);
         }
 
-        // 3️⃣ ⭐ Notificar al GameStateManager que un escapista ha sido asesinado
         if (gameStateManager != null)
         {
             gameStateManager.NotifyEscapistKilled(playerId);
-            Debug.Log($"[EscapistHealth] ✅ GameStateManager notificado del asesinato del player {playerId}");
         }
         else
         {
-            Debug.LogError("[EscapistHealth] ❌ No se pudo notificar a GameStateManager - es NULL");
+            Debug.LogError("[EscapistHealth] Could not notify GameStateManager - is NULL");
         }
         
-        // 4️⃣ Disparar evento local de muerte (para que HealthUIDisplay maneje la cámara)
         OnPlayerDied?.Invoke(playerId);
     }
 
     private void DisablePlayerControls()
     {
-        // Desactivar movimiento
         if (playerMovement != null)
         {
             playerMovement.enabled = false;
-            Debug.Log($"[EscapistHealth] 🚫 PlayerMovement desactivado para player {playerId}");
         }
 
-        // Desactivar input
         if (playerInputHandler != null)
         {
             playerInputHandler.enabled = false;
-            Debug.Log($"[EscapistHealth] 🚫 PlayerInputHandler desactivado para player {playerId}");
         }
     }
 
@@ -159,7 +143,6 @@ public class EscapistHealth : MonoBehaviour
         
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
         
-        // Resetear controles
         if (playerMovement != null)
         {
             playerMovement.enabled = true;
@@ -170,12 +153,10 @@ public class EscapistHealth : MonoBehaviour
             playerInputHandler.enabled = true;
         }
         
-        // Resetear animación de muerte
         if (animationController != null)
         {
             animationController.SetDeadAnimation(false);
         }
         
-        Debug.Log($"[EscapistHealth] Salud reseteada para player {playerId}: {currentHealth}/{maxHealth}");
     }
 }
