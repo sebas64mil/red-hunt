@@ -69,7 +69,6 @@ public class WinBootstrap : MonoBehaviour
     public void SetWinCameraManager(WinCameraManager manager)
     {
         winCameraManager = manager ?? throw new ArgumentNullException(nameof(manager));
-        Debug.Log("[WinBootstrap] ✅ WinCameraManager asignado");
 
         if (!hasUpdatedDisplay && winUI != null)
         {
@@ -98,7 +97,7 @@ public class WinBootstrap : MonoBehaviour
         }
         else
         {
-            Debug.LogError("[WinBootstrap] ❌ gameNetworkService es NULL");
+            Debug.LogError("[WinBootstrap] gameNetworkService is null");
         }
     }
 
@@ -141,14 +140,12 @@ public class WinBootstrap : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[WinBootstrap] ⚠️ Error en HandleLeaveLobby: {e.Message}");
+            Debug.LogWarning($"[WinBootstrap] Error in HandleLeaveLobby: {e.Message}");
         }
     }
 
     private void HandleReturnToLobby()
     {
-        Debug.Log("[WinBootstrap] 🔄 Host presionó Return to Lobby desde Win");
-
         try
         {
             GameManager.SetCursorVisible(true);
@@ -156,7 +153,7 @@ public class WinBootstrap : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[WinBootstrap] ⚠️ Error en HandleReturnToLobby: {e.Message}");
+            Debug.LogWarning($"[WinBootstrap] Error in HandleReturnToLobby: {e.Message}");
         }
     }
 
@@ -170,11 +167,6 @@ public class WinBootstrap : MonoBehaviour
         {
             hasUpdatedDisplay = false;
             UpdateWinDisplay();
-            Debug.Log("[WinBootstrap] ✅ Actualización desde HandleGameWin exitosa");
-        }
-        else
-        {
-            Debug.Log("[WinBootstrap] ⏳ WinUI/WinCameraManager aún no asignados, esperando SetWinUIAndCamera()...");
         }
     }
 
@@ -184,13 +176,13 @@ public class WinBootstrap : MonoBehaviour
 
         if (winCameraManager == null)
         {
-            Debug.LogError("[WinBootstrap] ❌ CRÍTICO: winCameraManager es NULL en UpdateWinDisplay()");
+            Debug.LogError("[WinBootstrap] CRITICAL: winCameraManager is null in UpdateWinDisplay()");
             return;
         }
 
         if (winUI == null)
         {
-            Debug.LogError("[WinBootstrap] ❌ CRÍTICO: winUI es NULL en UpdateWinDisplay()");
+            Debug.LogError("[WinBootstrap] CRITICAL: winUI is null in UpdateWinDisplay()");
             return;
         }
 
@@ -205,7 +197,7 @@ public class WinBootstrap : MonoBehaviour
         }
         else
         {
-            Debug.LogError("[WinBootstrap] ❌ No hay datos de victoria (ni externos ni internos)");
+            Debug.LogError("[WinBootstrap] No victory data available (neither external nor internal)");
             return;
         }
 

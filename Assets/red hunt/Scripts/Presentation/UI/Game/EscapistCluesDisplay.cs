@@ -19,10 +19,6 @@ public class EscapistCluesDisplay : MonoBehaviour
         clueRegistry = registry;
         localPlayerId = playerId;
         initialized = true;
-
-        // ⭐ CAMBIO: NO llamar a RefreshDisplay() aquí
-        // Esperar a que llegue el snapshot del servidor
-        Debug.Log($"[EscapistCluesDisplay] ✅ Inicializado para Escapist {playerId} (esperando snapshot...)");
     }
 
     public void HideForKiller()
@@ -30,13 +26,9 @@ public class EscapistCluesDisplay : MonoBehaviour
         if (mainClueImage != null)
         {
             mainClueImage.gameObject.SetActive(false);
-            Debug.Log("[EscapistCluesDisplay] 🔪 Clues Display desactivado (Killer)");
         }
     }
 
-    /// <summary>
-    /// Método llamado cuando llega el snapshot de pistas de la red
-    /// </summary>
     public void OnSnapshotReceived(IReadOnlyDictionary<int, IReadOnlyCollection<string>> cluesByEscapist)
     {
         if (!initialized || localPlayerId <= 0)
@@ -44,17 +36,14 @@ public class EscapistCluesDisplay : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[EscapistCluesDisplay] 📸 Snapshot recibido - actualizando display para player {localPlayerId}");
         
-        // ⭐ CRÍTICO: Sincronizar el registro ANTES de refrescar
         if (clueRegistry != null)
         {
             clueRegistry.SyncFromSnapshot(cluesByEscapist);
-            Debug.Log("[EscapistCluesDisplay] ✅ Registro sincronizado desde snapshot");
         }
         else
         {
-            Debug.LogError("[EscapistCluesDisplay] ❌ ClueRegistry es NULL en OnSnapshotReceived");
+            Debug.LogError("[EscapistCluesDisplay] ClueRegistry is NULL in OnSnapshotReceived");
             return;
         }
         
@@ -68,7 +57,6 @@ public class EscapistCluesDisplay : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[EscapistCluesDisplay] 🔑 OnClueObtained: {clueId}");
         RefreshDisplay();
     }
 
@@ -76,22 +64,20 @@ public class EscapistCluesDisplay : MonoBehaviour
     {
         if (!initialized || clueRegistry == null || mainClueImage == null)
         {
-            Debug.LogWarning($"[EscapistCluesDisplay] ⚠️ No se puede actualizar: initialized={initialized}, registry={clueRegistry != null}, image={mainClueImage != null}");
+            Debug.LogWarning($"[EscapistCluesDisplay] Cannot update display: initialized={initialized}, registry={clueRegistry != null}, image={mainClueImage != null}");
             return;
         }
 
-        // ⭐ GLOBAL: no dependemos de GetSnapshot()/targetEscapistIds
         int clueCount = clueRegistry.GetGlobalCollectedCount();
 
         Sprite newSprite = GetSpriteForClueCount(clueCount);
         if (newSprite != null)
         {
             mainClueImage.sprite = newSprite;
-            Debug.Log($"[EscapistCluesDisplay] ✅ Sprite actualizado (GLOBAL): {clueCount}/3 pistas");
         }
         else
         {
-            Debug.LogWarning($"[EscapistCluesDisplay] ⚠️ Sprite NULL para count={clueCount}");
+            Debug.LogWarning($"[EscapistCluesDisplay] Null sprite for count={clueCount}");
         }
     }
 

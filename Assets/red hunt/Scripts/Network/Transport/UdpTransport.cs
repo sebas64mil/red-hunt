@@ -21,7 +21,6 @@ public class UdpTransport : ITransport
         isRunning = true;
         cancellationTokenSource = new CancellationTokenSource();
 
-        Debug.Log("[Transport] UDP iniciado");
 
         _ = ReceiveLoop();
         return Task.CompletedTask;
@@ -40,14 +39,13 @@ public class UdpTransport : ITransport
             }
             catch (ObjectDisposedException)
             {
-                Debug.Log("[Transport] UdpClient fue desechado, finalizando ReceiveLoop");
                 break;
             }
             catch (SocketException se)
             {
                 if (isRunning)
                 {
-                    Debug.LogWarning("[Transport] Socket error en ReceiveLoop: " + se.Message);
+                    Debug.LogWarning("[Transport] Socket error in ReceiveLoop: " + se.Message);
                 }
                 break;
             }
@@ -55,7 +53,7 @@ public class UdpTransport : ITransport
             {
                 if (isRunning)
                 {
-                    Debug.LogWarning("[Transport] Error en ReceiveLoop: " + e.Message);
+                    Debug.LogWarning("[Transport] Error in ReceiveLoop: " + e.Message);
                 }
                 break;
             }
@@ -78,7 +76,6 @@ public class UdpTransport : ITransport
         finally
         {
             udpClient = null;
-            Debug.Log("[Transport] ReceiveLoop finalizado y recursos liberados");
         }
     }
 
@@ -86,7 +83,7 @@ public class UdpTransport : ITransport
     {
         if (udpClient == null)
         {
-            Debug.LogWarning("[Transport] Intento de enviar pero UdpClient es null");
+            Debug.LogWarning("[Transport] Attempted to send but UdpClient is null");
             return;
         }
 
@@ -97,7 +94,7 @@ public class UdpTransport : ITransport
         }
         catch (Exception e)
         {
-            Debug.LogWarning("[Transport] Error enviando datagrama: " + e.Message);
+            Debug.LogWarning("[Transport] Error sending datagram: " + e.Message);
         }
     }
 
@@ -105,7 +102,7 @@ public class UdpTransport : ITransport
     {
         if (udpClient == null)
         {
-            Debug.LogWarning("[Transport] Intento de enviar a todos pero UdpClient es null");
+            Debug.LogWarning("[Transport] Attempted to send to all but UdpClient is null");
             return;
         }
 
@@ -119,7 +116,7 @@ public class UdpTransport : ITransport
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"[Transport] Error enviando a {client}: {e.Message}");
+                Debug.LogWarning($"[Transport] Error sending to {client}: {e.Message}");
             }
         }
     }
@@ -145,6 +142,5 @@ public class UdpTransport : ITransport
             udpClient = null;
         }
 
-        Debug.Log("[Transport] UDP detenido");
     }
 }

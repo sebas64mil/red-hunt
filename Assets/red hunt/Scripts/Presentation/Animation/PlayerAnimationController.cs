@@ -5,27 +5,24 @@ public class PlayerAnimationController : MonoBehaviour
     [Header("Animator")]
     [SerializeField] private Animator animator;
 
-    [Header("Parámetros del Animator")]
+    [Header("Animator Parameters")]
     [SerializeField] private string movementParameterName = "Mov";
     [SerializeField] private string isDeadParameterName = "IsDead";
     [SerializeField] private string isAttackParameterName = "IsAttack";
 
-    [Header("Configuración")]
+    [Header("Configuration")]
     [SerializeField] private float movementThreshold = 0.1f;
 
-    // Estado
-    private int currentMovementState = 0;  // 0 = Idle, 1 = Walk
+    private int currentMovementState = 0;
     private bool isDead = false;
     private int playerId = -1;
 
-    // Hash de parámetros (optimización)
     private int movementHash;
     private int isDeadHash;
     private int isAttackHash;
 
     private void Awake()
     {
-        // Obtener Animator si no está asignado
         if (animator == null)
         {
             animator = GetComponent<Animator>();
@@ -35,26 +32,22 @@ public class PlayerAnimationController : MonoBehaviour
             }
         }
 
-        // Cachear hashes de parámetros
         if (animator != null)
         {
             movementHash = Animator.StringToHash(movementParameterName);
             isDeadHash = Animator.StringToHash(isDeadParameterName);
             isAttackHash = Animator.StringToHash(isAttackParameterName);
-            Debug.Log("[PlayerAnimationController] ✅ Hashes de parámetros cacheados");
         }
         else
         {
-            Debug.LogError("[PlayerAnimationController] ❌ Animator no encontrado en el GameObject");
+            Debug.LogError("[PlayerAnimationController] Animator not found in GameObject");
         }
 
-        Debug.Log("[PlayerAnimationController] ✅ Inicializado correctamente");
     }
 
     public void Init(int id)
     {
         playerId = id;
-        Debug.Log($"[PlayerAnimationController] ✅ Inicializado para player {id}");
     }
 
 
@@ -71,7 +64,6 @@ public class PlayerAnimationController : MonoBehaviour
             animator.SetFloat(movementHash, currentMovementState);
 
             string stateName = currentMovementState == 1 ? "Walk" : "Idle";
-            Debug.Log($"[PlayerAnimationController] 🎬 Movimiento: {stateName} (velocidad: {movementSpeed:F2})");
         }
     }
 
@@ -84,7 +76,6 @@ public class PlayerAnimationController : MonoBehaviour
         {
             isDead = dead;
             animator.SetBool(isDeadHash, isDead);
-            Debug.Log($"[PlayerAnimationController] 💀 Estado de muerte: {isDead}");
         }
     }
 
@@ -94,10 +85,8 @@ public class PlayerAnimationController : MonoBehaviour
         if (animator == null) return;
 
         animator.SetTrigger(isAttackHash);
-        Debug.Log($"[PlayerAnimationController] ⚔️ Trigger de ataque activado");
     }
 
     public int GetCurrentMovementState() => currentMovementState;
 
-    public bool GetIsDead() => isDead;
 }

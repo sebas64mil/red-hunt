@@ -118,7 +118,6 @@ public class LobbyCameraManager : MonoBehaviour
         var lobbyManager = applicationBootstrap?.Services?.LobbyManager;
         if (lobbyManager == null || localPlayerId <= 0)
         {
-            // Si aún no hay datos, deja todo apagado para evitar doble cámara
             SetAllCamerasActive(false);
             return;
         }
@@ -146,7 +145,6 @@ public class LobbyCameraManager : MonoBehaviour
             escapistLobbyCameraObject.SetActive(!isKiller);
         }
 
-        Debug.Log($"[LobbyCameraManager] Cámara lobby aplicada. isKiller={isKiller}, localPlayerId={localPlayerId}");
     }
 
     private void SetAllCamerasActive(bool active)

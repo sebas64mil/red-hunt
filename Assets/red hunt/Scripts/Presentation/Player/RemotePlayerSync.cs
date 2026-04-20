@@ -2,7 +2,7 @@
 
 public class RemotePlayerSync : MonoBehaviour
 {
-    [Header("Interpolación")]
+    [Header("Interpolation")]
     [SerializeField] private float positionLerpSpeed = 5f;
     [SerializeField] private float rotationLerpSpeed = 5f;
 
@@ -23,7 +23,6 @@ public class RemotePlayerSync : MonoBehaviour
         if (rb != null)
         {
             rb.useGravity = true;
-            Debug.Log($"[RemotePlayerSync] ✅ Gravedad habilitada para jugador remoto en Awake");
         }
         
         targetPosition = transform.position;
@@ -54,7 +53,7 @@ public class RemotePlayerSync : MonoBehaviour
     {
         if (!isInitialized)
         {
-            Debug.LogWarning($"[RemotePlayerSync] OnRemotePositionReceived PERO NO INICIALIZADO: movePacket.playerId={movePacket.playerId}, remotePlayerId={remotePlayerId}");
+            Debug.LogWarning($"[RemotePlayerSync] OnRemotePositionReceived but NOT INITIALIZED: movePacket.playerId={movePacket.playerId}, remotePlayerId={remotePlayerId}");
             return;
         }
 

@@ -10,11 +10,10 @@ public class WinCameraManager : MonoBehaviour
         if (killerCameraObject != null)
         {
             killerCameraObject.SetActive(true);
-            Debug.Log("[WinCameraManager] ?? Mostrando cámara del Killer");
         }
         else
         {
-            Debug.LogWarning("[WinCameraManager] ?? killerCameraObject no asignado");
+            Debug.LogWarning("[WinCameraManager] killerCameraObject not assigned");
         }
 
         if (escapistCameraObject != null)
@@ -26,11 +25,10 @@ public class WinCameraManager : MonoBehaviour
         if (escapistCameraObject != null)
         {
             escapistCameraObject.SetActive(true);
-            Debug.Log("[WinCameraManager] ?? Mostrando cámara del Escapist");
         }
         else
         {
-            Debug.LogWarning("[WinCameraManager] ?? escapistCameraObject no asignado");
+            Debug.LogWarning("[WinCameraManager] escapistCameraObject not assigned");
         }
 
         if (killerCameraObject != null)

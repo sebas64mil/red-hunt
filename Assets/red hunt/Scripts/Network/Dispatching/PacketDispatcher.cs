@@ -20,19 +20,19 @@ public class PacketDispatcher
     {
         if (string.IsNullOrEmpty(type))
         {
-            Debug.LogWarning("[Dispatcher] Intento de registrar tipo vacío");
+            Debug.LogWarning("[Dispatcher] Attempted to register empty type");
             return;
         }
 
         if (handler == null)
         {
-            Debug.LogWarning($"[Dispatcher] Handler nulo para tipo: {type}");
+            Debug.LogWarning($"[Dispatcher] Null handler for type: {type}");
             return;
         }
 
         if (handlers.ContainsKey(type))
         {
-            Debug.LogWarning($"[Dispatcher] Sobrescribiendo handler para tipo: {type}");
+            Debug.LogWarning($"[Dispatcher] Overwriting handler for type: {type}");
         }
 
         handlers[type] = handler;
@@ -42,7 +42,7 @@ public class PacketDispatcher
     {
         if (string.IsNullOrEmpty(json))
         {
-            Debug.LogWarning("[Dispatcher] Mensaje vacío recibido");
+            Debug.LogWarning("[Dispatcher] Empty message received");
             return;
         }
 
@@ -54,13 +54,13 @@ public class PacketDispatcher
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[Dispatcher] Error al deserializar: {e.Message}");
+            Debug.LogWarning($"[Dispatcher] Error deserializing: {e.Message}");
             return;
         }
 
         if (basePacket == null || string.IsNullOrEmpty(basePacket.type))
         {
-            Debug.LogWarning("[Dispatcher] Packet inválido o sin tipo");
+            Debug.LogWarning("[Dispatcher] Invalid packet or missing type");
             return;
         }
 
@@ -72,12 +72,12 @@ public class PacketDispatcher
             }
             catch (Exception e)
             {
-                Debug.LogError($"[Dispatcher] Error ejecutando handler '{basePacket.type}': {e}");
+                Debug.LogError($"[Dispatcher] Error executing handler '{basePacket.type}': {e}");
             }
         }
         else
         {
-            Debug.LogWarning($"[Dispatcher] No hay handler para tipo: {basePacket.type}");
+            Debug.LogWarning($"[Dispatcher] No handler found for type: {basePacket.type}");
         }
     }
 

@@ -6,7 +6,6 @@ public class SpawnUI : MonoBehaviour
     [SerializeField] private GameObject killerPrefab;
     [SerializeField] private GameObject escapistPrefab;
 
-    // ⭐ CAMBIO: Separar spawnParents por tipo
     [SerializeField] private Transform killerSpawnParent;
     [SerializeField] private Transform escapistSpawnParent;
 
@@ -48,7 +47,7 @@ public class SpawnUI : MonoBehaviour
         }
         catch (Exception)
         {
-            Debug.LogWarning("[SpawnUI] Registro con GameBootstrap falló");
+            Debug.LogWarning("[SpawnUI] Registration with GameBootstrap failed");
         }
     }
 
@@ -65,13 +64,13 @@ public class SpawnUI : MonoBehaviour
     {
         if (spawnManager == null)
         {
-            Debug.LogError("[SpawnUI] SpawnManager no inicializado");
+            Debug.LogError("[SpawnUI] SpawnManager not initialized");
             return;
         }
 
         if (!Enum.TryParse<PlayerType>(playerType, true, out var type))
         {
-            Debug.LogWarning($"[SpawnUI] Tipo inválido: {playerType}, usando Escapist");
+            Debug.LogWarning($"[SpawnUI] Invalid type: {playerType}, using Escapist");
             type = PlayerType.Escapist;
         }
 
@@ -82,7 +81,7 @@ public class SpawnUI : MonoBehaviour
     {
         if (spawnManager == null)
         {
-            Debug.LogError("[SpawnUI] SpawnManager no inicializado");
+            Debug.LogError("[SpawnUI] SpawnManager not initialized");
             return;
         }
 

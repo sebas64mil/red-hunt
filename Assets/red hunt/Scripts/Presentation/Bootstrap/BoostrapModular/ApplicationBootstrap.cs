@@ -5,7 +5,6 @@ public class ApplicationBootstrap : MonoBehaviour
 {
     public ApplicationServices Services { get; private set; }
 
-    // Eventos que representan la capa Application
     public event Action<PlayerSession> OnPlayerJoined;
     public event Action<int> OnPlayerLeft;
 
@@ -20,15 +19,13 @@ public class ApplicationBootstrap : MonoBehaviour
             var installer = new ApplicationInstaller();
             Services = installer.Install();
             installed = true;
-            Debug.Log("[ApplicationBootstrap] ApplicationServices instalados.");
 
-            // Suscribirse a los eventos del LobbyManager y reexponerlos
             Services.LobbyManager.OnPlayerJoined += HandlePlayerJoined;
             Services.LobbyManager.OnPlayerLeft += HandlePlayerLeft;
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[ApplicationBootstrap] Error Init: {ex.Message}");
+            Debug.LogError($"[ApplicationBootstrap] Init error: {ex.Message}");
             throw;
         }
     }
@@ -37,12 +34,11 @@ public class ApplicationBootstrap : MonoBehaviour
     {
         try
         {
-            Debug.Log($"[ApplicationBootstrap] PlayerJoined: {player.Id}");
             OnPlayerJoined?.Invoke(player);
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[ApplicationBootstrap] Error en HandlePlayerJoined: {e.Message}");
+            Debug.LogWarning($"[ApplicationBootstrap] Error in HandlePlayerJoined: {e.Message}");
         }
     }
 
@@ -50,12 +46,11 @@ public class ApplicationBootstrap : MonoBehaviour
     {
         try
         {
-            Debug.Log($"[ApplicationBootstrap] PlayerLeft: {playerId}");
             OnPlayerLeft?.Invoke(playerId);
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[ApplicationBootstrap] Error en HandlePlayerLeft: {e.Message}");
+            Debug.LogWarning($"[ApplicationBootstrap] Error in HandlePlayerLeft: {e.Message}");
         }
     }
 

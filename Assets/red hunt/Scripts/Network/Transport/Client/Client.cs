@@ -27,11 +27,9 @@ public class Client : MonoBehaviour, IClient
 
     private void HandleMessage(string msg, IPEndPoint sender)
     {
-        Debug.Log("[Client] Recibido: " + msg);
 
         if (!isServerConnected && msg != null && msg.Contains("CONNECT_ACK"))
         {
-            Debug.Log("[Client] Conexión confirmada por el server");
             isServerConnected = true;
 
             isConnected = true;
@@ -52,7 +50,7 @@ public class Client : MonoBehaviour, IClient
         }
         catch (Exception ex)
         {
-            Debug.LogError("[Client] Error al iniciar transporte: " + ex.Message);
+            Debug.LogError("[Client] Error starting transport: " + ex.Message);
             try { transport.Stop(); } catch { }
             isConnected = false;
             return false;
@@ -67,7 +65,7 @@ public class Client : MonoBehaviour, IClient
         }
         catch (Exception ex)
         {
-            Debug.LogError("[Client] Error enviando CONNECT: " + ex.Message);
+            Debug.LogError("[Client] Error sending CONNECT: " + ex.Message);
             Disconnect();
             return false;
         }
@@ -84,7 +82,7 @@ public class Client : MonoBehaviour, IClient
 
         if (!isServerConnected)
         {
-            Debug.LogWarning("[Client] Timeout: server no responde al CONNECT");
+            Debug.LogWarning("[Client] Timeout: server not responding to CONNECT");
 
             try
             {
@@ -92,7 +90,7 @@ public class Client : MonoBehaviour, IClient
             }
             catch (Exception ex)
             {
-                Debug.LogWarning("[Client] Error enviando DISCONNECT tras timeout: " + ex.Message);
+                Debug.LogWarning("[Client] Error sending DISCONNECT after timeout: " + ex.Message);
             }
 
             Disconnect();
@@ -100,25 +98,22 @@ public class Client : MonoBehaviour, IClient
         }
 
         isConnected = true;
-        Debug.Log("[Client] Conectado correctamente al server");
         return true;
     }
     public async Task SendMessageAsync(string message)
     {
         if (transport == null || serverEndPoint == null)
         {
-            Debug.Log("[Client] Transport o serverEndPoint no inicializado");
             return;
         }
 
         try
         {
             await transport.Send(message, serverEndPoint);
-            Debug.Log("[Client] Sent: " + message);
         }
         catch (Exception e)
         {
-            Debug.LogWarning("[Client] Error en SendMessageAsync: " + e.Message);
+            Debug.LogWarning("[Client] Error in SendMessageAsync: " + e.Message);
             throw;
         }
     }
@@ -134,10 +129,9 @@ public class Client : MonoBehaviour, IClient
             }
             catch (Exception ex)
             {
-                Debug.LogWarning("[Client] Error forzando Stop en Disconnect: " + ex.Message);
+                Debug.LogWarning("[Client] Error forcing Stop in Disconnect: " + ex.Message);
             }
             isConnected = false;
-            Debug.Log("[Client] Disconnected (forced)");
             OnDisconnected?.Invoke();
             return;
         }
@@ -150,10 +144,9 @@ public class Client : MonoBehaviour, IClient
         }
         catch (Exception ex)
         {
-            Debug.LogWarning("[Client] Error al detener transporte en Disconnect: " + ex.Message);
+            Debug.LogWarning("[Client] Error stopping transport in Disconnect: " + ex.Message);
         }
 
-        Debug.Log("[Client] Disconnected");
         OnDisconnected?.Invoke();
     }
 

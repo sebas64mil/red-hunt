@@ -9,17 +9,15 @@ public class KillerAttack : MonoBehaviour
 
     private PlayerInputHandler inputHandler;
     private int playerId = -1;
-    private bool isLocal = false;  // ⭐ Inicializado en false por defecto
+    private bool isLocal = false;
 
     private float timeSinceLastAttack = 0f;
 
-    // ⭐ Referencias de red
     private BroadcastService broadcastService;
     private IClient client;
     private PacketBuilder packetBuilder;
     private bool isHost = false;
 
-    // ⭐ NUEVO: GameStateManager
     private GameStateManager gameStateManager;
     private PlayerAnimationController animationController;
 
@@ -33,17 +31,17 @@ public class KillerAttack : MonoBehaviour
 
         if (inputHandler == null)
         {
-            Debug.LogWarning("[KillerAttack] ?? PlayerInputHandler no encontrado");
+            Debug.LogWarning("[KillerAttack] PlayerInputHandler not found");
         }
 
         if (gameStateManager == null)
         {
-            Debug.LogWarning("[KillerAttack] ⚠️ GameStateManager no encontrado en escena");
+            Debug.LogWarning("[KillerAttack] GameStateManager not found in scene");
         }
 
         if (animationController == null)
         {
-            Debug.LogWarning("[KillerAttack] ⚠️ PlayerAnimationController no encontrado");
+            Debug.LogWarning("[KillerAttack] PlayerAnimationController not found");
         }
     }
 
@@ -51,8 +49,7 @@ public class KillerAttack : MonoBehaviour
     public void Init(int id, bool local)
     {
         playerId = id;
-        isLocal = local;  // ⭐ ESTO DEBE SER TRUE SI ES EL KILLER LOCAL
-        Debug.Log($"[KillerAttack] ✅ Inicializado para Killer {playerId} - isLocal: {isLocal}");
+        isLocal = local;
     }
 
     public void InitNetworkServices(BroadcastService broadcast, IClient clientInstance, PacketBuilder builder, bool hostFlag)
@@ -61,7 +58,6 @@ public class KillerAttack : MonoBehaviour
         client = clientInstance;
         packetBuilder = builder;
         isHost = hostFlag;
-        Debug.Log($"[KillerAttack] ✅ Servicios de red inicializados - isHost: {isHost}, playerId: {playerId}");
     }
 
     private void OnEnable()
@@ -69,7 +65,6 @@ public class KillerAttack : MonoBehaviour
         if (inputHandler != null)
         {
             inputHandler.OnAttack += HandleAttackInput;
-            Debug.Log($"[KillerAttack] ✅ Evento de ataque suscrito (isLocal: {isLocal}, playerId: {playerId})");
         }
 
         timeSinceLastAttack = attackCooldown;
@@ -90,16 +85,13 @@ public class KillerAttack : MonoBehaviour
 
     private void HandleAttackInput()
     {
-        // ⭐ CRÍTICO: Solo procesar input si es LOCAL
         if (!isLocal)
         {
-            Debug.Log($"[KillerAttack] ⏭️ Killer {playerId} remoto - ignorando input local");
             return;
         }
 
         if (timeSinceLastAttack < attackCooldown)
         {
-            Debug.Log($"[KillerAttack] ⏳ En cooldown ({timeSinceLastAttack:F2}/{attackCooldown})");
             return;
         }
 
@@ -122,9 +114,7 @@ public class KillerAttack : MonoBehaviour
                     
                     targetHealth.TakeDamage(damagePerHit);
 
-                    Debug.Log($"[KillerAttack] ✅ Ataque conectado - Killer {playerId} → Escapista {targetPlayerId}");
 
-                    // Llamar al controlador de animaciones
                     if (animationController != null)
                     {
                         animationController.PlayAttackAnimation();
@@ -143,7 +133,7 @@ public class KillerAttack : MonoBehaviour
     {
         if (packetBuilder == null)
         {
-            Debug.LogWarning("[KillerAttack] ⚠️ PacketBuilder no inicializado");
+            Debug.LogWarning("[KillerAttack] PacketBuilder not initialized");
             return;
         }
 
@@ -154,22 +144,19 @@ public class KillerAttack : MonoBehaviour
             if (isHost && broadcastService != null)
             {
                 _ = broadcastService.SendToAll(healthUpdateJson);
-                Debug.Log($"[KillerAttack] 📡 HOST enviando HEALTH_UPDATE a TODOS - target: {targetPlayerId}, health: {currentHealth}/{maxHealth}");
             }
             else if (!isHost && client != null && client.isConnected)
             {
                 _ = client.SendMessageAsync(healthUpdateJson);
-                Debug.Log($"[KillerAttack] 📤 CLIENTE enviando HEALTH_UPDATE AL HOST - target: {targetPlayerId}, health: {currentHealth}/{maxHealth}");
             }
             else
             {
-                Debug.LogWarning($"[KillerAttack] ⚠️ Sin servicios de red - isHost: {isHost}, broadcast: {(broadcastService != null ? "✅" : "❌")}, client: {(client != null ? "✅" : "❌")}")
-;
+                Debug.LogWarning($"[KillerAttack] No network services - isHost: {isHost}, broadcast: {(broadcastService != null ? "available" : "unavailable")}, client: {(client != null ? "available" : "unavailable")}");
             }
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[KillerAttack] ❌ Error en SendHealthUpdateToNetwork: {ex.Message}");
+            Debug.LogError($"[KillerAttack] Error in SendHealthUpdateToNetwork: {ex.Message}");
         }
     }
 

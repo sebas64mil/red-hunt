@@ -18,21 +18,19 @@ public class ClueItemController : MonoBehaviour
             clueId = gameObject.name;
         }
 
-        Debug.Log($"[ClueItemController] Pista inicializada: {clueId}");
     }
 
     public void CollectClue()
     {
         if (isCollected)
         {
-            Debug.LogWarning($"[ClueItemController] Pista {clueId} ya fue recolectada");
+            Debug.LogWarning($"[ClueItemController] Clue {clueId} already collected");
             return;
         }
 
         isCollected = true;
         gameObject.SetActive(false);
 
-        Debug.Log($"[ClueItemController] ✅ Pista {clueId} recolectada y desactivada");
     }
 
     public void ResetClue()
@@ -45,6 +43,5 @@ public class ClueItemController : MonoBehaviour
             clueCollider.enabled = true;
         }
 
-        Debug.Log($"[ClueItemController] 🔄 Pista {clueId} reseteada");
     }
 }

@@ -39,7 +39,7 @@ public class BroadcastService
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[BroadcastService] Error en SendToAllExcept: {e.Message}");
+            Debug.LogWarning($"[BroadcastService] Error in SendToAllExcept: {e.Message}");
         }
     }
 }

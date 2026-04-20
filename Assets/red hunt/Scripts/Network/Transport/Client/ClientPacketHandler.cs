@@ -26,7 +26,7 @@ public class ClientPacketHandler
 
         if (packet == null)
         {
-            Debug.LogWarning("[Client] ASSIGN_PLAYER inválido");
+            Debug.LogWarning("[Client] Invalid ASSIGN_PLAYER");
             return;
         }
 
@@ -39,10 +39,8 @@ public class ClientPacketHandler
         }
         catch
         {
-            // .....................
         }
 
-        Debug.Log($"[Client] Mi ID asignado es: {packet.id}");
 
         var pendingType = state.PendingPlayerType;
         if (!string.IsNullOrEmpty(pendingType))
@@ -64,11 +62,11 @@ public class ClientPacketHandler
 
         if (packet == null)
         {
-            Debug.LogWarning("[Client] ASSIGN_REJECT inválido");
+            Debug.LogWarning("[Client] Invalid ASSIGN_REJECT");
             return;
         }
 
-        Debug.LogWarning($"[Client] ASSIGN_REJECT recibido para id:{packet.id} motivo:{packet.reason}");
+        Debug.LogWarning($"[Client] ASSIGN_REJECT received for id:{packet.id} reason:{packet.reason}");
         try
         {
             state.ClearPendingPlayerType();
@@ -77,13 +75,12 @@ public class ClientPacketHandler
         }
         catch (System.Exception e)
         {
-            Debug.LogWarning($"[Client] Error al procesar ASSIGN_REJECT: {e.Message}");
+            Debug.LogWarning($"[Client] Error processing ASSIGN_REJECT: {e.Message}");
         }
     }
 
     public async Task SendDisconnect()
     {
-        Debug.Log("[Client] Sending DISCONNECT");
 
         var packet = builder.CreateDisconnect();
         await client.SendMessageAsync(packet);
@@ -91,33 +88,29 @@ public class ClientPacketHandler
 
     public async Task SendGameWin(int winnerId, string winnerType, bool isKillerWin)
     {
-        Debug.Log($"[ClientPacketHandler] Enviando WIN_GAME: winnerId={winnerId}, winnerType={winnerType}");
 
         try
         {
             var packet = builder.CreateWinGame(winnerId, winnerType, isKillerWin);
             await client.SendMessageAsync(packet);
-            Debug.Log("[ClientPacketHandler] ✅ WIN_GAME enviado al host");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[ClientPacketHandler] Error enviando WIN_GAME: {e.Message}");
+            Debug.LogError($"[ClientPacketHandler] Error sending WIN_GAME: {e.Message}");
         }
     }
 
     public async Task SendEscapistPassed(int escapistId)
     {
-        Debug.Log($"[ClientPacketHandler] Enviando ESCAPIST_PASSED: escapistId={escapistId}");
 
         try
         {
             var packet = builder.CreateEscapistPassed(escapistId);
             await client.SendMessageAsync(packet);
-            Debug.Log("[ClientPacketHandler] ✅ ESCAPIST_PASSED enviado al host");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[ClientPacketHandler] Error enviando ESCAPIST_PASSED: {e.Message}");
+            Debug.LogError($"[ClientPacketHandler] Error sending ESCAPIST_PASSED: {e.Message}");
         }
     }
 
@@ -125,7 +118,7 @@ public class ClientPacketHandler
     {
         if (!client.isConnected)
         {
-            Debug.LogError("[ClientPacketHandler] ❌ Cliente no conectado");
+            Debug.LogError("[ClientPacketHandler] Client not connected");
             return;
         }
 
@@ -133,11 +126,10 @@ public class ClientPacketHandler
         {
             var packet = builder.CreateEscapistClueCollected(escapistId, clueId);
             await client.SendMessageAsync(packet);
-            Debug.Log($"[ClientPacketHandler] ✅ ESCAPIST_CLUE_COLLECTED enviado al host: {clueId}");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[ClientPacketHandler] Error enviando ESCAPIST_CLUE_COLLECTED: {e.Message}");
+            Debug.LogError($"[ClientPacketHandler] Error sending ESCAPIST_CLUE_COLLECTED: {e.Message}");
         }
     }
 }

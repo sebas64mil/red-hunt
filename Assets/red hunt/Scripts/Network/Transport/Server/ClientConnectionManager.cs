@@ -19,13 +19,12 @@ public class ClientConnectionManager
     {
         if (clients.ContainsKey(endpoint))
         {
-            Debug.Log($"[ConnectionManager] Cliente {endpoint} ya registrado con id {clients[endpoint].ClientId}");
             return clients[endpoint].ClientId;
         }
 
         if (clients.Count >= maxClients)
         {
-            Debug.LogWarning($"[ConnectionManager] L�mite de clientes alcanzado ({maxClients}). Rechazando {endpoint}");
+            Debug.LogWarning($"[ConnectionManager] Client limit reached ({maxClients}). Rejecting {endpoint}");
             return -1;
         }
 
@@ -43,7 +42,6 @@ public class ClientConnectionManager
         var connection = new ClientConnection(endpoint, id);
         clients[endpoint] = connection;
 
-        Debug.Log($"[ConnectionManager] Nuevo cliente {endpoint} -> id {id}. Total clientes: {clients.Count}");
         return clients[endpoint].ClientId;
     }
     public void RemoveClient( IPEndPoint endpoint)
@@ -81,7 +79,6 @@ public class ClientConnectionManager
         clients.Clear();
         availableIds.Clear();
         nextId = 2;
-        Debug.Log("[ConnectionManager] Clear: conexiones reseteadas");
     }
 
     public bool TryGetEndpointById(int clientId, out IPEndPoint endpoint)

@@ -74,7 +74,6 @@ public class PlayerRegistry
 
         var updated = new PlayerSession(id, newType);
 
-        // mantener estado relevante
         if (old.IsReady)
             updated.SetReady(true);
 

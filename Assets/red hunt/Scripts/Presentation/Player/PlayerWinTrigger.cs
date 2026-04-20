@@ -17,10 +17,6 @@ public class PlayerWinTrigger : MonoBehaviour
     private readonly HashSet<int> passedEscapists = new();
     private readonly HashSet<int> targetEscapists = new();
 
-    private void Start()
-    {
-        Debug.Log($"[PlayerWinTrigger] Inicializado para player {playerId}");
-    }
 
     public void Init(int pid, bool hostFlag, bool localFlag, GameNetworkService netService, LobbyManager manager)
     {
@@ -32,11 +28,10 @@ public class PlayerWinTrigger : MonoBehaviour
 
         gameStateManager = FindFirstObjectByType<GameStateManager>();
 
-        Debug.Log($"[PlayerWinTrigger] ✅ Inicializado - PlayerId={playerId}, IsHost={isHost}, IsLocal={isLocal}");
 
         if (gameStateManager == null)
         {
-            Debug.LogError("[PlayerWinTrigger] ❌ CRÍTICO: GameStateManager no encontrado en escena al Init");
+            Debug.LogError("[PlayerWinTrigger] CRITICAL: GameStateManager not found in scene at Init");
             return;
         }
 
@@ -79,14 +74,14 @@ public class PlayerWinTrigger : MonoBehaviour
 
         if (lobbyManager == null)
         {
-            Debug.LogError("[PlayerWinTrigger] ❌ LobbyManager es NULL");
+            Debug.LogError("[PlayerWinTrigger] LobbyManager is NULL");
             return;
         }
 
         var playerSession = lobbyManager.GetAllPlayers()?.FirstOrDefault(p => p.Id == playerId);
         if (playerSession == null)
         {
-            Debug.LogWarning($"[PlayerWinTrigger] No se encontrado sesión para player {playerId}");
+            Debug.LogWarning($"[PlayerWinTrigger] Session not found for player {playerId}");
             return;
         }
 
@@ -97,7 +92,7 @@ public class PlayerWinTrigger : MonoBehaviour
 
         if (gameNetworkService == null)
         {
-            Debug.LogError("[PlayerWinTrigger] ❌ GameNetworkService es NULL");
+            Debug.LogError("[PlayerWinTrigger] GameNetworkService is NULL");
             return;
         }
 
@@ -114,7 +109,7 @@ public class PlayerWinTrigger : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError($"[PlayerWinTrigger] ❌ Error al enviar ESCAPIST_PASSED: {e.Message}");
+            Debug.LogError($"[PlayerWinTrigger] Error sending ESCAPIST_PASSED: {e.Message}");
         }
     }
 
@@ -131,7 +126,6 @@ public class PlayerWinTrigger : MonoBehaviour
         foreach (var id in passedIds)
             passedEscapists.Add(id);
 
-        Debug.Log($"[PlayerWinTrigger] 📸 Snapshot recibido -> passed={passedEscapists.Count}/{targetEscapists.Count}");
 
         if (!isHost) return;
         if (targetEscapists.Count <= 0) return;
@@ -142,11 +136,10 @@ public class PlayerWinTrigger : MonoBehaviour
         bool allPassedAreAlive = AreAllEscapistsAlive(passedEscapists);
         if (!allPassedAreAlive)
         {
-            Debug.LogWarning("[PlayerWinTrigger] ⚠️ Algunos escapistas pasaron pero están muertos por el killer - ESCAPISTAS NO GANAN");
+            Debug.LogWarning("[PlayerWinTrigger] Some escapists passed but are dead by killer - ESCAPISTS DO NOT WIN");
             return;
         }
 
-        Debug.Log("[PlayerWinTrigger] 🎉 ¡TODOS LOS ESCAPISTAS CONECTADOS HAN PASADO Y ESTÁN VIVOS! ESCAPISTAS GANAN");
 
         gameWon = true;
 
@@ -161,7 +154,7 @@ public class PlayerWinTrigger : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError($"[PlayerWinTrigger] ❌ Error al enviar WIN_GAME (snapshot all passed): {e.Message}");
+            Debug.LogError($"[PlayerWinTrigger] Error sending WIN_GAME (snapshot all passed): {e.Message}");
         }
     }
 
@@ -169,7 +162,7 @@ public class PlayerWinTrigger : MonoBehaviour
     {
         if (gameStateManager == null)
         {
-            Debug.LogWarning("[PlayerWinTrigger] ⚠️ GameStateManager es NULL - no se puede validar si los escapistas están vivos");
+            Debug.LogWarning("[PlayerWinTrigger] GameStateManager is NULL - cannot validate if escapists are alive");
             return false;
         }
 
@@ -178,7 +171,7 @@ public class PlayerWinTrigger : MonoBehaviour
             var playerSession = lobbyManager?.GetAllPlayers()?.FirstOrDefault(p => p.Id == escapistId);
             if (playerSession == null)
             {
-                Debug.LogWarning($"[PlayerWinTrigger] ⚠️ No se encontró sesión para escapista {escapistId}");
+                Debug.LogWarning($"[PlayerWinTrigger] Session not found for escapist {escapistId}");
                 return false;
             }
         }
@@ -191,14 +184,13 @@ public class PlayerWinTrigger : MonoBehaviour
 
     private async void HandleAllEscapistsDead()
     {
-        Debug.Log("[PlayerWinTrigger] 🎉 ¡TODOS LOS ESCAPISTAS HAN MUERTO! KILLER GANA!");
 
         if (gameWon) return;
         gameWon = true;
 
         if (lobbyManager == null)
         {
-            Debug.LogError("[PlayerWinTrigger] ❌ LobbyManager es NULL");
+            Debug.LogError("[PlayerWinTrigger] LobbyManager is NULL");
             return;
         }
 
@@ -207,7 +199,7 @@ public class PlayerWinTrigger : MonoBehaviour
 
         if (killerSession == null)
         {
-            Debug.LogError("[PlayerWinTrigger] ❌ No se encontró al Killer");
+            Debug.LogError("[PlayerWinTrigger] Killer not found");
             return;
         }
 
@@ -217,7 +209,7 @@ public class PlayerWinTrigger : MonoBehaviour
 
         if (gameNetworkService == null)
         {
-            Debug.LogError("[PlayerWinTrigger] ❌ GameNetworkService es NULL");
+            Debug.LogError("[PlayerWinTrigger] GameNetworkService is NULL");
             return;
         }
 
@@ -225,7 +217,6 @@ public class PlayerWinTrigger : MonoBehaviour
         {
             if (isHost)
             {
-                Debug.Log("[PlayerWinTrigger] → Host enviando WIN_GAME (Killer - Todos muertos) a TODOS");
                 await gameNetworkService.SendGameWinAsync(killerId, winnerType, isKillerWin);
 
                 GameManager.ChangeScene("Win");
@@ -233,7 +224,7 @@ public class PlayerWinTrigger : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError($"[PlayerWinTrigger] ❌ Error al enviar WIN_GAME (Killer): {e.Message}");
+            Debug.LogError($"[PlayerWinTrigger] Error sending WIN_GAME (Killer): {e.Message}");
         }
     }
 

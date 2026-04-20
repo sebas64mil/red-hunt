@@ -37,7 +37,7 @@ public class AdminPacketHandler
             var basePkt = packetBuilder.Serializer.Deserialize<BasePacket>(json);
             if (basePkt == null || string.IsNullOrEmpty(basePkt.type))
             {
-                Debug.LogWarning("[AdminPacketHandler] Paquete admin inv�lido");
+                Debug.LogWarning("[AdminPacketHandler] Invalid admin packet");
                 return;
             }
 
@@ -52,13 +52,13 @@ public class AdminPacketHandler
                     break;
 
                 default:
-                    Debug.LogWarning($"[AdminPacketHandler] Paquete admin desconocido: {basePkt.type}");
+                    Debug.LogWarning($"[AdminPacketHandler] Unknown admin packet: {basePkt.type}");
                     break;
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[AdminPacketHandler] Error procesando paquete admin: {e.Message}");
+            Debug.LogError($"[AdminPacketHandler] Error processing admin packet: {e.Message}");
         }
     }
 
@@ -69,15 +69,13 @@ public class AdminPacketHandler
             var pkt = packetBuilder.Serializer.Deserialize<KickPacket>(json);
             if (pkt == null)
             {
-                Debug.LogWarning("[AdminPacketHandler] KickPacket inv�lido");
+                Debug.LogWarning("[AdminPacketHandler] Invalid KickPacket");
                 return;
             }
 
-            Debug.Log($"[AdminPacketHandler] ADMIN_KICK recibido target:{pkt.targetId}");
-
             if (adminService != null && adminService.IsHost)
             {
-                Debug.LogWarning("[AdminPacketHandler] Host ignorando ADMIN_KICK desde red");
+                Debug.LogWarning("[AdminPacketHandler] Host ignoring ADMIN_KICK from network");
                 return;
             }
 
@@ -85,7 +83,7 @@ public class AdminPacketHandler
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[AdminPacketHandler] Error en HandleKick: {e.Message}");
+            Debug.LogError($"[AdminPacketHandler] Error in HandleKick: {e.Message}");
         }
     }
 
@@ -96,18 +94,15 @@ public class AdminPacketHandler
             var pkt = packetBuilder.Serializer.Deserialize<PausePacket>(json);
             if (pkt == null)
             {
-                Debug.LogWarning("[AdminPacketHandler] PausePacket inválido");
+                Debug.LogWarning("[AdminPacketHandler] Invalid PausePacket");
                 return;
             }
 
-            Debug.Log($"[AdminPacketHandler] ADMIN_PAUSE recibido: {pkt.isPaused}");
-
-            // Aplicar pausa localmente
             GameManager.SetPause(pkt.isPaused);
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[AdminPacketHandler] Error en HandlePause: {e.Message}");
+            Debug.LogError($"[AdminPacketHandler] Error in HandlePause: {e.Message}");
         }
     }
 
@@ -115,13 +110,13 @@ public class AdminPacketHandler
     {
         if (adminService == null)
         {
-            Debug.LogWarning("[AdminPacketHandler] AdminService no inicializado");
+            Debug.LogWarning("[AdminPacketHandler] AdminService not initialized");
             return false;
         }
 
         if (!adminService.IsHost)
         {
-            Debug.LogWarning("[AdminPacketHandler] Solo el host puede iniciar un kick");
+            Debug.LogWarning("[AdminPacketHandler] Only host can initiate a kick");
             return false;
         }
 
@@ -136,7 +131,6 @@ public class AdminPacketHandler
 
             if (myId == targetId)
             {
-                Debug.Log("[AdminPacketHandler] Soy el objetivo del kick -> volviendo a Lobby/MainMenu y desconectando");
 
                 try
                 {
@@ -152,7 +146,7 @@ public class AdminPacketHandler
                 }
                 catch (System.Exception e)
                 {
-                    Debug.LogWarning($"[AdminPacketHandler] Error marcando retorno a lobby: {e.Message}");
+                    Debug.LogWarning($"[AdminPacketHandler] Error marking return to lobby: {e.Message}");
                 }
 
                 try
@@ -162,7 +156,7 @@ public class AdminPacketHandler
                 }
                 catch (System.Exception e)
                 {
-                    Debug.LogWarning($"[AdminPacketHandler] Error cambiando a escena Lobby tras kick: {e.Message}");
+                    Debug.LogWarning($"[AdminPacketHandler] Error changing to Lobby scene after kick: {e.Message}");
                 }
 
                 try
@@ -178,7 +172,7 @@ public class AdminPacketHandler
                 }
                 catch (System.Exception e)
                 {
-                    Debug.LogWarning($"[AdminPacketHandler] Error limpiando estado local antes del kick: {e.Message}");
+                    Debug.LogWarning($"[AdminPacketHandler] Error cleaning local state before kick: {e.Message}");
                 }
 
                 client?.Disconnect();
@@ -186,7 +180,7 @@ public class AdminPacketHandler
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[AdminPacketHandler] Error aplicando kick local: {e.Message}");
+            Debug.LogError($"[AdminPacketHandler] Error applying local kick: {e.Message}");
         }
     }
 }

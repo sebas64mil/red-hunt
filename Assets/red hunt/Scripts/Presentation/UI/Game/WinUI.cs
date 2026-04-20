@@ -4,16 +4,16 @@ using TMPro;
 
 public class WinUI : MonoBehaviour
 {
-    [SerializeField] private TextMeshProUGUI titleText;    
-    [SerializeField] private TextMeshProUGUI descriptionText; 
+    [SerializeField] private TextMeshProUGUI titleText;
+    [SerializeField] private TextMeshProUGUI descriptionText;
     [SerializeField] private LeaveButton leaveButton;
     [SerializeField] private ShutdownButton shutdownButton;
 
-    [SerializeField] private string killerTitle = "¡EL ASESINO GANA!";
-    [SerializeField] private string killerDescription = "El asesino ha eliminado a todos los escapistas.";
+    [SerializeField] private string killerTitle = "Killer Wins!";
+    [SerializeField] private string killerDescription = "The killer has eliminated all escapists.";
 
-    [SerializeField] private string escapistTitle = "¡LOS ESCAPISTAS GANAN!";
-    [SerializeField] private string escapistDescription = "Los escapistas lograron escapar.";
+    [SerializeField] private string escapistTitle = "Escapists Win!";
+    [SerializeField] private string escapistDescription = "The escapists managed to escape.";
 
     public event Action OnLeaveLobby;
     public event Action OnReturnToLobby;
@@ -23,13 +23,10 @@ public class WinUI : MonoBehaviour
 
     private void Awake()
     {
-        Debug.Log("[WinUI] ✅ Inicializado");
-        
-        // ⭐ NUEVO: Validar que los TextMeshPro existan
         if (titleText == null)
-            Debug.LogError("[WinUI] ❌ titleText no asignado en el Inspector");
+            Debug.LogError("[WinUI] titleText not assigned in Inspector");
         if (descriptionText == null)
-            Debug.LogError("[WinUI] ❌ descriptionText no asignado en el Inspector");
+            Debug.LogError("[WinUI] descriptionText not assigned in Inspector");
 
         if (leaveButton != null)
         {
@@ -55,14 +52,12 @@ public class WinUI : MonoBehaviour
     public void SetIsHost(bool host)
     {
         isHost = host;
-        Debug.Log($"[WinUI] SetIsHost={host}");
         UpdateButtonVisibility();
     }
 
     public void SetConnected(bool connected)
     {
         isConnected = connected;
-        Debug.Log($"[WinUI] SetConnected={connected}");
         UpdateButtonVisibility();
     }
 
@@ -74,25 +69,21 @@ public class WinUI : MonoBehaviour
         if (leaveButton != null)
         {
             leaveButton.SetVisible(showLeave);
-            Debug.Log($"[WinUI] LeaveButton.SetVisible({showLeave}) - isConnected={isConnected}, isHost={isHost}");
         }
 
         if (shutdownButton != null)
         {
             shutdownButton.SetVisible(showReturn);
-            Debug.Log($"[WinUI] ShutdownButton.SetVisible({showReturn}) - isConnected={isConnected}, isHost={isHost}");
         }
     }
 
     private void OnLeaveButton()
     {
-        Debug.Log("[WinUI] 👉 Cliente presionó Leave - abandonando el servidor");
         OnLeaveLobby?.Invoke();
     }
 
     private void OnReturnToLobbyButton()
     {
-        Debug.Log("[WinUI] 👉 Host presionó Return to Lobby");
         OnReturnToLobby?.Invoke();
     }
 
@@ -102,22 +93,20 @@ public class WinUI : MonoBehaviour
         {
             titleText.text = title;
             titleText.gameObject.SetActive(true);
-            Debug.Log($"[WinUI] ✅ Título establecido: {title}");
         }
         else
         {
-            Debug.LogError("[WinUI] ❌ titleText es NULL - no se puede establecer título");
+            Debug.LogError("[WinUI] titleText is null - cannot set title");
         }
 
         if (descriptionText != null)
         {
             descriptionText.text = description;
             descriptionText.gameObject.SetActive(true);
-            Debug.Log($"[WinUI] ✅ Descripción establecida: {description}");
         }
         else
         {
-            Debug.LogError("[WinUI] ❌ descriptionText es NULL - no se puede establecer descripción");
+            Debug.LogError("[WinUI] descriptionText is null - cannot set description");
         }
     }
 

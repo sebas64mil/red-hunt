@@ -29,26 +29,21 @@ public class ClientPingHandler
             var pingPacket = serializer.Deserialize<PingPacket>(json);
             if (pingPacket == null)
             {
-                Debug.LogWarning("[ClientPingHandler] PingPacket inválido");
+                Debug.LogWarning("[ClientPingHandler] Invalid PingPacket");
                 return;
             }
 
-            Debug.Log($"[ClientPingHandler] PING recibido del servidor con timestamp: {pingPacket.pingTimestamp}");
-
-            // Crear PONG response
             var pongJson = adminBuilder.CreatePong(
                 pingPacket.pingTimestamp,
                 clientState.PlayerId
             );
 
-            // Enviar PONG
             await client.SendMessageAsync(pongJson);
 
-            Debug.Log($"[ClientPingHandler] PONG enviado al servidor");
         }
         catch (Exception e)
         {
-            Debug.LogError($"[ClientPingHandler] Error procesando PING: {e.Message}");
+            Debug.LogError($"[ClientPingHandler] Error processing PING: {e.Message}");
         }
     }
 }

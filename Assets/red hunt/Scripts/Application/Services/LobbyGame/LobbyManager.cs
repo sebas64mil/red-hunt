@@ -57,17 +57,15 @@ public class LobbyManager
     {
         lock (syncRoot)
         {
-            // Validar que el jugador no exista ya
             var existing = playerRegistry.GetPlayer(id);
             if (existing != null)
             {
-               // Debug.LogWarning($"[Lobby] Player {id} ya existe en el registro, ignorando AddPlayerRemote");
                 return existing;
             }
 
             if (IsFull())
             {
-                Debug.LogWarning("[Lobby] Lobby lleno, ignorando player remoto");
+                Debug.LogWarning("[Lobby] Lobby full, ignoring remote player");
                 return null;
             }
 
@@ -82,7 +80,7 @@ public class LobbyManager
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"[Lobby] Error añadiendo player remoto: {e.Message}");
+                Debug.LogWarning($"[Lobby] Error adding remote player: {e.Message}");
                 return null;
             }
         }
@@ -113,7 +111,7 @@ public class LobbyManager
 
         if (player == null)
         {
-            Debug.LogWarning($"[Lobby] Player {id} no encontrado");
+            Debug.LogWarning($"[Lobby] Player {id} not found");
             return;
         }
 

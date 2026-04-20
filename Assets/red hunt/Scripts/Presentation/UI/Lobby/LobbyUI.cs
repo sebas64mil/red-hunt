@@ -9,7 +9,6 @@ public class LobbyUI : MonoBehaviour
     public string IpAddress => ipAddress;
     public int Port => port;
 
-    // OnCreateLobby ahora incluye ip y port para coincidir con UIBindingBootstrap
     public event Action<string, int> OnCreateLobby;
     public event Action<string, int> OnJoinLobby;
 
@@ -100,7 +99,7 @@ public class LobbyUI : MonoBehaviour
         }
         catch (Exception)
         {
-            Debug.LogWarning("[LobbyUI] Registro con GameBootstrap falló");
+            Debug.LogWarning("[LobbyUI] Registration with GameBootstrap failed");
         }
     }
 
@@ -144,13 +143,12 @@ public class LobbyUI : MonoBehaviour
     {
         if (readyProcessing)
         {
-            Debug.Log("[LobbyUI] Ready ya en proceso, ignorando pulsación duplicada");
             return;
         }
 
         if (selectedRole == null)
         {
-            Debug.LogWarning("[LobbyUI] Ready pulsado pero no se ha seleccionado rol");
+            Debug.LogWarning("[LobbyUI] Ready pressed but no role selected");
             return;
         }
 

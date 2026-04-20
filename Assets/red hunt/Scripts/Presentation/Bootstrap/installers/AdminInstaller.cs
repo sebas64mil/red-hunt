@@ -31,7 +31,7 @@ public static class AdminInstaller
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[AdminInstaller] Error procesando ADMIN_KICK: {e.Message}");
+                    Debug.LogError($"[AdminInstaller] Error processing ADMIN_KICK: {e.Message}");
                 }
             });
 
@@ -43,11 +43,10 @@ public static class AdminInstaller
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[AdminInstaller] Error procesando ADMIN_PAUSE: {e.Message}");
+                    Debug.LogError($"[AdminInstaller] Error processing ADMIN_PAUSE: {e.Message}");
                 }
             });
 
-            // Asignar AdminService a GameManager para acceso estático
             GameManager.AdminService = adminService;
             GameManager.IsHost = isHost;
 

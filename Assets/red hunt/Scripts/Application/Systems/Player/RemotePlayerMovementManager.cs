@@ -12,13 +12,13 @@ public class RemotePlayerMovementManager
     {
         if (remoteSync == null)
         {
-            Debug.LogWarning($"[RemotePlayerMovementManager] Intentando registrar RemotePlayerSync NULL para player {playerId}");
+            Debug.LogWarning($"[RemotePlayerMovementManager] Attempting to register NULL RemotePlayerSync for player {playerId}");
             return;
         }
 
         if (remotePlayerSyncMap.ContainsKey(playerId))
         {
-            Debug.LogWarning($"[RemotePlayerMovementManager] Player {playerId} ya estaba registrado. Reemplazando...");
+            Debug.LogWarning($"[RemotePlayerMovementManager] Player {playerId} was already registered. Replacing...");
         }
 
         remotePlayerSyncMap[playerId] = remoteSync;
@@ -28,7 +28,6 @@ public class RemotePlayerMovementManager
     {
         if (remotePlayerSyncMap.Remove(playerId))
         {
-            Debug.Log($"[RemotePlayerMovementManager] ✅ Player remoto {playerId} desregistrado");
         }
     }
 
@@ -37,7 +36,7 @@ public class RemotePlayerMovementManager
     {
         if (movePacket == null)
         {
-            Debug.LogError("[RemotePlayerMovementManager] ❌ MovePacket es NULL");
+            Debug.LogError("[RemotePlayerMovementManager] MovePacket is NULL");
             return;
         }
 
@@ -45,7 +44,7 @@ public class RemotePlayerMovementManager
 
         if (!remotePlayerSyncMap.TryGetValue(playerId, out RemotePlayerSync remoteSync))
         {
-            Debug.LogWarning($"[RemotePlayerMovementManager] ⚠️ RemotePlayerSync NO encontrado para player {playerId}");
+            Debug.LogWarning($"[RemotePlayerMovementManager] RemotePlayerSync not found for player {playerId}");
             return;
         }
 
@@ -57,7 +56,7 @@ public class RemotePlayerMovementManager
 
         if (!remoteSync.enabled)
         {
-            Debug.LogWarning($"[RemotePlayerMovementManager] ⚠️ RemotePlayerSync desactivado para player {playerId}");
+            Debug.LogWarning($"[RemotePlayerMovementManager] RemotePlayerSync disabled for player {playerId}");
             return;
         }
 
@@ -70,6 +69,5 @@ public class RemotePlayerMovementManager
     public void Clear()
     {
         remotePlayerSyncMap.Clear();
-        Debug.Log("[RemotePlayerMovementManager] Todos los jugadores remotos desregistrados");
     }
 }

@@ -45,30 +45,28 @@ public class GameNetworkService : MonoBehaviour
 
     public void SetIsHost(bool value) => isHost = value;
 
-    // ===================== ENVÍO (GAME) =====================
 
     public async Task SendGameWinToHostAsync(int winnerId, string winnerType, bool isKillerWin)
     {
         if (isHost)
         {
-            Debug.LogWarning("[GameNetworkService] SendGameWinToHostAsync: Solo clientes deben usar esto");
+            Debug.LogWarning("[GameNetworkService] SendGameWinToHostAsync: Only clients should use this");
             return;
         }
 
         if (clientPacketHandler == null)
         {
-            Debug.LogError("[GameNetworkService] SendGameWinToHostAsync: ClientPacketHandler no disponible");
+            Debug.LogError("[GameNetworkService] SendGameWinToHostAsync: ClientPacketHandler not available");
             return;
         }
 
         try
         {
             await clientPacketHandler.SendGameWin(winnerId, winnerType, isKillerWin);
-            Debug.Log("[GameNetworkService] ✅ WIN_GAME enviado AL HOST (async)");
         }
         catch (Exception e)
         {
-            Debug.LogError($"[GameNetworkService] Error enviando WIN_GAME al host: {e.Message}");
+            Debug.LogError($"[GameNetworkService] Error sending WIN_GAME to host: {e.Message}");
         }
     }
 
@@ -76,13 +74,13 @@ public class GameNetworkService : MonoBehaviour
     {
         if (!isHost)
         {
-            Debug.LogWarning("[GameNetworkService] SendGameWinAsync: Solo el host puede enviar WIN_GAME a todos");
+            Debug.LogWarning("[GameNetworkService] SendGameWinAsync: Only host can send WIN_GAME to all");
             return;
         }
 
         if (broadcastService == null)
         {
-            Debug.LogError("[GameNetworkService] SendGameWinAsync: BroadcastService no disponible");
+            Debug.LogError("[GameNetworkService] SendGameWinAsync: BroadcastService not available");
             return;
         }
 
@@ -90,17 +88,15 @@ public class GameNetworkService : MonoBehaviour
         {
             var winPacket = packetBuilder.CreateWinGame(winnerId, winnerType, isKillerWin);
 
-            Debug.Log($"[GameNetworkService] 📡 Enviando WIN_GAME a TODOS: winnerId={winnerId}, winnerType={winnerType}");
 
             await broadcastService.SendToAll(winPacket);
 
             HandleWinGamePacket(winPacket);
 
-            Debug.Log("[GameNetworkService] ✅ WIN_GAME enviado a todos los clientes - seguro cambiar escena");
         }
         catch (Exception e)
         {
-            Debug.LogError($"[GameNetworkService] ❌ Error en SendGameWinAsync: {e.Message}\n{e.StackTrace}");
+            Debug.LogError($"[GameNetworkService] Error in SendGameWinAsync: {e.Message}\n{e.StackTrace}");
         }
     }
 
@@ -108,24 +104,23 @@ public class GameNetworkService : MonoBehaviour
     {
         if (isHost)
         {
-            Debug.LogWarning("[GameNetworkService] SendEscapistPassedToHostAsync: Solo clientes deben usar esto");
+            Debug.LogWarning("[GameNetworkService] SendEscapistPassedToHostAsync: Only clients should use this");
             return;
         }
 
         if (clientPacketHandler == null)
         {
-            Debug.LogError("[GameNetworkService] SendEscapistPassedToHostAsync: ClientPacketHandler no disponible");
+            Debug.LogError("[GameNetworkService] SendEscapistPassedToHostAsync: ClientPacketHandler not available");
             return;
         }
 
         try
         {
             await clientPacketHandler.SendEscapistPassed(escapistId);
-            Debug.Log("[GameNetworkService] ✅ ESCAPIST_PASSED enviado AL HOST (async)");
         }
         catch (Exception e)
         {
-            Debug.LogError($"[GameNetworkService] Error enviando ESCAPIST_PASSED al host: {e.Message}");
+            Debug.LogError($"[GameNetworkService] Error sending ESCAPIST_PASSED to host: {e.Message}");
         }
     }
 
@@ -133,13 +128,13 @@ public class GameNetworkService : MonoBehaviour
     {
         if (!isHost)
         {
-            Debug.LogWarning("[GameNetworkService] SendEscapistPassedAsync: Solo el host puede enviar ESCAPIST_PASSED a todos");
+            Debug.LogWarning("[GameNetworkService] SendEscapistPassedAsync: Only host can send ESCAPIST_PASSED to all");
             return;
         }
 
         if (broadcastService == null)
         {
-            Debug.LogError("[GameNetworkService] SendEscapistPassedAsync: BroadcastService no disponible");
+            Debug.LogError("[GameNetworkService] SendEscapistPassedAsync: BroadcastService not available");
             return;
         }
 
@@ -147,21 +142,18 @@ public class GameNetworkService : MonoBehaviour
         {
             var passedPacket = packetBuilder.CreateEscapistPassed(escapistId);
 
-            Debug.Log($"[GameNetworkService] 📡 Enviando ESCAPIST_PASSED a TODOS: escapistId={escapistId}");
 
             await broadcastService.SendToAll(passedPacket);
 
             HandleEscapistPassedPacket(passedPacket);
 
-            Debug.Log("[GameNetworkService] ✅ ESCAPIST_PASSED enviado a todos los clientes");
         }
         catch (Exception e)
         {
-            Debug.LogError($"[GameNetworkService] ❌ Error en SendEscapistPassedAsync: {e.Message}\n{e.StackTrace}");
+            Debug.LogError($"[GameNetworkService] Error in SendEscapistPassedAsync: {e.Message}\n{e.StackTrace}");
         }
     }
 
-    // ===================== RECEPCIÓN (ya lo tienes) =====================
 
     public void HandlePacketReceived(string packetJson)
     {
@@ -197,7 +189,7 @@ public class GameNetworkService : MonoBehaviour
                 break;
 
             default:
-                Debug.LogWarning($"[GameNetworkService] Paquete no soportado: {packetType}");
+                Debug.LogWarning($"[GameNetworkService] Unsupported packet: {packetType}");
                 break;
         }
     }
@@ -207,11 +199,10 @@ public class GameNetworkService : MonoBehaviour
         var packet = packetBuilder.DeserializeHealthUpdate(json);
         if (packet == null)
         {
-            Debug.LogWarning("[GameNetworkService] HEALTH_UPDATE packet inválido");
+            Debug.LogWarning("[GameNetworkService] Invalid HEALTH_UPDATE packet");
             return;
         }
 
-        Debug.Log($"[GameNetworkService] HEALTH_UPDATE recibido: playerId={packet.playerId}, health={packet.currentHealth}/{packet.maxHealth}");
 
         try
         {
@@ -222,13 +213,12 @@ public class GameNetworkService : MonoBehaviour
                 if (escapistHealth != null)
                 {
                     escapistHealth.SetHealth(packet.currentHealth);
-                    Debug.Log($"[GameNetworkService] ? Salud actualizada localmente para player {packet.playerId}: {packet.currentHealth}/{packet.maxHealth}");
                 }
             }
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[GameNetworkService] Error actualizando salud local: {e.Message}");
+            Debug.LogWarning($"[GameNetworkService] Error updating local health: {e.Message}");
         }
     }
 
@@ -237,11 +227,10 @@ public class GameNetworkService : MonoBehaviour
         var packet = packetBuilder.Serializer.Deserialize<WinGamePacket>(json);
         if (packet == null)
         {
-            Debug.LogWarning("[GameNetworkService] WIN_GAME packet inválido");
+            Debug.LogWarning("[GameNetworkService] Invalid WIN_GAME packet");
             return;
         }
 
-        Debug.Log($"[GameNetworkService] WIN_GAME recibido: winnerId={packet.winnerId}, winnerType={packet.winnerType}, isKillerWin={packet.isKillerWin}");
 
         if (isHost)
         {
@@ -254,7 +243,7 @@ public class GameNetworkService : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[GameNetworkService] Error invocando OnGameWinReceived: {e.Message}");
+            Debug.LogWarning($"[GameNetworkService] Error invoking OnGameWinReceived: {e.Message}");
         }
     }
 
@@ -271,7 +260,7 @@ public class GameNetworkService : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError($"[GameNetworkService] ? Error rebroadcasteando WIN_GAME: {e.Message}");
+            Debug.LogError($"[GameNetworkService] Error rebroadcasting WIN_GAME: {e.Message}");
         }
     }
 
@@ -280,11 +269,11 @@ public class GameNetworkService : MonoBehaviour
         var packet = packetBuilder.DeserializeEscapistPassed(json);
         if (packet == null)
         {
-            Debug.LogWarning("[GameNetworkService] ESCAPIST_PASSED packet inválido");
+            Debug.LogWarning("[GameNetworkService] Invalid ESCAPIST_PASSED packet");
             return;
         }
 
-        Debug.Log($"[GameNetworkService] ESCAPIST_PASSED recibido: escapistId={packet.escapistId}");
+        Debug.Log($"[GameNetworkService] ESCAPIST_PASSED received: escapistId={packet.escapistId}");
 
         if (isHost)
         {
@@ -320,7 +309,7 @@ public class GameNetworkService : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[GameNetworkService] Error invocando OnEscapistPassed: {e.Message}");
+            Debug.LogWarning($"[GameNetworkService] Error invoking OnEscapistPassed: {e.Message}");
         }
     }
 
@@ -329,7 +318,7 @@ public class GameNetworkService : MonoBehaviour
         var packet = packetBuilder.DeserializeEscapistsPassedSnapshot(json);
         if (packet == null)
         {
-            Debug.LogWarning("[GameNetworkService] ESCAPISTS_PASSED_SNAPSHOT inválido");
+            Debug.LogWarning("[GameNetworkService] Invalid ESCAPISTS_PASSED_SNAPSHOT");
             return;
         }
 
@@ -339,7 +328,7 @@ public class GameNetworkService : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[GameNetworkService] Error invocando OnEscapistsPassedSnapshot: {e.Message}");
+            Debug.LogWarning($"[GameNetworkService] Error invoking OnEscapistsPassedSnapshot: {e.Message}");
         }
     }
 
@@ -348,11 +337,10 @@ public class GameNetworkService : MonoBehaviour
         var packet = packetBuilder.DeserializeEscapistClueCollected(json);
         if (packet == null)
         {
-            Debug.LogWarning("[GameNetworkService] ESCAPIST_CLUE_COLLECTED packet inválido");
+            Debug.LogWarning("[GameNetworkService] Invalid ESCAPIST_CLUE_COLLECTED packet");
             return;
         }
 
-        Debug.Log($"[GameNetworkService] ESCAPIST_CLUE_COLLECTED recibido: escapistId={packet.escapistId}, clueId={packet.clueId}");
 
         DesactivateClueInScene(packet.clueId);
 
@@ -364,7 +352,7 @@ public class GameNetworkService : MonoBehaviour
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"[GameNetworkService] Error invocando OnEscapistClueCollected: {e.Message}");
+                Debug.LogWarning($"[GameNetworkService] Error invoking OnEscapistClueCollected: {e.Message}");
             }
 
             return;
@@ -396,7 +384,7 @@ public class GameNetworkService : MonoBehaviour
         var packet = packetBuilder.DeserializeEscapistsCluesSnapshot(json);
         if (packet == null)
         {
-            Debug.LogWarning("[GameNetworkService] ESCAPISTS_CLUES_SNAPSHOT inválido");
+            Debug.LogWarning("[GameNetworkService] Invalid ESCAPISTS_CLUES_SNAPSHOT");
             return;
         }
 
@@ -430,7 +418,7 @@ public class GameNetworkService : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[GameNetworkService] Error invocando OnEscapistsCluesSnapshot: {e.Message}");
+            Debug.LogWarning($"[GameNetworkService] Error invoking OnEscapistsCluesSnapshot: {e.Message}");
         }
     }
 
@@ -443,7 +431,6 @@ public class GameNetworkService : MonoBehaviour
             if (clue.ClueId == clueId && !clue.IsCollected)
             {
                 clue.CollectClue();
-                Debug.Log($"[GameNetworkService] ? Pista {clueId} desactivada en escena");
                 return;
             }
         }

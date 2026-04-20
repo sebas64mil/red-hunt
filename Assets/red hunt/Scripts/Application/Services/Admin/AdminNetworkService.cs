@@ -45,19 +45,19 @@ public class AdminNetworkService
     {
         if (!isHost)
         {
-            Debug.LogWarning("[AdminNetworkService] Solo el host puede ejecutar KickPlayer");
+            Debug.LogWarning("[AdminNetworkService] Only host can execute KickPlayer");
             return false;
         }
 
         if (connectionManager == null)
         {
-            Debug.LogWarning("[AdminNetworkService] ConnectionManager no inicializado");
+            Debug.LogWarning("[AdminNetworkService] ConnectionManager not initialized");
             return false;
         }
 
         if (!connectionManager.TryGetEndpointById(targetId, out var endpoint))
         {
-            Debug.LogWarning($"[AdminNetworkService] No se encontr� endpoint para id {targetId}");
+            Debug.LogWarning($"[AdminNetworkService] Endpoint not found for id {targetId}");
             return false;
         }
 
@@ -77,12 +77,11 @@ public class AdminNetworkService
             var adminKick = adminBuilder.CreateKick(targetId);
             await server.SendToClientAsync(adminKick, endpoint);
 
-            Debug.Log($"[AdminNetworkService] Jugador {targetId} expulsado correctamente");
             return true;
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[AdminNetworkService] Error expulsando jugador {targetId}: {e.Message}");
+            Debug.LogError($"[AdminNetworkService] Error kicking player {targetId}: {e.Message}");
             return false;
         }
     }
@@ -93,7 +92,7 @@ public class AdminNetworkService
     {
         if (!isHost)
         {
-            Debug.LogWarning("[AdminNetworkService] Solo el host puede pausar el juego");
+            Debug.LogWarning("[AdminNetworkService] Only host can pause the game");
             return false;
         }
 
@@ -101,12 +100,11 @@ public class AdminNetworkService
         {
             var pausePacket = adminBuilder.CreatePause(pause);
             await broadcastService.SendToAll(pausePacket);
-            Debug.Log($"[AdminNetworkService] Pausa global enviada: {pause}");
             return true;
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[AdminNetworkService] Error enviando pausa: {e.Message}");
+            Debug.LogError($"[AdminNetworkService] Error sending pause: {e.Message}");
             return false;
         }
     }
@@ -121,7 +119,7 @@ public class AdminNetworkService
 
         if (type.StartsWith("ADMIN_"))
         {
-            Debug.LogWarning("[AdminNetworkService] Paquete ADMIN_ recibido en servidor: validar autoridad antes de actuar");
+            Debug.LogWarning("[AdminNetworkService] ADMIN_ packet received on server: validate authority before acting");
         }
     }
 

@@ -21,7 +21,6 @@ public class DoorController : MonoBehaviour
         EnsureAnimator();
         CacheAnimatorHashes();
 
-        Debug.Log($"[DoorController] ✅ Inicializado - requiere {requiredClues} pistas");
     }
 
     private void Awake()
@@ -49,20 +48,18 @@ public class DoorController : MonoBehaviour
 
         if (doorAnimator == null)
         {
-            Debug.LogWarning("[DoorController] ⚠️ No se puede abrir la puerta: Animator no asignado");
+            Debug.LogWarning("[DoorController] Cannot open door: Animator not assigned");
             return;
         }
 
         if (isOpenParameterHash == 0)
         {
-            Debug.LogWarning("[DoorController] ⚠️ No se puede abrir la puerta: parámetro IsOpen no configurado");
+            Debug.LogWarning("[DoorController] Cannot open door: IsOpen parameter not configured");
             return;
         }
 
         doorAnimator.gameObject.SetActive(false);
-        // doorAnimator.SetBool(isOpenParameterHash, true);
 
-        Debug.Log($"[DoorController] 🔓 Puerta desbloqueada - {requiredClues} pistas (GLOBAL) alcanzadas");
     }
 
     public void ResetDoor()
@@ -74,7 +71,6 @@ public class DoorController : MonoBehaviour
             doorAnimator.SetBool(isOpenParameterName, false);
         }
 
-        Debug.Log("[DoorController] 🔒 Puerta reseteada");
     }
 
     private void EnsureAnimator()
